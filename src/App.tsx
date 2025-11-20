@@ -17,6 +17,7 @@ import MenuList from "./pages/menu/MenuList";
 import AddMenuItem from "./pages/menu/AddMenuItem";
 import QRMenuGenerator from "./pages/menu/QRMenuGenerator";
 import CustomerMenu from "./pages/menu/CustomerMenu";
+import KitchenOrders from "./pages/kitchen/KitchenOrders";
 import GenerateBill from "./pages/billing/GenerateBill";
 import BillingList from "./pages/billing/BillingList";
 import InventoryDashboard from "./pages/inventory/InventoryDashboard";
@@ -51,6 +52,9 @@ const App = () => (
           <Route path="/menu/add" element={<AddMenuItem />} />
           <Route path="/menu/qr" element={<QRMenuGenerator />} />
           <Route path="/menu/customer" element={<CustomerMenu />} />
+          
+          {/* Kitchen Routes */}
+          <Route path="/kitchen" element={<KitchenOrders />} />
           
           {/* Billing Routes */}
           <Route path="/billing" element={<BillingList />} />

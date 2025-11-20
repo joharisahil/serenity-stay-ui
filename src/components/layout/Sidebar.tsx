@@ -1,4 +1,4 @@
-import { Home, Hotel, Calendar, UtensilsCrossed, Receipt, Package, Menu as MenuIcon } from "lucide-react";
+import { Home, Hotel, Calendar, UtensilsCrossed, Receipt, Package, ChefHat, Menu as MenuIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ const navigationItems = [
   { title: "Room Booking", url: "/rooms", icon: Hotel },
   { title: "Banquet Booking", url: "/banquet", icon: Calendar },
   { title: "Menu Management", url: "/menu", icon: UtensilsCrossed },
+  { title: "Kitchen Orders", url: "/kitchen", icon: ChefHat },
   { title: "Billing", url: "/billing", icon: Receipt },
   { title: "Inventory", url: "/inventory", icon: Package },
 ];
