@@ -79,6 +79,16 @@ const dummyOrders: Order[] = [
   }
 ];
 
+const migrateOrderStatus = (oldStatus: string): Order['status'] => {
+  // Map old status values to new ones
+  const statusMap: Record<string, Order['status']> = {
+    'preparing': 'received',
+    'coming-to-table': 'on-the-way',
+    'received': 'delivered'
+  };
+  return statusMap[oldStatus] || (oldStatus as Order['status']);
+};
+
 export default function KitchenOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
 
@@ -87,7 +97,16 @@ export default function KitchenOrders() {
       const stored = localStorage.getItem('kitchen-orders');
       if (stored) {
         const parsedOrders = JSON.parse(stored);
-        setOrders(parsedOrders.length > 0 ? parsedOrders : dummyOrders);
+        // Migrate old status values to new ones
+        const migratedOrders = parsedOrders.map((order: any) => ({
+          ...order,
+          status: migrateOrderStatus(order.status)
+        }));
+        setOrders(migratedOrders.length > 0 ? migratedOrders : dummyOrders);
+        // Save migrated orders back to localStorage
+        if (migratedOrders.length > 0) {
+          localStorage.setItem('kitchen-orders', JSON.stringify(migratedOrders));
+        }
       } else {
         setOrders(dummyOrders);
         localStorage.setItem('kitchen-orders', JSON.stringify(dummyOrders));
