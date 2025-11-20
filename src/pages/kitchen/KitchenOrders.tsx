@@ -2,7 +2,7 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, ChefHat } from "lucide-react";
+import { Clock, ChefHat, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface OrderItem {
@@ -22,11 +22,37 @@ interface Order {
 }
 
 const statusConfig = {
-  received: { label: 'Order Received', color: 'bg-yellow-500', textColor: 'text-yellow-600' },
-  prepared: { label: 'Order Prepared', color: 'bg-orange-500', textColor: 'text-orange-600' },
-  'on-the-way': { label: 'On the Way', color: 'bg-blue-500', textColor: 'text-blue-600' },
-  delivered: { label: 'Order Delivered', color: 'bg-green-500', textColor: 'text-green-600' }
+  received: { 
+    label: 'Order Received', 
+    color: 'bg-yellow-500', 
+    textColor: 'text-yellow-600',
+    bgLight: 'bg-yellow-50',
+    borderColor: 'border-yellow-200'
+  },
+  prepared: { 
+    label: 'Order Prepared', 
+    color: 'bg-orange-500', 
+    textColor: 'text-orange-600',
+    bgLight: 'bg-orange-50',
+    borderColor: 'border-orange-200'
+  },
+  'on-the-way': { 
+    label: 'On the Way', 
+    color: 'bg-blue-500', 
+    textColor: 'text-blue-600',
+    bgLight: 'bg-blue-50',
+    borderColor: 'border-blue-200'
+  },
+  delivered: { 
+    label: 'Order Delivered', 
+    color: 'bg-green-500', 
+    textColor: 'text-green-600',
+    bgLight: 'bg-green-50',
+    borderColor: 'border-green-200'
+  }
 };
+
+const statusOrder: Order['status'][] = ['received', 'prepared', 'on-the-way', 'delivered'];
 
 const dummyOrders: Order[] = [
   {
@@ -133,6 +159,10 @@ export default function KitchenOrders() {
     return null;
   };
 
+  const getOrdersByStatus = (status: Order['status']) => {
+    return orders.filter(order => order.status === status);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -146,93 +176,111 @@ export default function KitchenOrders() {
           </div>
         </div>
 
-        {orders.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <ChefHat className="h-16 w-16 text-muted-foreground mb-4" />
-              <p className="text-lg text-muted-foreground">No active orders</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {orders.map((order) => (
-              <Card key={order.id} className="border-l-4" style={{ borderLeftColor: `hsl(var(--${statusConfig[order.status].color}))` }}>
-                <CardContent className="p-4">
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                    {/* Order Info */}
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-                      {/* Location & Time */}
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground font-medium">Location</p>
-                        <p className="font-semibold text-sm">
-                          {order.tableNumber ? `Table ${order.tableNumber}` : `Room ${order.roomNumber}`}
-                        </p>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {new Date(order.timestamp).toLocaleTimeString()}
-                        </div>
-                      </div>
-
-                      {/* Order ID */}
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground font-medium">Order ID</p>
-                        <p className="font-mono text-sm font-semibold">#{order.id}</p>
-                      </div>
-
-                      {/* Items */}
-                      <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-                        <p className="text-xs text-muted-foreground font-medium">Items</p>
-                        <div className="text-sm">
-                          {order.items.map((item, idx) => (
-                            <div key={idx}>
-                              {item.name} ({item.portion})
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Total */}
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground font-medium">Total</p>
-                        <p className="font-semibold text-lg">₹{order.total}</p>
-                      </div>
-                    </div>
-
-                    {/* Status & Actions */}
-                    <div className="flex flex-col sm:flex-row lg:flex-col gap-2 lg:w-48 lg:items-stretch">
-                      <Badge className={`${statusConfig[order.status].color} text-white justify-center py-2`}>
-                        {statusConfig[order.status].label}
-                      </Badge>
-                      
-                      {getNextStatus(order.status) ? (
-                        <Button
-                          size="sm"
-                          className="w-full"
-                          onClick={() => updateOrderStatus(order.id, getNextStatus(order.status)!)}
-                        >
-                          Mark as {statusConfig[getNextStatus(order.status)!].label}
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => {
-                            const updatedOrders = orders.filter(o => o.id !== order.id);
-                            setOrders(updatedOrders);
-                            localStorage.setItem('kitchen-orders', JSON.stringify(updatedOrders));
-                          }}
-                        >
-                          Clear Order
-                        </Button>
-                      )}
-                    </div>
+        {/* Kanban Board */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+          {statusOrder.map((status) => {
+            const statusOrders = getOrdersByStatus(status);
+            const config = statusConfig[status];
+            
+            return (
+              <div key={status} className="flex flex-col">
+                {/* Column Header */}
+                <div className={`${config.bgLight} ${config.borderColor} border-2 rounded-t-lg p-4`}>
+                  <div className="flex items-center justify-between">
+                    <h3 className={`font-bold text-lg ${config.textColor}`}>
+                      {config.label}
+                    </h3>
+                    <Badge className={config.color} variant="secondary">
+                      {statusOrders.length}
+                    </Badge>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                </div>
+
+                {/* Column Content */}
+                <div className={`${config.bgLight} ${config.borderColor} border-x-2 border-b-2 rounded-b-lg p-4 min-h-[500px] space-y-3 flex-1`}>
+                  {statusOrders.length === 0 ? (
+                    <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+                      No orders
+                    </div>
+                  ) : (
+                    statusOrders.map((order) => (
+                      <Card 
+                        key={order.id} 
+                        className="shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in border-l-4"
+                        style={{ borderLeftColor: `hsl(var(--${config.color}))` }}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <CardTitle className="text-base font-bold">
+                                {order.tableNumber ? `Table ${order.tableNumber}` : `Room ${order.roomNumber}`}
+                              </CardTitle>
+                              <p className="text-xs text-muted-foreground font-mono mt-1">
+                                #{order.id}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+                              <Clock className="h-3 w-3" />
+                              <span>{new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        
+                        <CardContent className="space-y-3 pt-0">
+                          {/* Order Items */}
+                          <div className="space-y-1">
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="text-sm flex justify-between items-center">
+                                <span className="truncate flex-1">
+                                  {item.name} <span className="text-muted-foreground">({item.portion})</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Total */}
+                          <div className="pt-2 border-t flex justify-between items-center">
+                            <span className="text-sm font-medium">Total:</span>
+                            <span className="text-lg font-bold">₹{order.total}</span>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="space-y-2 pt-2">
+                            {getNextStatus(order.status) && (
+                              <Button
+                                className="w-full"
+                                size="sm"
+                                onClick={() => updateOrderStatus(order.id, getNextStatus(order.status)!)}
+                              >
+                                Move to {statusConfig[getNextStatus(order.status)!].label}
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                              </Button>
+                            )}
+                            
+                            {order.status === 'delivered' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => {
+                                  const updatedOrders = orders.filter(o => o.id !== order.id);
+                                  setOrders(updatedOrders);
+                                  localStorage.setItem('kitchen-orders', JSON.stringify(updatedOrders));
+                                }}
+                              >
+                                Clear Order
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </Layout>
   );
