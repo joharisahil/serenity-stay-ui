@@ -10,6 +10,7 @@ import { ProtectedRoute }from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RoomList from "./pages/rooms/RoomList";
+import ManageRooms from "./pages/rooms/ManageRooms";
 import CreateBooking from "./pages/rooms/CreateBooking";
 import BookingDetails from "./pages/rooms/BookingDetails";
 import BanquetCalendar from "./pages/banquet/BanquetCalendar";
@@ -50,8 +51,24 @@ const App = () => (
             <Route path="/dashboard" element={
               <ProtectedRoute><Dashboard /></ProtectedRoute>
             } />
+                     {/* Room Routes */}
+          <Route path="/rooms/manage" element={
+             <ProtectedRoute><ManageRooms /></ProtectedRoute>} />
+          <Route path="/rooms/bookings" element={  <ProtectedRoute><RoomList /></ProtectedRoute>} />
+          <Route path="/rooms/bookings/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
+          <Route path="/rooms/bookings/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
+          {/* Legacy redirects */}
+          <Route path="/rooms" element={<ProtectedRoute><RoomList /></ProtectedRoute>} />
+          <Route path="/rooms/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
+          <Route path="/rooms/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
 
-            {/* Room Routes */}
+
+
+
+
+
+
+            {/* Room Routes
             <Route path="/rooms" element={
               <ProtectedRoute><RoomList /></ProtectedRoute>
             } />
@@ -62,7 +79,7 @@ const App = () => (
 
             <Route path="/rooms/:roomNumber" element={
               <ProtectedRoute><BookingDetails /></ProtectedRoute>
-            } />
+            } /> */}
 
             {/* Banquet Routes */}
             <Route path="/banquet" element={

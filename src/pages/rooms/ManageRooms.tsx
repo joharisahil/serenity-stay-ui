@@ -3,9 +3,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Bed, Users, Hotel } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Search, Bed, Users, Edit, Eye, Trash2, Building2 } from "lucide-react";
 import { useState } from "react";
+import { CreateRoomDialog } from "@/components/CreateRoomDialog";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const rooms = [
   { number: "101", type: "Standard", price: 2500, status: "available", floor: 1, capacity: 2 },
@@ -29,16 +31,26 @@ const statusConfig = {
   maintenance: { label: "Maintenance", className: "bg-room-maintenance text-white" },
 };
 
-export default function RoomList() {
+export default function ManageRooms() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
 
   const filteredRooms = rooms.filter(
     (room) =>
-      (filterStatus === "all" || room.status === filterStatus) &&
-      (room.number.includes(searchTerm) || room.type.toLowerCase().includes(searchTerm.toLowerCase()))
+      room.number.includes(searchTerm) || room.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDelete = (roomNumber: string) => {
+    toast.success(`Room ${roomNumber} deleted successfully`);
+  };
+
+  const handleEdit = (roomNumber: string) => {
+    toast.info(`Edit room ${roomNumber}`);
+  };
+
+  const handleView = (roomNumber: string) => {
+    navigate(`/rooms/bookings/${roomNumber}`);
+  };
 
   return (
     <Layout>
@@ -46,52 +58,27 @@ export default function RoomList() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-              <Hotel className="h-6 w-6 text-primary-foreground" />
+              <Building2 className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">Room Bookings</h1>
-              <p className="text-muted-foreground">View and manage room bookings</p>
+              <h1 className="text-3xl font-bold">Manage Rooms</h1>
+              <p className="text-muted-foreground">Create, edit, and delete hotel rooms</p>
             </div>
           </div>
-          <Button onClick={() => navigate("/rooms/bookings/create")}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Booking
-          </Button>
+          <CreateRoomDialog />
         </div>
 
-        {/* Filters */}
+        {/* Search */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search by room number or type..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={filterStatus === "all" ? "default" : "outline"}
-                  onClick={() => setFilterStatus("all")}
-                >
-                  All
-                </Button>
-                <Button
-                  variant={filterStatus === "available" ? "default" : "outline"}
-                  onClick={() => setFilterStatus("available")}
-                >
-                  Available
-                </Button>
-                <Button
-                  variant={filterStatus === "occupied" ? "default" : "outline"}
-                  onClick={() => setFilterStatus("occupied")}
-                >
-                  Occupied
-                </Button>
-              </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by room number or type..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
             </div>
           </CardContent>
         </Card>
@@ -99,11 +86,7 @@ export default function RoomList() {
         {/* Room Grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredRooms.map((room) => (
-            <Card
-              key={room.number}
-              className="cursor-pointer transition-all hover:shadow-lg"
-              onClick={() => navigate(`/rooms/bookings/${room.number}`)}
-            >
+            <Card key={room.number} className="transition-all hover:shadow-lg">
               <CardContent className="p-6">
                 <div className="space-y-4">
                   <div className="flex items-start justify-between">
@@ -127,17 +110,38 @@ export default function RoomList() {
                     </div>
                   </div>
 
-                  {room.guest && (
-                    <div className="rounded-lg bg-secondary/50 p-2">
-                      <p className="text-xs text-muted-foreground">Guest</p>
-                      <p className="text-sm font-medium">{room.guest}</p>
-                    </div>
-                  )}
-
                   <div className="border-t pt-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-4">
                       <span className="text-sm text-muted-foreground">Price per night</span>
                       <span className="text-lg font-bold text-primary">₹{room.price}</span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleView(room.number)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleEdit(room.number)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(room.number)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </div>
