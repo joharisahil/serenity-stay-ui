@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute }from "@/components/ProtectedRoute";
 
 // Pages
 import Login from "./pages/Login";
@@ -33,40 +35,96 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          
-          {/* Room Routes */}
-          <Route path="/rooms" element={<RoomList />} />
-          <Route path="/rooms/create" element={<CreateBooking />} />
-          <Route path="/rooms/:roomNumber" element={<BookingDetails />} />
-          
-          {/* Banquet Routes */}
-          <Route path="/banquet" element={<BanquetCalendar />} />
-          <Route path="/banquet/create" element={<CreateBanquet />} />
-          <Route path="/banquet/:bookingId" element={<BanquetDetails />} />
-          
-          {/* Menu Routes */}
-          <Route path="/menu" element={<MenuList />} />
-          <Route path="/menu/add" element={<AddMenuItem />} />
-          <Route path="/menu/qr" element={<QRMenuGenerator />} />
-          <Route path="/menu/customer" element={<CustomerMenu />} />
-          
-          {/* Kitchen Routes */}
-          <Route path="/kitchen" element={<KitchenOrders />} />
-          
-          {/* Billing Routes */}
-          <Route path="/billing" element={<BillingList />} />
-          <Route path="/billing/create" element={<GenerateBill />} />
-          
-          {/* Inventory Routes */}
-          <Route path="/inventory" element={<InventoryDashboard />} />
-          <Route path="/inventory/add" element={<AddInventory />} />
-          <Route path="/inventory/list" element={<InventoryList />} />
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+
+            {/* Public Route */}
+            {/* <Route path="/" element={<Login />} /> */}
+            {/* Redirect root to login */}
+<Route path="/" element={<Navigate to="/login" replace />} />
+
+{/* Actual login page */}
+<Route path="/login" element={<Login />} />
+
+            {/* Protected Routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute><Dashboard /></ProtectedRoute>
+            } />
+
+            {/* Room Routes */}
+            <Route path="/rooms" element={
+              <ProtectedRoute><RoomList /></ProtectedRoute>
+            } />
+
+            <Route path="/rooms/create" element={
+              <ProtectedRoute><CreateBooking /></ProtectedRoute>
+            } />
+
+            <Route path="/rooms/:roomNumber" element={
+              <ProtectedRoute><BookingDetails /></ProtectedRoute>
+            } />
+
+            {/* Banquet Routes */}
+            <Route path="/banquet" element={
+              <ProtectedRoute><BanquetCalendar /></ProtectedRoute>
+            } />
+
+            <Route path="/banquet/create" element={
+              <ProtectedRoute><CreateBanquet /></ProtectedRoute>
+            } />
+
+            <Route path="/banquet/:bookingId" element={
+              <ProtectedRoute><BanquetDetails /></ProtectedRoute>
+            } />
+
+            {/* Menu Routes */}
+            <Route path="/menu" element={
+              <ProtectedRoute><MenuList /></ProtectedRoute>
+            } />
+
+            <Route path="/menu/add" element={
+              <ProtectedRoute><AddMenuItem /></ProtectedRoute>
+            } />
+
+            <Route path="/menu/qr" element={
+              <ProtectedRoute><QRMenuGenerator /></ProtectedRoute>
+            } />
+
+            <Route path="/menu/customer" element={
+              <ProtectedRoute><CustomerMenu /></ProtectedRoute>
+            } />
+
+            {/* Kitchen Routes */}
+            <Route path="/kitchen" element={
+              <ProtectedRoute><KitchenOrders /></ProtectedRoute>
+            } />
+
+            {/* Billing Routes */}
+            <Route path="/billing" element={
+              <ProtectedRoute><BillingList /></ProtectedRoute>
+            } />
+
+            <Route path="/billing/create" element={
+              <ProtectedRoute><GenerateBill /></ProtectedRoute>
+            } />
+
+            {/* Inventory Routes */}
+            <Route path="/inventory" element={
+              <ProtectedRoute><InventoryDashboard /></ProtectedRoute>
+            } />
+
+            <Route path="/inventory/add" element={
+              <ProtectedRoute><AddInventory /></ProtectedRoute>
+            } />
+
+            <Route path="/inventory/list" element={
+              <ProtectedRoute><InventoryList /></ProtectedRoute>
+            } />
+
+            <Route path="*" element={<NotFound />} />
+
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

@@ -1,23 +1,64 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Hotel } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { login, isAuthenticated } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Simple demo login - in production, validate credentials
-    if (email && password) {
-      navigate("/dashboard");
-    }
+  const location = useLocation();
+  const redirectTo = new URLSearchParams(location.search).get("redirect") || "/dashboard";
+
+  const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!email || !password) {
+    toast.error("Please enter both email and password");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    await login(email, password);
+
+    toast.success("Login successful!");
+
+    const location = window.location;
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get("redirect") || "/dashboard";
+
+    navigate(redirect, { replace: true });
+  } catch (error: any) {
+    toast.error(error.message || "Invalid credentials");
+  } finally {
+    setLoading(false);
+  }
   };
+  useEffect(() => {
+  const token = localStorage.getItem("token");
+  console.log("Stored token:", token);
+}, []);
+
+
+useEffect(() => {
+  if (isAuthenticated) {
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get("redirect") || "/dashboard";
+
+    navigate(redirect, { replace: true });
+  }
+}, [isAuthenticated, location.search]);
+
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/20 via-background to-accent/20 p-4">
@@ -67,3 +108,4 @@ export default function Login() {
     </div>
   );
 }
+
