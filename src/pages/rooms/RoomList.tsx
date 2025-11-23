@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Bed, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { CreateRoomDialog } from "@/components/CreateRoomDialog";
 
 const rooms = [
   { number: "101", type: "Standard", price: 2500, status: "available", floor: 1, capacity: 2 },
@@ -48,10 +49,13 @@ export default function RoomList() {
             <h1 className="text-3xl font-bold">Room Management</h1>
             <p className="text-muted-foreground">View and manage all hotel rooms</p>
           </div>
-          <Button onClick={() => navigate("/rooms/create")}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Booking
-          </Button>
+          <div className="flex gap-2">
+            <CreateRoomDialog />
+            <Button onClick={() => navigate("/rooms/create")}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Booking
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
