@@ -28,14 +28,14 @@ export default function CreateBooking() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     toast.success("Booking created successfully!");
-    navigate("/rooms");
+    navigate("/rooms/bookings");
   };
 
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/rooms")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/rooms/bookings")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -195,7 +195,7 @@ export default function CreateBooking() {
           </div>
 
           <div className="mt-6 flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => navigate("/rooms")}>
+            <Button type="button" variant="outline" onClick={() => navigate("/rooms/bookings")}>
               Cancel
             </Button>
             <Button type="submit">

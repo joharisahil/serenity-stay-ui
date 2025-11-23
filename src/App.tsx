@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RoomList from "./pages/rooms/RoomList";
+import ManageRooms from "./pages/rooms/ManageRooms";
 import CreateBooking from "./pages/rooms/CreateBooking";
 import BookingDetails from "./pages/rooms/BookingDetails";
 import BanquetCalendar from "./pages/banquet/BanquetCalendar";
@@ -38,6 +39,11 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           
           {/* Room Routes */}
+          <Route path="/rooms/manage" element={<ManageRooms />} />
+          <Route path="/rooms/bookings" element={<RoomList />} />
+          <Route path="/rooms/bookings/create" element={<CreateBooking />} />
+          <Route path="/rooms/bookings/:roomNumber" element={<BookingDetails />} />
+          {/* Legacy redirects */}
           <Route path="/rooms" element={<RoomList />} />
           <Route path="/rooms/create" element={<CreateBooking />} />
           <Route path="/rooms/:roomNumber" element={<BookingDetails />} />

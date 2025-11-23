@@ -1,7 +1,9 @@
-import { Home, Hotel, Calendar, UtensilsCrossed, Receipt, Package, ChefHat, Menu as MenuIcon } from "lucide-react";
+import { Home, Hotel, Calendar, UtensilsCrossed, Receipt, Package, ChefHat, Menu as MenuIcon, ChevronDown } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { useLocation } from "react-router-dom";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -10,7 +12,14 @@ interface SidebarProps {
 
 const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "Room Booking", url: "/rooms", icon: Hotel },
+  { 
+    title: "Room Management", 
+    icon: Hotel,
+    submenu: [
+      { title: "Manage Rooms", url: "/rooms/manage" },
+      { title: "Room Bookings", url: "/rooms/bookings" },
+    ]
+  },
   { title: "Banquet Booking", url: "/banquet", icon: Calendar },
   { title: "Menu Management", url: "/menu", icon: UtensilsCrossed },
   { title: "Kitchen Orders", url: "/kitchen", icon: ChefHat },
@@ -19,6 +28,19 @@ const navigationItems = [
 ];
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const location = useLocation();
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(["Room Management"]);
+
+  const toggleSubmenu = (title: string) => {
+    setExpandedMenus((prev) =>
+      prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]
+    );
+  };
+
+  const isSubmenuActive = (submenu: { title: string; url: string }[]) => {
+    return submenu.some((item) => location.pathname.startsWith(item.url));
+  };
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -55,20 +77,63 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex flex-col gap-1 p-4">
           {navigationItems.map((item) => (
-            <NavLink
-              key={item.url}
-              to={item.url}
-              className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
-              activeClassName="bg-sidebar-accent font-medium"
-              onClick={() => {
-                if (window.innerWidth < 1024) {
-                  onClose();
-                }
-              }}
-            >
-              <item.icon className="h-5 w-5" />
-              <span>{item.title}</span>
-            </NavLink>
+            <div key={item.title}>
+              {item.submenu ? (
+                <>
+                  <button
+                    onClick={() => toggleSubmenu(item.title)}
+                    className={cn(
+                      "w-full flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
+                      isSubmenuActive(item.submenu) && "bg-sidebar-accent font-medium"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.title}</span>
+                    </div>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 transition-transform",
+                        expandedMenus.includes(item.title) && "rotate-180"
+                      )}
+                    />
+                  </button>
+                  {expandedMenus.includes(item.title) && (
+                    <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-border pl-4">
+                      {item.submenu.map((subItem) => (
+                        <NavLink
+                          key={subItem.url}
+                          to={subItem.url}
+                          className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+                          activeClassName="bg-sidebar-accent font-medium"
+                          onClick={() => {
+                            if (window.innerWidth < 1024) {
+                              onClose();
+                            }
+                          }}
+                        >
+                          <span>{subItem.title}</span>
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <NavLink
+                  to={item.url!}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+                  activeClassName="bg-sidebar-accent font-medium"
+                  onClick={() => {
+                    if (window.innerWidth < 1024) {
+                      onClose();
+                    }
+                  }}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.title}</span>
+                </NavLink>
+              )}
+            </div>
           ))}
         </nav>
       </aside>
