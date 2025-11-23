@@ -117,6 +117,7 @@ const migrateOrderStatus = (oldStatus: string): Order['status'] => {
 
 export default function KitchenOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [draggedOrder, setDraggedOrder] = useState<string | null>(null);
 
   useEffect(() => {
     const loadOrders = () => {
@@ -163,6 +164,25 @@ export default function KitchenOrders() {
     return orders.filter(order => order.status === status);
   };
 
+  const handleDragStart = (orderId: string) => {
+    setDraggedOrder(orderId);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetStatus: Order['status']) => {
+    if (!draggedOrder) return;
+    
+    const order = orders.find(o => o.id === draggedOrder);
+    if (!order) return;
+
+    // Allow dropping in any status column
+    updateOrderStatus(draggedOrder, targetStatus);
+    setDraggedOrder(null);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -197,7 +217,13 @@ export default function KitchenOrders() {
                 </div>
 
                 {/* Column Content */}
-                <div className={`${config.bgLight} ${config.borderColor} border-x-2 border-b-2 rounded-b-lg p-4 min-h-[500px] space-y-3 flex-1`}>
+                <div 
+                  className={`${config.bgLight} ${config.borderColor} border-x-2 border-b-2 rounded-b-lg p-4 min-h-[500px] space-y-3 flex-1 transition-colors ${
+                    draggedOrder ? 'hover:bg-secondary/20' : ''
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop(status)}
+                >
                   {statusOrders.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
                       No orders
@@ -205,8 +231,12 @@ export default function KitchenOrders() {
                   ) : (
                     statusOrders.map((order) => (
                       <Card 
-                        key={order.id} 
-                        className="shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in border-l-4"
+                        key={order.id}
+                        draggable
+                        onDragStart={() => handleDragStart(order.id)}
+                        className={`shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in border-l-4 cursor-move ${
+                          draggedOrder === order.id ? 'opacity-50' : ''
+                        }`}
                         style={{ borderLeftColor: `hsl(var(--${config.color}))` }}
                       >
                         <CardHeader className="pb-3">
