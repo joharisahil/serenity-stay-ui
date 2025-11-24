@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import { createRoomApi } from "@/api/roomApi";
 
 interface Plan {
   code: string;
@@ -19,6 +20,7 @@ export function CreateRoomDialog() {
     type: "",
     floor: "",
     baseRate: "",
+    maxGuests: "",
   });
   const [plans, setPlans] = useState<Plan[]>([]);
   const [currentPlan, setCurrentPlan] = useState({ code: "", name: "", rate: "" });
@@ -28,7 +30,7 @@ export function CreateRoomDialog() {
       setPlans([...plans, { 
         code: currentPlan.code, 
         name: currentPlan.name, 
-        rate: parseFloat(currentPlan.rate) 
+        rate: Number(currentPlan.rate)
       }]);
       setCurrentPlan({ code: "", name: "", rate: "" });
     }
@@ -38,26 +40,68 @@ export function CreateRoomDialog() {
     setPlans(plans.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const roomData = {
-      number: formData.number,
-      type: formData.type || undefined,
-      floor: formData.floor ? parseInt(formData.floor) : undefined,
-      baseRate: formData.baseRate ? parseFloat(formData.baseRate) : undefined,
-      plans: plans.length > 0 ? plans : undefined,
-    };
-
-    console.log("Room created:", roomData);
-    toast.success("Room created successfully!");
-    setOpen(false);
-    setFormData({ number: "", type: "", floor: "", baseRate: "" });
+  const handleDialogChange = (val: boolean) => {
+  setOpen(val);
+  if (!val) {
+    // Reset everything when dialog closes
+    setFormData({ number: "", type: "", floor: "", baseRate: "",maxGuests: ""});
     setPlans([]);
+    setCurrentPlan({ code: "", name: "", rate: "" });
+  }
+};
+
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  // Filter only valid plans (remove empty ones)
+  let validPlans = plans.filter(
+    (p) => p.code.trim() !== "" && p.name.trim() !== "" && p.rate > 0
+  );
+
+  // Also include current un-added plan if valid
+  if (
+    currentPlan.code.trim() !== "" &&
+    currentPlan.name.trim() !== "" &&
+    currentPlan.rate !== "" &&
+    Number(currentPlan.rate) > 0
+  ) {
+    validPlans.push({
+      code: currentPlan.code.trim(),
+      name: currentPlan.name.trim(),
+      rate: Number(currentPlan.rate)
+    });
+  }
+
+  const roomData = {
+    number: formData.number,
+    type: formData.type || undefined,
+    floor: formData.floor ? parseInt(formData.floor) : undefined,
+    baseRate: formData.baseRate ? parseFloat(formData.baseRate) : undefined,
+    maxGuests: formData.maxGuests ? Number(formData.maxGuests) : undefined,
+    plans: validPlans.length > 0 ? validPlans : undefined,
   };
 
+  try {
+    const res = await createRoomApi(roomData);
+
+    toast.success("Room created successfully!");
+    console.log("Room created:", res.room);
+
+    setOpen(false);
+    setFormData({ number: "", type: "", floor: "", baseRate: "",maxGuests: ""});
+    setPlans([]);
+    setCurrentPlan({ code: "", name: "", rate: "" });
+
+  } catch (error: any) {
+    console.error(error);
+    toast.error(error.response?.data?.message || "Failed to create room");
+  }
+};
+
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleDialogChange}>
       <DialogTrigger asChild>
         <Button variant="outline">
           <Plus className="mr-2 h-4 w-4" />
@@ -113,6 +157,18 @@ export function CreateRoomDialog() {
                 placeholder="e.g., 2500"
               />
             </div>
+            <div className="space-y-2">
+  <Label htmlFor="maxGuests">Number of Guests</Label>
+  <Input
+    id="maxGuests"
+    type="number"
+    min="1"
+    value={formData.maxGuests}
+    onChange={(e) => setFormData({ ...formData, maxGuests: e.target.value })}
+    placeholder="e.g., 2"
+  />
+</div>
+
           </div>
 
           <div className="space-y-3">
