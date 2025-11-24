@@ -1,8 +1,18 @@
-import { Home, Hotel, Calendar, UtensilsCrossed, Receipt, Package, ChefHat, Menu as MenuIcon, ChevronDown } from "lucide-react";
+import {
+  Home,
+  Hotel,
+  Calendar,
+  UtensilsCrossed,
+  Receipt,
+  Package,
+  ChefHat,
+  Menu as MenuIcon,
+  ChevronDown,
+} from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 interface SidebarProps {
@@ -12,13 +22,13 @@ interface SidebarProps {
 
 const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
-  { 
-    title: "Room Management", 
+  {
+    title: "Room Management",
     icon: Hotel,
     submenu: [
       { title: "Manage Rooms", url: "/rooms/manage" },
       { title: "Room Bookings", url: "/rooms/bookings" },
-    ]
+    ],
   },
   { title: "Banquet Booking", url: "/banquet", icon: Calendar },
   { title: "Menu Management", url: "/menu", icon: UtensilsCrossed },
@@ -29,7 +39,7 @@ const navigationItems = [
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(["Room Management"]);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
   const toggleSubmenu = (title: string) => {
     setExpandedMenus((prev) =>
@@ -40,6 +50,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const isSubmenuActive = (submenu: { title: string; url: string }[]) => {
     return submenu.some((item) => location.pathname.startsWith(item.url));
   };
+
+  // Auto-expand menus if current route matches submenu
+  useEffect(() => {
+    navigationItems.forEach((item) => {
+      if (item.submenu && isSubmenuActive(item.submenu)) {
+        setExpandedMenus((prev) => [...new Set([...prev, item.title])]);
+      }
+    });
+  }, [location.pathname]);
 
   return (
     <>
@@ -62,7 +81,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
           <div className="flex items-center gap-2">
             <Hotel className="h-6 w-6 text-sidebar-primary" />
-            <span className="text-lg font-bold">Hotel PMS</span>
+            <span className="text-lg font-bold whitespace-nowrap">Hotel PMS</span>
           </div>
           <Button
             variant="ghost"
@@ -80,14 +99,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div key={item.title}>
               {item.submenu ? (
                 <>
+                  {/* Parent Menu Button */}
                   <button
                     onClick={() => toggleSubmenu(item.title)}
                     className={cn(
-                      "w-full flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
+                      "w-full flex items-center justify-between gap-3 whitespace-nowrap rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
                       isSubmenuActive(item.submenu) && "bg-sidebar-accent font-medium"
                     )}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 whitespace-nowrap">
                       <item.icon className="h-5 w-5" />
                       <span>{item.title}</span>
                     </div>
@@ -98,6 +118,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       )}
                     />
                   </button>
+
+                  {/* Submenu */}
                   {expandedMenus.includes(item.title) && (
                     <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-border pl-4">
                       {item.submenu.map((subItem) => (
@@ -121,7 +143,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               ) : (
                 <NavLink
                   to={item.url!}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent whitespace-nowrap"
                   activeClassName="bg-sidebar-accent font-medium"
                   onClick={() => {
                     if (window.innerWidth < 1024) {
