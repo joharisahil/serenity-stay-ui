@@ -27,6 +27,8 @@ import InventoryDashboard from "./pages/inventory/InventoryDashboard";
 import AddInventory from "./pages/inventory/AddInventory";
 import InventoryList from "./pages/inventory/InventoryList";
 import NotFound from "./pages/NotFound";
+import ViewRoomDetails from "./pages/rooms/ViewRoomDetails";
+import EditRoomPage from "./pages/rooms/EditRoomPage";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +56,23 @@ const App = () => (
                      {/* Room Routes */}
           <Route path="/rooms/manage" element={
              <ProtectedRoute><ManageRooms /></ProtectedRoute>} />
+             <Route
+  path="/rooms/view/:id"
+  element={
+    <ProtectedRoute>
+      <ViewRoomDetails />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/rooms/edit/:id"
+  element={
+    <ProtectedRoute>
+      <EditRoomPage />
+    </ProtectedRoute>
+  }
+/>
+
           <Route path="/rooms/bookings" element={  <ProtectedRoute><RoomList /></ProtectedRoute>} />
           <Route path="/rooms/bookings/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
           <Route path="/rooms/bookings/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />

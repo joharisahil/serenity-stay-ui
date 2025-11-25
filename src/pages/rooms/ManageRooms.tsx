@@ -8,13 +8,24 @@ import { useEffect, useState } from "react";
 import { CreateRoomDialog } from "@/components/CreateRoomDialog";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { listRoomsApi } from "@/api/roomApi";
+import { deleteRoomApi, listRoomsApi } from "@/api/roomApi";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 const statusConfig = {
-  available: { label: "Available", className: "bg-room-available text-white" },
-  occupied: { label: "Occupied", className: "bg-room-occupied text-white" },
-  cleaning: { label: "Cleaning", className: "bg-room-cleaning text-white" },
-  maintenance: { label: "Maintenance", className: "bg-room-maintenance text-white" },
+  AVAILABLE: { label: "Available", className: "bg-room-available text-white" },
+  OCCUPIED: { label: "Occupied", className: "bg-room-occupied text-white" },
+  CLEANING: { label: "Cleaning", className: "bg-room-cleaning text-white" },
+  MAINTENANCE: { label: "Maintenance", className: "bg-room-maintenance text-white" },
 };
 
 export default function ManageRooms() {
@@ -23,19 +34,23 @@ export default function ManageRooms() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+
+  const loadRooms = async () => {
+    try {
+      const data = await listRoomsApi();
+      setRooms(Array.isArray(data.rooms) ? data.rooms : []);
+      setLoading(false);
+    } catch (err) {
+      toast.error("Failed to fetch rooms");
+      setRooms([]);
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadRooms = async () => {
-      try {
-        const data = await listRoomsApi();
-        setRooms(Array.isArray(data.rooms) ? data.rooms : []);
-        setLoading(false);
-
-      } catch (err) {
-        toast.error("Failed to fetch rooms");
-        setRooms([]);
-      }
-    };
     loadRooms();
   }, []);
 
@@ -45,17 +60,34 @@ export default function ManageRooms() {
       room.type?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleDelete = (roomNumber: string) => {
-    toast.success(`Room ${roomNumber} deleted successfully`);
+  const handleEdit = (roomId: string) => {
+    navigate(`/rooms/edit/${roomId}`);
   };
 
-  const handleEdit = (roomNumber: string) => {
-    toast.info(`Edit room ${roomNumber}`);
+  const handleView = (roomId: string) => {
+    navigate(`/rooms/view/${roomId}`);
+  };
+  
+  const handleDeleteClick = (roomId: string) => {
+   setDeleteId(roomId);
+   setDeleteOpen(true);
   };
 
-  const handleView = (roomNumber: string) => {
-    navigate(`/rooms/bookings/${roomNumber}`);
-  };
+  const confirmDelete = async () => {
+  if (!deleteId) return;
+
+  try {
+    await deleteRoomApi(deleteId);
+    toast.success("Room deleted successfully!");
+
+    // Reload rooms after delete
+    loadRooms();
+  } catch {
+    toast.error("Failed to delete room");
+  } finally {
+    setDeleteOpen(false);
+  }
+};
 
   return (
     <Layout>
@@ -72,7 +104,7 @@ export default function ManageRooms() {
               <p className="text-muted-foreground">Create, edit, and delete hotel rooms</p>
             </div>
           </div>
-          <CreateRoomDialog />
+         <CreateRoomDialog onRoomCreated={loadRooms} />
         </div>
 
         {/* Search */}
@@ -97,7 +129,7 @@ export default function ManageRooms() {
         {!loading && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredRooms.map((room: any) => {
-              const status = (room.status || "available").toLowerCase();
+              const status = room.status?.toUpperCase() || "AVAILABLE";
 
               return (
                 <Card key={room._id} className="transition-all hover:shadow-lg">
@@ -108,8 +140,8 @@ export default function ManageRooms() {
                           <h3 className="text-2xl font-bold">Room {room.number}</h3>
                           <p className="text-sm text-muted-foreground">Floor {room.floor}</p>
                         </div>
-                        <Badge className={statusConfig[status].className}>
-                          {statusConfig[status].label}
+                        <Badge className={statusConfig[status]?.className || "bg-gray-500 text-white"}>
+                          {statusConfig[status]?.label || status}
                         </Badge>
                       </div>
 
@@ -132,17 +164,17 @@ export default function ManageRooms() {
 
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" className="flex-1"
-                            onClick={() => handleView(room.number)}
+                            onClick={() => handleView(room._id)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm" className="flex-1"
-                            onClick={() => handleEdit(room.number)}
+                            onClick={() => handleEdit(room._id)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button variant="outline" size="sm" className="flex-1 text-destructive"
-                            onClick={() => handleDelete(room.number)}
+                            onClick={() => handleDeleteClick(room._id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -156,6 +188,24 @@ export default function ManageRooms() {
           </div>
         )}
       </div>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+      <AlertDialogDescription>
+        This action cannot be undone. This will permanently delete the room.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancel</AlertDialogCancel>
+      <AlertDialogAction onClick={confirmDelete}>
+        Delete Room
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
     </Layout>
   );
 }

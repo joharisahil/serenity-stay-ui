@@ -13,7 +13,7 @@ interface Plan {
   rate: number;
 }
 
-export function CreateRoomDialog() {
+export function CreateRoomDialog({ onRoomCreated }: { onRoomCreated?: () => void }) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     number: "",
@@ -25,15 +25,27 @@ export function CreateRoomDialog() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [currentPlan, setCurrentPlan] = useState({ code: "", name: "", rate: "" });
 
+  // Allow adding plan even if rate is 0.
   const handleAddPlan = () => {
-    if (currentPlan.code && currentPlan.name && currentPlan.rate) {
-      setPlans([...plans, { 
-        code: currentPlan.code, 
-        name: currentPlan.name, 
-        rate: Number(currentPlan.rate)
-      }]);
-      setCurrentPlan({ code: "", name: "", rate: "" });
+    const code = currentPlan.code.trim();
+    const name = currentPlan.name.trim();
+    const rateNum = Number(currentPlan.rate);
+
+    // require code and name, allow rate 0 (but reject NaN / empty)
+    if (!code || !name) {
+      toast.error("Please enter plan code and name");
+      return;
     }
+    if (currentPlan.rate === "" || isNaN(rateNum)) {
+      toast.error("Please enter a valid rate (0 or greater)");
+      return;
+    }
+
+    setPlans([
+      ...plans,
+      { code, name, rate: rateNum }
+    ]);
+    setCurrentPlan({ code: "", name: "", rate: "" });
   };
 
   const handleRemovePlan = (index: number) => {
@@ -41,64 +53,73 @@ export function CreateRoomDialog() {
   };
 
   const handleDialogChange = (val: boolean) => {
-  setOpen(val);
-  if (!val) {
-    // Reset everything when dialog closes
-    setFormData({ number: "", type: "", floor: "", baseRate: "",maxGuests: ""});
-    setPlans([]);
-    setCurrentPlan({ code: "", name: "", rate: "" });
-  }
-};
-
-
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  // Filter only valid plans (remove empty ones)
-  let validPlans = plans.filter(
-    (p) => p.code.trim() !== "" && p.name.trim() !== "" && p.rate > 0
-  );
-
-  // Also include current un-added plan if valid
-  if (
-    currentPlan.code.trim() !== "" &&
-    currentPlan.name.trim() !== "" &&
-    currentPlan.rate !== "" &&
-    Number(currentPlan.rate) > 0
-  ) {
-    validPlans.push({
-      code: currentPlan.code.trim(),
-      name: currentPlan.name.trim(),
-      rate: Number(currentPlan.rate)
-    });
-  }
-
-  const roomData = {
-    number: formData.number,
-    type: formData.type || undefined,
-    floor: formData.floor ? parseInt(formData.floor) : undefined,
-    baseRate: formData.baseRate ? parseFloat(formData.baseRate) : undefined,
-    maxGuests: formData.maxGuests ? Number(formData.maxGuests) : undefined,
-    plans: validPlans.length > 0 ? validPlans : undefined,
+    setOpen(val);
+    if (!val) {
+      // Reset everything when dialog closes
+      setFormData({ number: "", type: "", floor: "", baseRate: "", maxGuests: "" });
+      setPlans([]);
+      setCurrentPlan({ code: "", name: "", rate: "" });
+    }
   };
 
-  try {
-    const res = await createRoomApi(roomData);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    toast.success("Room created successfully!");
-    console.log("Room created:", res.room);
+    // Take existing plans (already validated on add).
+    const finalPlans: Plan[] = [...plans];
 
-    setOpen(false);
-    setFormData({ number: "", type: "", floor: "", baseRate: "",maxGuests: ""});
-    setPlans([]);
-    setCurrentPlan({ code: "", name: "", rate: "" });
+    // Also include current un-added plan if it has code+name and a valid rate (allow 0)
+    const code = currentPlan.code.trim();
+    const name = currentPlan.name.trim();
+    const rateValue = currentPlan.rate;
+    const rateNum = rateValue === "" ? NaN : Number(rateValue);
 
-  } catch (error: any) {
-    console.error(error);
-    toast.error(error.response?.data?.message || "Failed to create room");
-  }
-};
+    if (code || name || rateValue !== "") {
+      // Only include if code & name present and rate is a valid number (0 allowed)
+      if (code && name && !isNaN(rateNum)) {
+        finalPlans.push({ code, name, rate: rateNum });
+      } else {
+        // If user has partially filled last row but it's invalid, ignore it silently
+        // or you can show a toast — choosing silent ignore to match request
+        // toast.error("Incomplete plan ignored (code/name/rate required)");
+      }
+    }
 
+    // Filter finalPlans again to be safe (ensure code,name present and rate is number)
+    const validPlans = finalPlans.filter(
+      (p) =>
+        typeof p.code === "string" &&
+        p.code.trim() !== "" &&
+        typeof p.name === "string" &&
+        p.name.trim() !== "" &&
+        typeof p.rate === "number" &&
+        !isNaN(p.rate)
+    );
+
+    const roomData = {
+      number: formData.number,
+      type: formData.type || undefined,
+      floor: formData.floor ? parseInt(formData.floor) : undefined,
+      baseRate: formData.baseRate ? parseFloat(formData.baseRate) : undefined,
+      maxGuests: formData.maxGuests ? Number(formData.maxGuests) : undefined,
+      plans: validPlans.length > 0 ? validPlans : undefined,
+    };
+
+    try {
+      const res = await createRoomApi(roomData);
+
+      toast.success("Room created successfully!");
+      console.log("Room created:", res.room);
+      onRoomCreated?.();
+      setOpen(false);
+      setFormData({ number: "", type: "", floor: "", baseRate: "", maxGuests: "" });
+      setPlans([]);
+      setCurrentPlan({ code: "", name: "", rate: "" });
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.message || "Failed to create room");
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
@@ -134,7 +155,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="floor">Floor</Label>
               <Input
@@ -157,23 +178,23 @@ const handleSubmit = async (e: React.FormEvent) => {
                 placeholder="e.g., 2500"
               />
             </div>
-            <div className="space-y-2">
-  <Label htmlFor="maxGuests">Number of Guests</Label>
-  <Input
-    id="maxGuests"
-    type="number"
-    min="1"
-    value={formData.maxGuests}
-    onChange={(e) => setFormData({ ...formData, maxGuests: e.target.value })}
-    placeholder="e.g., 2"
-  />
-</div>
 
+            <div className="space-y-2">
+              <Label htmlFor="maxGuests">Number of Guests</Label>
+              <Input
+                id="maxGuests"
+                type="number"
+                min="1"
+                value={formData.maxGuests}
+                onChange={(e) => setFormData({ ...formData, maxGuests: e.target.value })}
+                placeholder="e.g., 2"
+              />
+            </div>
           </div>
 
           <div className="space-y-3">
             <Label>Plans</Label>
-            
+
             {plans.length > 0 && (
               <div className="space-y-2">
                 {plans.map((plan, index) => (
@@ -213,7 +234,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 <Input
                   type="number"
                   step="0.01"
-                  placeholder="Rate"
+                  placeholder="Rate (0 allowed)"
                   value={currentPlan.rate}
                   onChange={(e) => setCurrentPlan({ ...currentPlan, rate: e.target.value })}
                 />
