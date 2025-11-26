@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ProtectedRoute }from "@/components/ProtectedRoute";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Pages
 import Login from "./pages/Login";
@@ -29,6 +29,9 @@ import InventoryList from "./pages/inventory/InventoryList";
 import NotFound from "./pages/NotFound";
 import ViewRoomDetails from "./pages/rooms/ViewRoomDetails";
 import EditRoomPage from "./pages/rooms/EditRoomPage";
+import ManageTables from "./pages/tables/ManageTables";
+import EditTablePage from "./pages/tables/EditTablePage";
+import ViewTableDetails from "./pages/tables/ViewTableDetails";
 
 const queryClient = new QueryClient();
 
@@ -44,42 +47,42 @@ const App = () => (
             {/* Public Route */}
             {/* <Route path="/" element={<Login />} /> */}
             {/* Redirect root to login */}
-<Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
 
-{/* Actual login page */}
-<Route path="/login" element={<Login />} />
+            {/* Actual login page */}
+            <Route path="/login" element={<Login />} />
 
             {/* Protected Routes */}
             <Route path="/dashboard" element={
               <ProtectedRoute><Dashboard /></ProtectedRoute>
             } />
-                     {/* Room Routes */}
-          <Route path="/rooms/manage" element={
-             <ProtectedRoute><ManageRooms /></ProtectedRoute>} />
-             <Route
-  path="/rooms/view/:id"
-  element={
-    <ProtectedRoute>
-      <ViewRoomDetails />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/rooms/edit/:id"
-  element={
-    <ProtectedRoute>
-      <EditRoomPage />
-    </ProtectedRoute>
-  }
-/>
+            {/* Room Routes */}
+            <Route path="/rooms/manage" element={
+              <ProtectedRoute><ManageRooms /></ProtectedRoute>} />
+            <Route
+              path="/rooms/view/:id"
+              element={
+                <ProtectedRoute>
+                  <ViewRoomDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rooms/edit/:id"
+              element={
+                <ProtectedRoute>
+                  <EditRoomPage />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route path="/rooms/bookings" element={  <ProtectedRoute><RoomList /></ProtectedRoute>} />
-          <Route path="/rooms/bookings/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
-          <Route path="/rooms/bookings/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
-          {/* Legacy redirects */}
-          <Route path="/rooms" element={<ProtectedRoute><RoomList /></ProtectedRoute>} />
-          <Route path="/rooms/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
-          <Route path="/rooms/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
+            <Route path="/rooms/bookings" element={<ProtectedRoute><RoomList /></ProtectedRoute>} />
+            <Route path="/rooms/bookings/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
+            <Route path="/rooms/bookings/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
+            {/* Legacy redirects */}
+            <Route path="/rooms" element={<ProtectedRoute><RoomList /></ProtectedRoute>} />
+            <Route path="/rooms/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
+            <Route path="/rooms/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
 
 
 
@@ -99,6 +102,27 @@ const App = () => (
             <Route path="/rooms/:roomNumber" element={
               <ProtectedRoute><BookingDetails /></ProtectedRoute>
             } /> */}
+
+            {/* Table Routes */}
+            <Route path="/tables/manage" element={
+              <ProtectedRoute><ManageTables /></ProtectedRoute>} />
+            <Route
+              path="/tables/view/:id"
+              element={
+                <ProtectedRoute>
+                  <ViewTableDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tables/edit/:id"
+              element={
+                <ProtectedRoute>
+                  <EditTablePage />
+                </ProtectedRoute>
+              }
+            />
+
 
             {/* Banquet Routes */}
             <Route path="/banquet" element={

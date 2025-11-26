@@ -30,6 +30,14 @@ const navigationItems = [
       { title: "Room Bookings", url: "/rooms/bookings" },
     ],
   },
+    {
+    title: "Table Management",
+    icon: Hotel,
+    submenu: [
+      { title: "Manage Tables", url: "/tables/manage" },
+      { title: "Table Bookings", url: "/tables/bookings" },
+    ],
+  },
   { title: "Banquet Booking", url: "/banquet", icon: Calendar },
   { title: "Menu Management", url: "/menu", icon: UtensilsCrossed },
   { title: "Kitchen Orders", url: "/kitchen", icon: ChefHat },
