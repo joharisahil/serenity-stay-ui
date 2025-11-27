@@ -32,6 +32,7 @@ import EditRoomPage from "./pages/rooms/EditRoomPage";
 import ManageTables from "./pages/tables/ManageTables";
 import EditTablePage from "./pages/tables/EditTablePage";
 import ViewTableDetails from "./pages/tables/ViewTableDetails";
+import EditCategoriesPage from "./pages/menu/EditCategory";
 
 const queryClient = new QueryClient();
 
@@ -84,12 +85,6 @@ const App = () => (
             <Route path="/rooms/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
             <Route path="/rooms/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
 
-
-
-
-
-
-
             {/* Room Routes
             <Route path="/rooms" element={
               <ProtectedRoute><RoomList /></ProtectedRoute>
@@ -119,6 +114,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <EditTablePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/menu/category/edit"
+              element={
+                <ProtectedRoute>
+                  <EditCategoriesPage />
                 </ProtectedRoute>
               }
             />

@@ -8,6 +8,7 @@ import {
   ChefHat,
   Menu as MenuIcon,
   ChevronDown,
+  Table2Icon
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ const navigationItems = [
   },
     {
     title: "Table Management",
-    icon: Hotel,
+    icon:   Table2Icon,
     submenu: [
       { title: "Manage Tables", url: "/tables/manage" },
       { title: "Table Bookings", url: "/tables/bookings" },

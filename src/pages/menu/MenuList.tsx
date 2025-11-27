@@ -3,55 +3,110 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Edit, Trash2, QrCode } from "lucide-react";
+import { Plus, Search, Edit, Trash2, QrCode, Edit2Icon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-
-const menuItems = [
-  { id: 1, name: "Paneer Tikka", category: "Starters", price: 280, status: "available" },
-  { id: 2, name: "Veg Spring Roll", category: "Starters", price: 220, status: "available" },
-  { id: 3, name: "Butter Chicken", category: "Main Course", price: 420, status: "available" },
-  { id: 4, name: "Dal Makhani", category: "Main Course", price: 280, status: "available" },
-  { id: 5, name: "Biryani", category: "Main Course", price: 350, status: "available" },
-  { id: 6, name: "Gulab Jamun", category: "Desserts", price: 120, status: "available" },
-  { id: 7, name: "Ice Cream", category: "Desserts", price: 100, status: "available" },
-  { id: 8, name: "Fresh Juice", category: "Drinks", price: 150, status: "available" },
-  { id: 9, name: "Masala Chai", category: "Drinks", price: 50, status: "unavailable" },
-];
-
-const categories = ["All", "Starters", "Main Course", "Desserts", "Drinks"];
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { CreateCategoryDialog } from "@/components/CreateCategoryDialog";
+import { getCategoriesApi } from "@/api/menuApi";
+import { getMenuItemsApi } from "@/api/menuItemApi";
 
 export default function MenuList() {
   const navigate = useNavigate();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const filteredItems = menuItems.filter(
-    (item) =>
-      (selectedCategory === "All" || item.category === selectedCategory) &&
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const [categoriesData, setCategoriesData] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>(["All"]);
+
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(true);
+
+  // ----------------------------------
+  // Load categories
+  // ----------------------------------
+  const loadCategories = async () => {
+    try {
+      const list = await getCategoriesApi();
+
+      setCategoriesData(list);
+      setCategories(["All", ...list.map((c: any) => c.name)]);
+    } catch (err) {
+      toast.error("Failed to fetch categories");
+    }
+  };
+
+  // ----------------------------------
+  // Load Items by Category
+  // ----------------------------------
+  const loadMenuItems = async (catName?: string) => {
+    try {
+      setLoadingItems(true);
+
+      let categoryId = undefined;
+
+      // find actual category id
+      if (catName && catName !== "All") {
+        const catObj = categoriesData.find((c: any) => c.name === catName);
+        categoryId = catObj?._id;
+      }
+
+      const items = await getMenuItemsApi(categoryId);
+      setMenuItems(items);
+    } catch (err) {
+      toast.error("Failed to load menu items");
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
+  // ----------------------------------
+  // Initial Load
+  // ----------------------------------
+  useEffect(() => {
+    loadCategories();
+    loadMenuItems(); // load all items initially
+  }, []);
+
+  // ----------------------------------
+  // Filter by search
+  // ----------------------------------
+  const visibleItems = menuItems.filter((item) =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold">Menu Management</h1>
             <p className="text-muted-foreground">Manage your restaurant menu items</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate("/menu/qr")}>
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate("/menu/qr")}>
               <QrCode className="mr-2 h-4 w-4" />
               QR Menu
             </Button>
-            <Button onClick={() => navigate("/menu/add")}>
+
+            <Button variant="outline" size="sm" onClick={() => navigate("/menu/category/edit")}>
+              <Edit2Icon className="mr-2 h-4 w-4" />
+              Edit Category
+            </Button>
+
+            <CreateCategoryDialog onCreated={loadCategories} />
+
+            <Button size="sm" onClick={() => navigate("/menu/add")}>
               <Plus className="mr-2 h-4 w-4" />
               Add Item
             </Button>
           </div>
         </div>
 
+        {/* Search + Categories */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col gap-4">
@@ -64,12 +119,16 @@ export default function MenuList() {
                   className="pl-9"
                 />
               </div>
+
               <div className="flex gap-2 overflow-x-auto">
                 {categories.map((cat) => (
                   <Button
                     key={cat}
                     variant={selectedCategory === cat ? "default" : "outline"}
-                    onClick={() => setSelectedCategory(cat)}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      loadMenuItems(cat);
+                    }}
                     className="whitespace-nowrap"
                   >
                     {cat}
@@ -80,36 +139,56 @@ export default function MenuList() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredItems.map((item) => (
-            <Card key={item.id} className="transition-shadow hover:shadow-md">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold">{item.name}</h3>
-                      <p className="text-sm text-muted-foreground">{item.category}</p>
+        {/* Items */}
+
+        {loadingItems ? (
+          <p className="text-center text-muted-foreground py-10">Loading items...</p>
+        ) : visibleItems.length === 0 ? (
+          <p className="text-center text-muted-foreground py-10">No items found.</p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleItems.map((item) => (
+              <Card key={item._id} className="transition-shadow hover:shadow-md">
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold">{item.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {categoriesData.find((c) => c._id === item.category_id)?.name}
+                        </p>
+                      </div>
+
+                      <Badge variant={item.isActive ? "default" : "secondary"}>
+                        {item.isActive ? "Available" : "Unavailable"}
+                      </Badge>
                     </div>
-                    <Badge variant={item.status === "available" ? "default" : "secondary"}>
-                      {item.status === "available" ? "Available" : "Unavailable"}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between border-t pt-4">
-                    <span className="text-lg font-bold text-primary">₹{item.price}</span>
-                    <div className="flex gap-2">
-                      <Button size="icon" variant="ghost">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+
+                    <div className="flex items-center justify-between border-t pt-4">
+                      <span className="text-lg font-bold text-primary">
+                        ₹
+                        {item.priceFull ??
+                          item.priceSingle ??
+                          item.priceHalf ??
+                          "--"}
+                      </span>
+
+                      <div className="flex gap-2">
+                        <Button size="icon" variant="ghost">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+
+                        <Button size="icon" variant="ghost" className="text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </Layout>
   );
