@@ -48,6 +48,8 @@ const login = async (email: string, password: string) => {
   // Use localStorage for persistent login
   localStorage.setItem("token", token);
   localStorage.setItem("user", JSON.stringify(user));
+  localStorage.setItem("hotelId", user.hotel_id);
+  localStorage.setItem("role", user.role);
 
   setUser(user);
 };
@@ -58,6 +60,8 @@ const logout = () => {
 
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  localStorage.removeItem("hotelId");
+  localStorage.removeItem("role");
 
   sessionStorage.clear(); // optional
 

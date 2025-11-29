@@ -1,298 +1,438 @@
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+
 import { Hotel, CheckCircle2, Clock, ChefHat, Package } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useState } from "react";
-
-const menuItems = [
-  { name: "Paneer Tikka", category: "Starters", price: 280, description: "Cottage cheese marinated in spices" },
-  { name: "Veg Spring Roll", category: "Starters", price: 220, description: "Crispy rolls with mixed vegetables" },
-  { name: "Butter Chicken", category: "Main Course", price: 420, description: "Tender chicken in rich tomato gravy" },
-  { name: "Dal Makhani", category: "Main Course", price: 280, description: "Creamy black lentils slow cooked" },
-  { name: "Biryani", category: "Main Course", price: 350, description: "Fragrant basmati rice with spices" },
-  { name: "Gulab Jamun", category: "Desserts", price: 120, description: "Sweet milk dumplings in syrup" },
-  { name: "Ice Cream", category: "Desserts", price: 100, description: "Choice of flavors" },
-  { name: "Fresh Juice", category: "Drinks", price: 150, description: "Seasonal fresh fruit juice" },
-];
-
-const categories = ["Starters", "Main Course", "Desserts", "Drinks"];
+import { toast } from "sonner";
+import { getPublicMenuApi } from "@/api/publicMenuApi";
+import PublicMenuSkeleton from "@/components/skeletons/PublicMenuSkeleton";
+import { createPublicOrderApi } from "@/api/orderApi";
+import confetti from "canvas-confetti";
+import OrderTracking from "@/components/public/OrderTracking";
 
 interface SelectedItem {
+  item_id: string;
   name: string;
-  portion: 'half' | 'full';
+  size: "SINGLE" | "HALF" | "FULL";
   price: number;
+  qty: number;
 }
 
-export default function CustomerMenu() {
-  const [step, setStep] = useState<'location' | 'menu' | 'order-placed'>('location');
-  const [locationType, setLocationType] = useState<'table' | 'room'>('table');
-  const [locationNumber, setLocationNumber] = useState('');
-  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
-  const [orderId, setOrderId] = useState<string>('');
-  const [orderStatus, setOrderStatus] = useState<'preparing' | 'coming-to-table' | 'received'>('preparing');
-
-  const handleLocationSubmit = () => {
-    if (locationNumber.trim()) {
-      setStep('menu');
-    }
-  };
-
-  const toggleItemSelection = (item: typeof menuItems[0], portion: 'half' | 'full') => {
-    const itemKey = `${item.name}-${portion}`;
-    const existingIndex = selectedItems.findIndex(
-      si => si.name === item.name && si.portion === portion
-    );
-
-    if (existingIndex >= 0) {
-      setSelectedItems(selectedItems.filter((_, idx) => idx !== existingIndex));
-    } else {
-      const price = portion === 'half' ? Math.round(item.price * 0.6) : item.price;
-      setSelectedItems([...selectedItems, { name: item.name, portion, price }]);
-    }
-  };
-
-  const isItemSelected = (itemName: string, portion: 'half' | 'full') => {
-    return selectedItems.some(si => si.name === itemName && si.portion === portion);
-  };
-
-  const subtotal = selectedItems.reduce((sum, item) => sum + item.price, 0);
-  const gst = Math.round(subtotal * 0.05); // 5% GST
-  const total = subtotal + gst;
-
-  const handlePlaceOrder = () => {
-    const order = {
-      id: Date.now().toString(),
-      [locationType === 'table' ? 'tableNumber' : 'roomNumber']: locationNumber,
-      items: selectedItems,
-      total,
-      status: 'preparing' as const,
-      timestamp: new Date().toISOString()
-    };
-
-    // Store order in localStorage
-    const existingOrders = JSON.parse(localStorage.getItem('kitchen-orders') || '[]');
-    localStorage.setItem('kitchen-orders', JSON.stringify([...existingOrders, order]));
-
-    setOrderId(order.id);
-    setOrderStatus('preparing');
-    setStep('order-placed');
-
-    // Simulate status updates
-    setTimeout(() => setOrderStatus('coming-to-table'), 10000);
-    setTimeout(() => setOrderStatus('received'), 20000);
-  };
-
-  const statusConfig = {
-    preparing: { label: 'Preparing Your Order', icon: ChefHat, color: 'text-orange-500' },
-    'coming-to-table': { label: 'Coming to Your Location', icon: Package, color: 'text-blue-500' },
-    received: { label: 'Order Received', icon: CheckCircle2, color: 'text-green-500' }
-  };
-
-  if (step === 'location') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6 space-y-6">
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary">
-                <Hotel className="h-8 w-8 text-primary-foreground" />
-              </div>
-              <h1 className="text-2xl font-bold mb-2">Welcome!</h1>
-              <p className="text-muted-foreground">Please enter your location to view menu</p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>I'm at</Label>
-                <RadioGroup value={locationType} onValueChange={(v) => setLocationType(v as 'table' | 'room')}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="table" id="table" />
-                    <Label htmlFor="table" className="cursor-pointer">Table</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="room" id="room" />
-                    <Label htmlFor="room" className="cursor-pointer">Room</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location-number">
-                  {locationType === 'table' ? 'Table' : 'Room'} Number
-                </Label>
-                <Input
-                  id="location-number"
-                  type="text"
-                  placeholder={`Enter ${locationType} number`}
-                  value={locationNumber}
-                  onChange={(e) => setLocationNumber(e.target.value)}
-                />
-              </div>
-
-              <Button className="w-full" onClick={handleLocationSubmit}>
-                View Menu
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (step === 'order-placed') {
-    const StatusIcon = statusConfig[orderStatus].icon;
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 space-y-6 text-center">
-            <div className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 ${statusConfig[orderStatus].color}`}>
-              <StatusIcon className="h-10 w-10" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-2">{statusConfig[orderStatus].label}</h2>
-              <p className="text-muted-foreground">Order #{orderId}</p>
-              <p className="text-muted-foreground">
-                {locationType === 'table' ? 'Table' : 'Room'} {locationNumber}
-              </p>
-            </div>
-            <div className="space-y-2 text-left bg-accent/10 p-4 rounded-lg">
-              <p className="font-semibold">Your Order:</p>
-              {selectedItems.map((item, idx) => (
-                <div key={idx} className="flex justify-between text-sm">
-                  <span>{item.name} ({item.portion})</span>
-                  <span>₹{item.price}</span>
-                </div>
-              ))}
-              <div className="pt-2 border-t flex justify-between font-semibold">
-                <span>Total:</span>
-                <span>₹{total}</span>
-              </div>
-            </div>
-            {orderStatus === 'received' && (
-              <Button className="w-full" onClick={() => window.location.reload()}>
-                Order Again
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+function QuantityRow({ label, price, qty, onAdd, onRemove }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10">
-      <div className="mx-auto max-w-4xl p-4 sm:p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary">
-                <Hotel className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold">Our Menu</h1>
-                <p className="text-muted-foreground">
-                  {locationType === 'table' ? 'Table' : 'Room'} {locationNumber}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-md">
+      <span className="font-medium">
+        {label} — ₹{price}
+      </span>
 
-        {/* Menu by Category */}
-        <div className="space-y-8">
-          {categories.map((category) => (
-            <div key={category}>
-              <h2 className="mb-4 text-2xl font-bold text-primary">{category}</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {menuItems
-                  .filter((item) => item.category === category)
-                  .map((item) => (
-                    <Card key={item.name} className="transition-shadow hover:shadow-lg">
-                      <CardContent className="p-6">
-                        <div className="space-y-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="font-semibold">{item.name}</h3>
-                              <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
-                            </div>
-                            <Badge variant="outline" className="ml-2">
-                              ₹{item.price}
-                            </Badge>
-                          </div>
-                          <div className="flex gap-4">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`${item.name}-half`}
-                                checked={isItemSelected(item.name, 'half')}
-                                onCheckedChange={() => toggleItemSelection(item, 'half')}
-                              />
-                              <Label htmlFor={`${item.name}-half`} className="cursor-pointer">
-                                Half (₹{Math.round(item.price * 0.6)})
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`${item.name}-full`}
-                                checked={isItemSelected(item.name, 'full')}
-                                onCheckedChange={() => toggleItemSelection(item, 'full')}
-                              />
-                              <Label htmlFor={`${item.name}-full`} className="cursor-pointer">
-                                Full (₹{item.price})
-                              </Label>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 w-7 p-0"
+          onClick={onRemove}
+          disabled={qty === 0}
+        >
+          -
+        </Button>
 
-        {/* Order Summary - Fixed at bottom */}
-        {selectedItems.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg">
-            <div className="mx-auto max-w-4xl p-4">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Subtotal</span>
-                      <span>₹{subtotal}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>GST (5%)</span>
-                      <span>₹{gst}</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                      <span>Total</span>
-                      <span>₹{total}</span>
-                    </div>
-                    <Button className="w-full" size="lg" onClick={handlePlaceOrder}>
-                      Place Order ({selectedItems.length} items)
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
+        <span className="w-6 text-center">{qty}</span>
 
-        {/* Spacer for fixed bottom bar */}
-        {selectedItems.length > 0 && <div className="h-48" />}
-
-        {/* Footer */}
-        <div className="text-center text-sm text-muted-foreground py-8">
-          <p>All prices are inclusive of taxes</p>
-          <p className="mt-2">Contact staff for allergen information</p>
-        </div>
+        <Button
+          size="sm"
+          className="h-7 w-7 p-0"
+          onClick={onAdd}
+        >
+          +
+        </Button>
       </div>
     </div>
   );
+}
+
+
+export default function CustomerMenu() {
+  const { source, id, hotelId } = useParams();
+
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
+
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  const [step, setStep] = useState<"menu" | "order-placed">("menu");
+  const [orderStatus, setOrderStatus] =
+    useState<"preparing" | "coming-to-table" | "received">("preparing");
+
+  const [orderId, setOrderId] = useState("");
+
+  // ---------------------------
+  // Load menu from backend
+  // ---------------------------
+useEffect(() => {
+  const loadMenu = async () => {
+    try {
+      const data = await getPublicMenuApi(source!, id!, hotelId!);
+
+      if (!data.success) throw new Error("Failed to load menu");
+
+      setCategories(data.menu.categories);
+      setItems(data.menu.items);
+
+    } catch (err) {
+      toast.error("Unable to load menu");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadMenu();
+}, [source, id, hotelId]);
+
+  // ---------------------------
+  // Toggle selection
+  // ---------------------------
+const addItem = (item: any, size: "SINGLE" | "HALF" | "FULL", price: number) => {
+  const existing = selectedItems.find(
+    (s) => s.item_id === item._id && s.size === size
+  );
+
+  if (existing) {
+    existing.qty += 1;
+    setSelectedItems([...selectedItems]);
+  } else {
+    setSelectedItems([
+      ...selectedItems,
+      {
+        item_id: item._id,
+        name: item.name,
+        size,
+        price,
+        qty: 1,
+      },
+    ]);
+  }
+};
+
+const removeItem = (itemId: string, size: string) => {
+  const existing = selectedItems.find(
+    (s) => s.item_id === itemId && s.size === size
+  );
+
+  if (!existing) return;
+
+  if (existing.qty === 1) {
+    // remove completely
+    setSelectedItems(selectedItems.filter(
+      (s) => !(s.item_id === itemId && s.size === size)
+    ));
+  } else {
+    existing.qty -= 1;
+    setSelectedItems([...selectedItems]);
+  }
+};
+
+const getQty = (itemId: string, size: string) => {
+  const found = selectedItems.find(
+    (s) => s.item_id === itemId && s.size === size
+  );
+  return found?.qty || 0;
+};
+
+const [scrolled, setScrolled] = useState(false);
+
+useEffect(() => {
+  const onScroll = () => setScrolled(window.scrollY > 10);
+  window.addEventListener("scroll", onScroll);
+  return () => window.removeEventListener("scroll", onScroll);
+}, []);
+
+
+  const isSelected = (itemId: string, size: string) =>
+    selectedItems.some((s) => s.item_id === itemId && s.size === size);
+
+  // ---------------------------
+  // Compute summary
+  // ---------------------------
+const subtotal = selectedItems.reduce((sum, it) => sum + it.price * it.qty, 0);
+  const gst = +(subtotal * 0.05).toFixed(2);
+  const total = subtotal + gst;
+
+  // ---------------------------
+  // Place Order (calls backend)
+  // ---------------------------
+const handlePlaceOrder = async () => {
+  try {
+    const payload = {
+      hotel_id: hotelId,
+      source: source.toUpperCase(), // QR, TABLE, ROOM
+      table_id: source === "table" ? id : undefined,
+      room_id: source === "room" ? id : undefined,
+      items: selectedItems.map((s) => ({
+        item_id: s.item_id,
+        size: s.size,
+        qty: s.qty,
+      })),
+    };
+
+    const data = await createPublicOrderApi(payload);
+
+    if (!data.success) throw new Error("Failed to place order");
+
+    setOrderId(data.order._id);
+    setStep("order-placed");
+
+    // Zomato style live status animation
+setTimeout(() => setOrderStatus("coming-to-table"), 2000);
+setTimeout(() => setOrderStatus("received"), 2000);
+
+// confetti trigger
+setTimeout(() => {
+  confetti({
+    particleCount: 120,
+    spread: 80,
+    origin: { y: 0.6 },
+  });
+}, 2000);
+
+
+    toast.success("Order placed successfully!");
+
+  } catch (err: any) {
+    toast.error(err?.response?.data?.message || "Failed to place order");
+  }
+};
+
+
+  const statusConfig = {
+    preparing: { label: "Preparing Your Order", icon: ChefHat, color: "text-orange-500" },
+    "coming-to-table": { label: "Coming Soon", icon: Package, color: "text-blue-500" },
+    received: { label: "Order Received", icon: CheckCircle2, color: "text-green-500" },
+  };
+
+  // ---------------------------
+  // Loading UI
+  // ---------------------------
+if (loading) return <PublicMenuSkeleton />;
+
+
+  // ---------------------------
+  // Order placed screen
+  // ---------------------------
+if (step === "order-placed") {
+  return <OrderTracking orderId={orderId} hotelId={hotelId} />;
+}
+
+
+  // ---------------------------
+  // Menu UI
+  // ---------------------------
+return (
+  <div className="min-h-screen bg-gradient-to-b from-primary/10 to-background p-4 pb-32">
+    <div className="max-w-4xl mx-auto space-y-6">
+
+      {/* HEADER */}
+{/* HEADER – transparent, shadow only when scrolling */}
+<div
+  className={`
+    flex items-center gap-3 sticky top-0 py-4 z-30 transition-all
+    ${scrolled ? "bg-background/70 backdrop-blur-sm shadow-sm" : "bg-transparent"}
+  `}
+>
+  <div className="h-12 w-12 flex items-center justify-center rounded-full bg-primary shadow">
+    <Hotel className="text-primary-foreground h-6 w-6" />
+  </div>
+
+  <div>
+    <h1 className="text-2xl font-bold">Order from Menu</h1>
+    <p className="text-sm text-muted-foreground">
+ <p>
+  {source === "table" && `Table ${id}`}
+  {source === "room" && `Room ${id}`}
+</p>
+
+    </p>
+  </div>
+</div>
+
+      {/* CATEGORY SELECTOR */}
+      <div className="flex gap-3 overflow-x-scroll no-scrollbar sticky top-20 bg-background py-3 z-20 border-b shadow-sm">
+        {categories.map((cat) => (
+          <button
+            key={cat._id}
+            onClick={() => {
+              document.getElementById(`cat-${cat._id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="
+              px-4 py-2 rounded-full border text-sm whitespace-nowrap
+              hover:bg-primary hover:text-white transition-all
+            "
+          >
+            {cat.name}
+          </button>
+        ))}
+      </div>
+
+      {/* MENU SECTIONS */}
+      {categories.map((cat) => (
+        <div key={cat._id} id={`cat-${cat._id}`} className="scroll-mt-24">
+          
+          <h2 className="text-xl font-bold text-primary mt-6 mb-4">
+            {cat.name}
+          </h2>
+
+          <div className="space-y-4">
+            {items
+              .filter((it) => it.category_id === cat._id)
+              .map((item) => {
+                const prices = {
+                  single: item.priceSingle,
+                  half: item.priceHalf,
+                  full: item.priceFull,
+                };
+
+                return (
+                  <Card key={item._id} className="shadow hover:shadow-lg transition-all">
+                    <CardContent className="p-5 space-y-4">
+
+                      {/* NAME + DESCRIPTION */}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-lg font-semibold">{item.name}</h3>
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                        </div>
+                        <Badge variant="outline" className="text-md">
+                          ₹{prices.full ?? prices.single ?? prices.half}
+                        </Badge>
+                      </div>
+
+                      {/* QUANTITY BUTTONS */}
+                      <div className="space-y-3">
+
+                        {/* SINGLE */}
+                        {prices.single && (
+                          <QuantityRow
+                            label="Single"
+                            price={prices.single}
+                            qty={getQty(item._id, "SINGLE")}
+                            onAdd={() => addItem(item, "SINGLE", prices.single)}
+                            onRemove={() => removeItem(item._id, "SINGLE")}
+                          />
+                        )}
+
+                        {/* HALF */}
+                        {prices.half && (
+                          <QuantityRow
+                            label="Half"
+                            price={prices.half}
+                            qty={getQty(item._id, "HALF")}
+                            onAdd={() => addItem(item, "HALF", prices.half)}
+                            onRemove={() => removeItem(item._id, "HALF")}
+                          />
+                        )}
+
+                        {/* FULL */}
+                        {prices.full && (
+                          <QuantityRow
+                            label="Full"
+                            price={prices.full}
+                            qty={getQty(item._id, "FULL")}
+                            onAdd={() => addItem(item, "FULL", prices.full)}
+                            onRemove={() => removeItem(item._id, "FULL")}
+                          />
+                        )}
+
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+          </div>
+        </div>
+      ))}
+
+      {/* SPACER */}
+      <div className="h-40"></div>
+
+      {/* FLOATING CART BUTTON */}
+      {selectedItems.length > 0 && (
+        <button
+          onClick={() =>
+            window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })
+          }
+          className="
+            fixed bottom-24 right-5 bg-primary text-white px-6 py-4 
+            rounded-full shadow-xl text-lg font-semibold flex items-center gap-2 
+            animate-bounce-slow z-50
+          "
+        >
+          View Cart • ₹{total}
+        </button>
+      )}
+
+      {/* BOTTOM CART SUMMARY */}
+{/* BOTTOM CART SUMMARY – Modern Swiggy/Zomato style */}
+{selectedItems.length > 0 && (
+  <div
+    className="
+      fixed bottom-0 left-0 right-0 bg-white shadow-2xl rounded-t-3xl 
+      border-t z-50 p-4 pb-6 transition-all
+    "
+  >
+    <div className="max-w-4xl mx-auto space-y-3">
+
+      {/* CART ITEMS */}
+      <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+        {selectedItems.map((it) => (
+          <div
+            key={it.item_id + it.size}
+            className="flex justify-between text-sm"
+          >
+            <span className="font-medium">
+              {it.name} ({it.size.toLowerCase()}) × {it.qty}
+            </span>
+            <span className="font-semibold">₹{it.qty * it.price}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* BILL SUMMARY */}
+      <div className="space-y-1 text-sm pt-2 border-t">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Subtotal</span>
+          <span>₹{subtotal}</span>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">GST (5%)</span>
+          <span>₹{gst}</span>
+        </div>
+
+        <div className="flex justify-between font-bold text-lg pt-2 border-t">
+          <span>Total</span>
+          <span>₹{total}</span>
+        </div>
+      </div>
+
+      {/* PLACE ORDER BUTTON (Scrolling Style) */}
+      <Button
+        className="
+          w-full py-5 text-lg font-semibold rounded-full 
+          bg-primary text-white shadow-md hover:shadow-lg
+          transition-all
+        "
+        onClick={handlePlaceOrder}
+      >
+        Place Order • ₹{total}
+      </Button>
+    </div>
+  </div>
+)}
+
+    </div>
+  </div>
+);
+
 }

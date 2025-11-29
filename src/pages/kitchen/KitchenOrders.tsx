@@ -1,186 +1,95 @@
+import { useEffect, useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, ChefHat, ArrowRight } from "lucide-react";
-import { useState, useEffect } from "react";
-
-interface OrderItem {
-  name: string;
-  portion: string;
-  price: number;
-}
-
-interface Order {
-  id: string;
-  tableNumber?: string;
-  roomNumber?: string;
-  items: OrderItem[];
-  total: number;
-  status: 'received' | 'prepared' | 'on-the-way' | 'delivered';
-  timestamp: string;
-}
-
-const statusConfig = {
-  received: { 
-    label: 'Order Received', 
-    color: 'bg-yellow-500', 
-    textColor: 'text-yellow-600',
-    bgLight: 'bg-yellow-50',
-    borderColor: 'border-yellow-200'
-  },
-  prepared: { 
-    label: 'Order Prepared', 
-    color: 'bg-orange-500', 
-    textColor: 'text-orange-600',
-    bgLight: 'bg-orange-50',
-    borderColor: 'border-orange-200'
-  },
-  'on-the-way': { 
-    label: 'On the Way', 
-    color: 'bg-blue-500', 
-    textColor: 'text-blue-600',
-    bgLight: 'bg-blue-50',
-    borderColor: 'border-blue-200'
-  },
-  delivered: { 
-    label: 'Order Delivered', 
-    color: 'bg-green-500', 
-    textColor: 'text-green-600',
-    bgLight: 'bg-green-50',
-    borderColor: 'border-green-200'
-  }
-};
-
-const statusOrder: Order['status'][] = ['received', 'prepared', 'on-the-way', 'delivered'];
-
-const dummyOrders: Order[] = [
-  {
-    id: '1001',
-    tableNumber: '5',
-    items: [
-      { name: 'Paneer Tikka', portion: 'full', price: 280 },
-      { name: 'Butter Chicken', portion: 'full', price: 420 },
-      { name: 'Fresh Juice', portion: 'full', price: 150 }
-    ],
-    total: 892,
-    status: 'received',
-    timestamp: new Date(Date.now() - 300000).toISOString()
-  },
-  {
-    id: '1002',
-    roomNumber: '201',
-    items: [
-      { name: 'Dal Makhani', portion: 'full', price: 280 },
-      { name: 'Biryani', portion: 'full', price: 350 },
-      { name: 'Gulab Jamun', portion: 'half', price: 72 }
-    ],
-    total: 738,
-    status: 'prepared',
-    timestamp: new Date(Date.now() - 600000).toISOString()
-  },
-  {
-    id: '1003',
-    tableNumber: '12',
-    items: [
-      { name: 'Veg Spring Roll', portion: 'half', price: 132 },
-      { name: 'Ice Cream', portion: 'full', price: 100 }
-    ],
-    total: 244,
-    status: 'on-the-way',
-    timestamp: new Date(Date.now() - 120000).toISOString()
-  },
-  {
-    id: '1004',
-    roomNumber: '305',
-    items: [
-      { name: 'Paneer Tikka', portion: 'full', price: 280 },
-      { name: 'Dal Makhani', portion: 'full', price: 280 },
-      { name: 'Biryani', portion: 'full', price: 350 },
-      { name: 'Fresh Juice', portion: 'full', price: 150 }
-    ],
-    total: 1113,
-    status: 'delivered',
-    timestamp: new Date(Date.now() - 900000).toISOString()
-  }
-];
-
-const migrateOrderStatus = (oldStatus: string): Order['status'] => {
-  // Map old status values to new ones
-  const statusMap: Record<string, Order['status']> = {
-    'preparing': 'received',
-    'coming-to-table': 'on-the-way',
-    'received': 'delivered'
-  };
-  return statusMap[oldStatus] || (oldStatus as Order['status']);
-};
+import { joinHotelRoom, socket } from "@/lib/socket";
+import { updateOrderStatusApi, getLiveOrdersApi } from "@/api/orderApi";
+import { toast } from "sonner";
+import { playSound } from "@/lib/sound";
+import { Order, OrderCreatedEvent } from "@/types/order";
 
 export default function KitchenOrders() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const hotelId = user.hotel_id;
+  console.log("KITCHEN HOTEL ID:", hotelId);
+
+  const [orders, setOrders] = useState<any[]>([]);
   const [draggedOrder, setDraggedOrder] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadOrders = () => {
-      const stored = localStorage.getItem('kitchen-orders');
-      if (stored) {
-        const parsedOrders = JSON.parse(stored);
-        // Migrate old status values to new ones
-        const migratedOrders = parsedOrders.map((order: any) => ({
-          ...order,
-          status: migrateOrderStatus(order.status)
-        }));
-        setOrders(migratedOrders.length > 0 ? migratedOrders : dummyOrders);
-        // Save migrated orders back to localStorage
-        if (migratedOrders.length > 0) {
-          localStorage.setItem('kitchen-orders', JSON.stringify(migratedOrders));
-        }
-      } else {
-        setOrders(dummyOrders);
-        localStorage.setItem('kitchen-orders', JSON.stringify(dummyOrders));
-      }
+    if (!hotelId) return;
+
+    socket.off("order:created");
+    socket.off("order:status_update");
+
+    joinHotelRoom(hotelId, "KITCHEN_MANAGER");
+
+    socket.on("order:created", (data: OrderCreatedEvent) => {
+      if (!data?.order) return;
+      setOrders((prev) => [data.order, ...prev]);
+    });
+
+
+    socket.on("order:status_update", (order: Order) => {
+      if (!order) return;
+      setOrders((prev) => prev.map((o) => (o._id === order._id ? order : o)));
+    });
+
+
+    getLiveOrdersApi(hotelId)
+      .then((res) => setOrders(res.orders))
+      .catch(() => toast.error("Failed to load kitchen orders"));
+
+    return () => {
+      socket.off("order:created");
+      socket.off("order:status_update");
     };
-
-    loadOrders();
-    const interval = setInterval(loadOrders, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const updateOrderStatus = (orderId: string, newStatus: Order['status']) => {
-    const updatedOrders = orders.map(order =>
-      order.id === orderId ? { ...order, status: newStatus } : order
-    );
-    setOrders(updatedOrders);
-    localStorage.setItem('kitchen-orders', JSON.stringify(updatedOrders));
-  };
-
-  const getNextStatus = (currentStatus: Order['status']): Order['status'] | null => {
-    if (currentStatus === 'received') return 'prepared';
-    if (currentStatus === 'prepared') return 'on-the-way';
-    if (currentStatus === 'on-the-way') return 'delivered';
-    return null;
-  };
-
-  const getOrdersByStatus = (status: Order['status']) => {
-    return orders.filter(order => order.status === status);
-  };
-
-  const handleDragStart = (orderId: string) => {
+  }, [hotelId]);
+  // When dragging starts
+  const onDragStart = (orderId: string) => {
     setDraggedOrder(orderId);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  // Allows drop
+  const allowDrop = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
-  const handleDrop = (targetStatus: Order['status']) => {
+  // When dropped into a column
+  const onDrop = async (e: React.DragEvent, newStatus: string) => {
+    e.preventDefault();
     if (!draggedOrder) return;
-    
-    const order = orders.find(o => o.id === draggedOrder);
-    if (!order) return;
 
-    // Allow dropping in any status column
-    updateOrderStatus(draggedOrder, targetStatus);
+    await updateStatus(draggedOrder, newStatus);
     setDraggedOrder(null);
+  };
+
+
+  const updateStatus = async (orderId: string, status: string) => {
+    try {
+      await updateOrderStatusApi(orderId, status);
+    } catch {
+      toast.error("Failed to update order");
+    }
+  };
+
+  const statusFlow = ["NEW", "PREPARING", "COMING", "DELIVERED"];
+
+  const getColumn = (status: string) => {
+    const config = {
+      NEW: { label: "New Orders", color: "yellow" },
+      PREPARING: { label: "Preparing", color: "orange" },
+      COMING: { label: "On the Way", color: "blue" },
+      DELIVERED: { label: "Delivered", color: "green" },
+    };
+    return config[status];
+  };
+
+  const nextStatus = (status: string) => {
+    const i = statusFlow.indexOf(status);
+    return statusFlow[i + 1] || null;
   };
 
   return (
@@ -192,122 +101,87 @@ export default function KitchenOrders() {
           </div>
           <div>
             <h1 className="text-3xl font-bold">Kitchen Orders</h1>
-            <p className="text-muted-foreground">Manage and track all orders</p>
+            <p className="text-muted-foreground">Live order tracking</p>
           </div>
         </div>
 
-        {/* Kanban Board */}
+        {/* KANBAN GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
-          {statusOrder.map((status) => {
-            const statusOrders = getOrdersByStatus(status);
-            const config = statusConfig[status];
-            
+          {statusFlow.map((status) => {
+            const col = getColumn(status);
+            const filtered = orders
+              .filter((o) => o && o.status) // <- prevent crash
+              .filter((o) => o.status === status);
+
+
             return (
-              <div key={status} className="flex flex-col">
-                {/* Column Header */}
-                <div className={`${config.bgLight} ${config.borderColor} border-2 rounded-t-lg p-4`}>
-                  <div className="flex items-center justify-between">
-                    <h3 className={`font-bold text-lg ${config.textColor}`}>
-                      {config.label}
-                    </h3>
-                    <Badge className={config.color} variant="secondary">
-                      {statusOrders.length}
-                    </Badge>
-                  </div>
+              <div
+                key={status}
+                className="flex flex-col"
+                onDragOver={allowDrop}
+                onDrop={(e) => onDrop(e, status)}
+              >
+                <div className={`border-l-4 border-${col.color}-500 p-4 rounded-t-lg bg-${col.color}-50`}>
+                  <h3 className={`font-bold text-${col.color}-600`}>{col.label}</h3>
                 </div>
 
-                {/* Column Content */}
-                <div 
-                  className={`${config.bgLight} ${config.borderColor} border-x-2 border-b-2 rounded-b-lg p-4 min-h-[500px] space-y-3 flex-1 transition-colors ${
-                    draggedOrder ? 'hover:bg-secondary/20' : ''
-                  }`}
-                  onDragOver={handleDragOver}
-                  onDrop={() => handleDrop(status)}
-                >
-                  {statusOrders.length === 0 ? (
-                    <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-                      No orders
-                    </div>
-                  ) : (
-                    statusOrders.map((order) => (
-                      <Card 
-                        key={order.id}
-                        draggable
-                        onDragStart={() => handleDragStart(order.id)}
-                        className={`shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in border-l-4 cursor-move ${
-                          draggedOrder === order.id ? 'opacity-50' : ''
-                        }`}
-                        style={{ borderLeftColor: `hsl(var(--${config.color}))` }}
-                      >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <CardTitle className="text-base font-bold">
-                                {order.tableNumber ? `Table ${order.tableNumber}` : `Room ${order.roomNumber}`}
-                              </CardTitle>
-                              <p className="text-xs text-muted-foreground font-mono mt-1">
-                                #{order.id}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-                              <Clock className="h-3 w-3" />
-                              <span>{new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        
-                        <CardContent className="space-y-3 pt-0">
-                          {/* Order Items */}
-                          <div className="space-y-1">
-                            {order.items.map((item, idx) => (
-                              <div key={idx} className="text-sm flex justify-between items-center">
-                                <span className="truncate flex-1">
-                                  {item.name} <span className="text-muted-foreground">({item.portion})</span>
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Total */}
-                          <div className="pt-2 border-t flex justify-between items-center">
-                            <span className="text-sm font-medium">Total:</span>
-                            <span className="text-lg font-bold">₹{order.total}</span>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="space-y-2 pt-2">
-                            {getNextStatus(order.status) && (
-                              <Button
-                                className="w-full"
-                                size="sm"
-                                onClick={() => updateOrderStatus(order.id, getNextStatus(order.status)!)}
-                              >
-                                Move to {statusConfig[getNextStatus(order.status)!].label}
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                              </Button>
-                            )}
-                            
-                            {order.status === 'delivered' && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full"
-                                onClick={() => {
-                                  const updatedOrders = orders.filter(o => o.id !== order.id);
-                                  setOrders(updatedOrders);
-                                  localStorage.setItem('kitchen-orders', JSON.stringify(updatedOrders));
-                                }}
-                              >
-                                Clear Order
-                              </Button>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
+                <div className="border p-4 min-h-[500px] rounded-b-lg space-y-4 bg-white">
+                  {filtered.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center pt-4">No orders</p>
                   )}
+
+                  {filtered.map((order) => (
+                    <Card
+                      key={order._id}
+                      draggable
+                      onDragStart={() => onDragStart(order._id)}
+                      className="shadow-md cursor-move"
+                    >
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex justify-between">
+                          <span className="font-bold">
+                            {order.table_id?.name
+                              ? `Table ${order.table_id.name}`
+                              : order.room_id?.number
+                                ? `Room ${order.room_id.number}`
+                                : "Unknown"}
+                          </span>
+                          <span className="text-muted-foreground text-xs">
+                            #{order._id.slice(-4)}
+                          </span>
+                        </CardTitle>
+                      </CardHeader>
+
+                      <CardContent className="space-y-3">
+                        <div className="space-y-1 text-sm">
+                          {order.items.map((i, idx) => (
+                            <div key={idx} className="flex justify-between">
+                              <span>{i.name} ({i.size})</span>
+                              <span>× {i.qty}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="border-t pt-2 flex justify-between font-semibold">
+                          <span>Total</span>
+                          <span>₹{order.total}</span>
+                        </div>
+
+                        {nextStatus(order.status) && (
+                          <Button
+                            className="w-full mt-2"
+                            onClick={() => updateStatus(order._id, nextStatus(order.status)!)}
+                          >
+                            Move to {getColumn(nextStatus(order.status)!).label}
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               </div>
+
             );
           })}
         </div>

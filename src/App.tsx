@@ -153,8 +153,8 @@ const App = () => (
               <ProtectedRoute><QRMenuGenerator /></ProtectedRoute>
             } />
 
-            <Route path="/menu/customer" element={
-              <ProtectedRoute><CustomerMenu /></ProtectedRoute>
+            <Route path="/menu/qr/:source/:id/:hotelId" element={
+              <CustomerMenu />
             } />
 
             {/* Kitchen Routes */}
