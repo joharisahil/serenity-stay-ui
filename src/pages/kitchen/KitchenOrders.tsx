@@ -17,36 +17,50 @@ export default function KitchenOrders() {
 
   const [orders, setOrders] = useState<any[]>([]);
   const [draggedOrder, setDraggedOrder] = useState<string | null>(null);
+useEffect(() => {
+  if (!hotelId) return;
 
-  useEffect(() => {
-    if (!hotelId) return;
+  socket.off("order:created");
+  socket.off("order:status_update");
 
+  joinHotelRoom(hotelId, "KITCHEN_MANAGER");
+
+  // Prevent duplicate orders
+  socket.on("order:created", (data: OrderCreatedEvent) => {
+    if (!data?.order) return;
+
+    setOrders(prev => {
+      if (prev.some(o => o._id === data.order._id)) {
+        return prev.map(o => (o._id === data.order._id ? data.order : o));
+      }
+      return [data.order, ...prev];
+    });
+  });
+
+  // Prevent double update for status change
+  socket.on("order:status_update", (order: Order) => {
+    if (!order) return;
+
+    setOrders(prev => {
+      const alreadySame = prev.some(
+        o => o._id === order._id && o.status === order.status
+      );
+      if (alreadySame) return prev;
+
+      return prev.map(o => (o._id === order._id ? order : o));
+    });
+  });
+
+  getLiveOrdersApi(hotelId)
+    .then((res) => setOrders(res.orders))
+    .catch(() => toast.error("Failed to load kitchen orders"));
+
+  return () => {
     socket.off("order:created");
     socket.off("order:status_update");
+  };
+}, [hotelId]);
 
-    joinHotelRoom(hotelId, "KITCHEN_MANAGER");
-
-    socket.on("order:created", (data: OrderCreatedEvent) => {
-      if (!data?.order) return;
-      setOrders((prev) => [data.order, ...prev]);
-    });
-
-
-    socket.on("order:status_update", (order: Order) => {
-      if (!order) return;
-      setOrders((prev) => prev.map((o) => (o._id === order._id ? order : o)));
-    });
-
-
-    getLiveOrdersApi(hotelId)
-      .then((res) => setOrders(res.orders))
-      .catch(() => toast.error("Failed to load kitchen orders"));
-
-    return () => {
-      socket.off("order:created");
-      socket.off("order:status_update");
-    };
-  }, [hotelId]);
   // When dragging starts
   const onDragStart = (orderId: string) => {
     setDraggedOrder(orderId);
@@ -59,12 +73,22 @@ export default function KitchenOrders() {
 
   // When dropped into a column
   const onDrop = async (e: React.DragEvent, newStatus: string) => {
-    e.preventDefault();
-    if (!draggedOrder) return;
+  e.preventDefault();
+  if (!draggedOrder) return;
 
-    await updateStatus(draggedOrder, newStatus);
-    setDraggedOrder(null);
-  };
+  // 1️⃣ Update UI immediately (optimistic update)
+  setOrders((prev) =>
+    prev.map((o) =>
+      o._id === draggedOrder ? { ...o, status: newStatus } : o
+    )
+  );
+
+  // 2️⃣ Send update to backend (socket will sync others)
+  await updateStatus(draggedOrder, newStatus);
+
+  setDraggedOrder(null);
+};
+
 
 
   const updateStatus = async (orderId: string, status: string) => {

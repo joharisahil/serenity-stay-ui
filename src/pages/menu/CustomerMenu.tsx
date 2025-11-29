@@ -68,6 +68,18 @@ export default function CustomerMenu() {
 
   const [orderId, setOrderId] = useState("");
 
+
+  useEffect(() => {
+  const activeOrderId = localStorage.getItem("activeOrderId");
+  const activeHotelId = localStorage.getItem("activeOrderHotelId");
+
+  if (activeOrderId && activeHotelId) {
+    setOrderId(activeOrderId);
+    setStep("order-placed");
+  }
+}, []);
+
+
   // ---------------------------
   // Load menu from backend
   // ---------------------------
@@ -180,6 +192,9 @@ const handlePlaceOrder = async () => {
     const data = await createPublicOrderApi(payload);
 
     if (!data.success) throw new Error("Failed to place order");
+
+localStorage.setItem("orderReturnUrl", window.location.pathname);
+
 
     setOrderId(data.order._id);
     setStep("order-placed");
