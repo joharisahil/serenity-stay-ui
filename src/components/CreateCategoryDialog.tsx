@@ -23,6 +23,7 @@ export function CreateCategoryDialog({ onCreated }: Props) {
     name: "",
     order: "",
   });
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -34,20 +35,22 @@ export function CreateCategoryDialog({ onCreated }: Props) {
 
     const payload: any = { name: form.name.trim() };
 
-    if (form.order.trim() !== "") {
-      payload.order = Number(form.order);
-    }
-
     try {
+      setLoading(true); // ⬅️ START LOADING
+
       await createCategoryApi(payload);
+
       toast.success("Category created successfully!");
       setOpen(false);
       setForm({ name: "", order: "" });
       onCreated?.();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to create category");
+    } finally {
+      setLoading(false); // ⬅️ STOP LOADING
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -90,7 +93,17 @@ export function CreateCategoryDialog({ onCreated }: Props) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Create</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Creating...
+                </div>
+              ) : (
+                "Create"
+              )}
+            </Button>
+
           </div>
         </form>
       </DialogContent>
