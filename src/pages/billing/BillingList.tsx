@@ -10,13 +10,18 @@ import { getPendingRestaurantTablesApi } from "@/api/billingRestaurantApi";
 export default function BillingList() {
   const navigate = useNavigate();
   const [tables, setTables] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getPendingRestaurantTablesApi().then((data) => {
+    const load = async () => {
+      setLoading(true);
+      const data = await getPendingRestaurantTablesApi();
       if (data.success) setTables(data.tables);
-    });
-  }, []);
+      setLoading(false);
+    };
 
+    load();
+  }, []);
 
   return (
     <Layout>
@@ -30,11 +35,16 @@ export default function BillingList() {
 
         <Card>
           <CardContent className="pt-6">
-            {tables.length === 0 && (
+            {loading ? (
+              <div className="flex justify-center py-10">
+                <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : tables.length === 0 ? (
               <p className="text-center text-muted-foreground py-10">
                 No pending restaurant bills 🎉
               </p>
-            )}
+            ) : null}
+
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {tables.map((t) => (
