@@ -15,6 +15,7 @@ import { createTableApi } from "@/api/tableApi";
 
 export function CreateTableDialog({ onCreated }: { onCreated?: () => void }) {
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -44,18 +45,22 @@ export function CreateTableDialog({ onCreated }: { onCreated?: () => void }) {
     };
 
     try {
-      const res = await createTableApi(payload);
+      setLoading(true);   // 👉 START LOADING
+
+      await createTableApi(payload);
       toast.success("Table created successfully!");
 
       onCreated?.();
       setOpen(false);
 
-      // Reset
       setFormData({ name: "", capacity: "", locationDesc: "" });
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to create table");
+    } finally {
+      setLoading(false);  // 👉 STOP LOADING
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
@@ -128,7 +133,17 @@ export function CreateTableDialog({ onCreated }: { onCreated?: () => void }) {
               Cancel
             </Button>
 
-            <Button type="submit">Create Table</Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Creating...
+                </div>
+              ) : (
+                "Create Table"
+              )}
+            </Button>
+
           </div>
         </form>
       </DialogContent>
