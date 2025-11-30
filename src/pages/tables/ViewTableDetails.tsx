@@ -105,21 +105,38 @@ export default function ViewTablePage() {
         />
 
         {/* DOWNLOAD BUTTON */}
-        <Button
-          type="button"
-          onClick={() => {
-            const qrSrc = `https://quickchart.io/qr?text=${encodeURIComponent(
-              table.qrUrl
-            )}`;
+<Button
+  type="button"
+  onClick={async () => {
+    try {
+      const qrSrc = `https://quickchart.io/qr?text=${encodeURIComponent(
+        table.qrUrl
+      )}`;
 
-            const link = document.createElement("a");
-            link.href = qrSrc;
-            link.download = `table-${table.name || table._id}.png`;
-            link.click();
-          }}
-        >
-          Download QR
-        </Button>
+      // Fetch the QR image as a blob
+      const response = await fetch(qrSrc);
+      const blob = await response.blob();
+
+      // Create a downloadable object URL
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `table-${table.name || table._id}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      // Cleanup
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error("Failed to download QR image");
+    }
+  }}
+>
+  Download QR
+</Button>
+
       </>
     ) : (
       <p className="text-muted-foreground text-sm">QR not generated</p>
