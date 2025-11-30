@@ -19,44 +19,44 @@ export default function Login() {
   const redirectTo = new URLSearchParams(location.search).get("redirect") || "/dashboard";
 
   const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!email || !password) {
-    toast.error("Please enter both email and password");
-    return;
-  }
+    if (!email || !password) {
+      toast.error("Please enter both email and password");
+      return;
+    }
 
-  setLoading(true);
-  try {
-    await login(email, password);
+    setLoading(true);
+    try {
+      await login(email, password);
 
-    toast.success("Login successful!");
+      toast.success("Login successful!");
 
-    const location = window.location;
-    const params = new URLSearchParams(location.search);
-    const redirect = params.get("redirect") || "/dashboard";
+      const location = window.location;
+      const params = new URLSearchParams(location.search);
+      const redirect = params.get("redirect") || "/dashboard";
 
-    navigate(redirect, { replace: true });
-  } catch (error: any) {
-    toast.error(error.message || "Invalid credentials");
-  } finally {
-    setLoading(false);
-  }
+      navigate(redirect, { replace: true });
+    } catch (error: any) {
+      toast.error("Invalid credentials");
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
-  const token = localStorage.getItem("token");
-  console.log("Stored token:", token);
-}, []);
+    const token = localStorage.getItem("token");
+    console.log("Stored token:", token);
+  }, []);
 
 
-useEffect(() => {
-  if (isAuthenticated) {
-    const params = new URLSearchParams(location.search);
-    const redirect = params.get("redirect") || "/dashboard";
+  useEffect(() => {
+    if (isAuthenticated) {
+      const params = new URLSearchParams(location.search);
+      const redirect = params.get("redirect") || "/dashboard";
 
-    navigate(redirect, { replace: true });
-  }
-}, [isAuthenticated, location.search]);
+      navigate(redirect, { replace: true });
+    }
+  }, [isAuthenticated, location.search]);
 
 
 
@@ -99,9 +99,17 @@ useEffect(() => {
                 Forgot Password?
               </Button>
             </div>
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Logging in...
+                </div>
+              ) : (
+                "Login"
+              )}
             </Button>
+
           </form>
         </CardContent>
       </Card>
