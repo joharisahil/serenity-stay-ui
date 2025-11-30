@@ -142,7 +142,10 @@ export default function MenuList() {
         {/* Items */}
 
         {loadingItems ? (
-          <p className="text-center text-muted-foreground py-10">Loading items...</p>
+          <div className="flex justify-center py-14">
+            <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </div>
+
         ) : visibleItems.length === 0 ? (
           <p className="text-center text-muted-foreground py-10">No items found.</p>
         ) : (
