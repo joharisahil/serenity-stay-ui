@@ -64,7 +64,15 @@ export default function EditTablePage() {
     }
   };
 
- if (loading) return <Layout><p>Loading...</p></Layout>;
+if (loading)
+  return (
+    <Layout>
+      <div className="flex justify-center items-center py-20">
+        <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    </Layout>
+  );
+
  if (!table) return <Layout><p>Error: Table not found</p></Layout>;
 
   return (
