@@ -87,68 +87,68 @@ export default function ViewTablePage() {
               </div>
             </div>
 
-{/* QR Code */}
-<div className="border p-4 rounded-md">
-  <p className="text-sm font-medium mb-2 flex items-center gap-2">
-    <QrCode className="h-4 w-4" /> Table QR Code
-  </p>
+            {/* QR Code */}
+            <div className="border p-4 rounded-md">
+              <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                <QrCode className="h-4 w-4" /> Table QR Code
+              </p>
 
-  <div className="flex flex-col items-center gap-4">
+              <div className="flex flex-col items-center gap-4">
 
-    {table.qrUrl ? (
-      <>
-        <img
-          id="table-qr-img"
-          src={`https://quickchart.io/qr?text=${encodeURIComponent(table.qrUrl)}`}
-          alt="QR Code"
-          className="h-40 w-40 rounded-md border"
-        />
+                {table.qrUrl ? (
+                  <>
+                    <img
+                      id="table-qr-img"
+                      src={`https://quickchart.io/qr?text=${encodeURIComponent(table.qrUrl)}`}
+                      alt="QR Code"
+                      className="h-40 w-40 rounded-md border"
+                    />
 
-        {/* DOWNLOAD BUTTON */}
-<Button
-  type="button"
-  onClick={async () => {
-    try {
-      const qrSrc = `https://quickchart.io/qr?text=${encodeURIComponent(
-        table.qrUrl
-      )}`;
+                    {/* DOWNLOAD BUTTON */}
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const qrSrc = `https://quickchart.io/qr?text=${encodeURIComponent(
+                            table.qrUrl
+                          )}`;
 
-      // Fetch the QR image as a blob
-      const response = await fetch(qrSrc);
-      const blob = await response.blob();
+                          // Fetch the QR image as a blob
+                          const response = await fetch(qrSrc);
+                          const blob = await response.blob();
 
-      // Create a downloadable object URL
-      const url = URL.createObjectURL(blob);
+                          // Create a downloadable object URL
+                          const url = URL.createObjectURL(blob);
 
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `table-${table.name || table._id}.png`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.download = `table-${table.name || table._id}.png`;
+                          document.body.appendChild(link);
+                          link.click();
+                          link.remove();
 
-      // Cleanup
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      toast.error("Failed to download QR image");
-    }
-  }}
->
-  Download QR
-</Button>
+                          // Cleanup
+                          URL.revokeObjectURL(url);
+                        } catch (error) {
+                          toast.error("Failed to download QR image");
+                        }
+                      }}
+                    >
+                      Download QR
+                    </Button>
 
-      </>
-    ) : (
-      <p className="text-muted-foreground text-sm">QR not generated</p>
-    )}
+                  </>
+                ) : (
+                  <p className="text-muted-foreground text-sm">QR not generated</p>
+                )}
 
-    {table.qrUrl && (
-      <p className="text-xs mt-2 text-center break-all text-muted-foreground">
-        {table.qrUrl}
-      </p>
-    )}
-  </div>
-</div>
+                {table.qrUrl && (
+                  <p className="text-xs mt-2 text-center break-all text-muted-foreground">
+                    {table.qrUrl}
+                  </p>
+                )}
+              </div>
+            </div>
 
 
             {/* Metadata */}

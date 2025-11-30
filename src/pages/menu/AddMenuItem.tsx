@@ -70,6 +70,7 @@ export default function AddMenuItem() {
       isActive: formData.isActive,
       prepTimeMins: Number(formData.prepTimeMins || 0),
       imageUrl: formData.imageUrl,
+      isVeg: formData.isVeg 
     };
 
     if (formData.pricingType === "single") {
