@@ -90,7 +90,7 @@ export default function ManageTables() {
   return (
     <Layout>
       <div className="space-y-6">
-        
+
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -121,7 +121,12 @@ export default function ManageTables() {
           </CardContent>
         </Card>
 
-        {loading && <p>Loading tables...</p>}
+        {loading && (
+          <div className="w-full flex justify-center py-10">
+            <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+
 
         {/* Table Grid */}
         {!loading && (
@@ -133,7 +138,7 @@ export default function ManageTables() {
                 <Card key={table._id} className="transition-all hover:shadow-lg">
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      
+
                       {/* Header */}
                       <div className="flex items-start justify-between">
                         <div>
