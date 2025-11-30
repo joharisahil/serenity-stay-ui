@@ -41,8 +41,16 @@ const navigationItems = [
   },
   { title: "Banquet Booking", url: "/banquet", icon: Calendar },
   { title: "Menu Management", url: "/menu", icon: UtensilsCrossed },
+  {
+    title: "Billing",
+    icon:   Receipt,
+    submenu: [
+      { title: "Restaurant bill", url: "/billing" },
+      { title: "Old bill", url: "/old-bills" },
+    ],
+  },
   { title: "Kitchen Orders", url: "/kitchen", icon: ChefHat },
-  { title: "Billing", url: "/billing", icon: Receipt },
+ // { title: "Billing", url: "/billing", icon: Receipt },
   { title: "Inventory", url: "/inventory", icon: Package },
 ];
 

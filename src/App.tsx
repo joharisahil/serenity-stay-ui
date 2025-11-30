@@ -33,6 +33,8 @@ import ManageTables from "./pages/tables/ManageTables";
 import EditTablePage from "./pages/tables/EditTablePage";
 import ViewTableDetails from "./pages/tables/ViewTableDetails";
 import EditCategoriesPage from "./pages/menu/EditCategory";
+import OldBillsList from "./pages/billing/OldBillsList";
+import ViewBillPage from "./pages/billing/ViewBillPage";
 
 const queryClient = new QueryClient();
 
@@ -167,9 +169,12 @@ const App = () => (
               <ProtectedRoute><BillingList /></ProtectedRoute>
             } />
 
-            <Route path="/billing/create" element={
+            <Route path="/billing/restaurant/:tableId" element={
               <ProtectedRoute><GenerateBill /></ProtectedRoute>
             } />
+            <Route path="/old-bills" element={ <ProtectedRoute><OldBillsList /></ProtectedRoute>} />
+<Route path="/view/:billId" element={<ProtectedRoute><ViewBillPage /></ProtectedRoute>} />
+
 
             {/* Inventory Routes */}
             <Route path="/inventory" element={

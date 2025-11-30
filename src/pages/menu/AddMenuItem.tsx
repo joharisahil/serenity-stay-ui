@@ -36,6 +36,7 @@ export default function AddMenuItem() {
     price: "",       // for single price
     priceHalf: "",
     priceFull: "",
+    isVeg: true
   });
 
   // Load categories
@@ -264,6 +265,26 @@ export default function AddMenuItem() {
                     }
                   />
                 </div>
+
+                {/* Veg / Non-Veg Toggle */}
+<div className="flex items-center justify-between border p-3 rounded-md">
+  <Label>Veg / Non-Veg</Label>
+  <Select
+    value={formData.isVeg ? "veg" : "nonveg"}
+    onValueChange={(v) =>
+      setFormData({ ...formData, isVeg: v === "veg" })
+    }
+  >
+    <SelectTrigger className="w-32">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="veg">Veg</SelectItem>
+      <SelectItem value="nonveg">Non-Veg</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
+
 
                 {/* Availability */}
                 <div className="flex items-center justify-between">
