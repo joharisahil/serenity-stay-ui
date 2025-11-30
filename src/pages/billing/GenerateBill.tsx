@@ -69,25 +69,73 @@ export default function GenerateBill() {
     }
 
     const styles = `
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial; color:#111; padding:20px; }
-        .invoice { max-width:800px; margin:0 auto; border:1px solid #ddd; padding:16px; page-break-after: always; }
-        .invoice + .invoice { margin-top: 24px; }
-        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-        .brand { font-size:18px; font-weight:700; }
-        .small { font-size:12px; color:#666; }
-        table { width:100%; border-collapse:collapse; margin-top:8px; }
-        th, td { padding:8px 6px; border-bottom:1px solid #eee; text-align:left; font-size:14px; }
-        .right { text-align:right; }
-        .totals { margin-top:12px; }
-        .totals div { display:flex; justify-content:space-between; padding:6px 0; }
-        .bold { font-weight:700; }
-        .muted { color:#666; font-size:12px; }
-        @media print {
-          .no-print { display:none; }
-        }
-      </style>
-    `;
+  <style>
+    /* THERMAL PRINTER OPTIMIZED (58mm / 80mm) */
+    body {
+      font-family: monospace;
+      font-size: 12px;
+      padding: 0;
+      margin: 0;
+    }
+
+    .invoice {
+      width: 260px;   /* 58mm roll width */
+      padding: 4px 8px;
+      page-break-after: always;
+      border: none;   /* remove borders for thermal */
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .brand {
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .small, .muted {
+      font-size: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+    }
+
+    th, td {
+      padding: 3px 0;
+      font-size: 12px;
+    }
+
+    th {
+      border-bottom: 1px dashed #000;
+    }
+
+    td.right {
+      text-align: right;
+    }
+
+    .totals div {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      font-size: 12px;
+    }
+
+    .bold {
+      font-weight: bold;
+    }
+
+    @media print {
+      .no-print { display:none; }
+      body { margin:0; }
+    }
+  </style>
+`;
+
 
     // helper to render items rows
     const rowsHtml = (ordersArr: any[]) => {
@@ -140,19 +188,18 @@ export default function GenerateBill() {
     const invoiceHtml = (copyLabel: string) => `
       <div class="invoice">
         <div class="header">
-          <div>
-            <div class="brand">${escapeHtml(hotel.name)}</div>
-            <div class="small">${escapeHtml(hotel.address)} • ${escapeHtml(hotel.phone)}</div>
-          </div>
-          <div style="text-align:right">
-            <div class="bold">${copyLabel}</div>
-            <div class="muted">Invoice: ${escapeHtml(bill.billNumber)}</div>
-            <div class="muted">Date: ${new Date(bill.createdAt).toLocaleString()}</div>
-           ${bill.table_id && bill.table_id.name
-        ? `<div class="muted">Table: ${escapeHtml(bill.table_id.name)}</div>`
-        : ""}
-          </div>
-        </div>
+  <div class="brand">${escapeHtml(hotel.name)}</div>
+  <div class="small">${escapeHtml(hotel.address)}</div>
+  <div class="small">${escapeHtml(hotel.phone)}</div>
+
+  <div class="muted">${copyLabel}</div>
+  <div class="muted">Invoice: ${escapeHtml(bill.billNumber)}</div>
+  <div class="muted">Date: ${new Date(bill.createdAt).toLocaleString()}</div>
+  ${bill.table_id && bill.table_id.name
+    ? `<div class="muted">Table: ${escapeHtml(bill.table_id.name)}</div>`
+    : ""}
+</div>
+
 
         <div style="display:flex; justify-content:space-between; gap:12px; margin-top:8px">
           <div>
