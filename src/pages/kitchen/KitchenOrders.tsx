@@ -26,16 +26,23 @@ useEffect(() => {
   joinHotelRoom(hotelId, "KITCHEN_MANAGER");
 
   // Prevent duplicate orders
-  socket.on("order:created", (data: OrderCreatedEvent) => {
-    if (!data?.order) return;
+socket.on("order:created", (data: OrderCreatedEvent) => {
+  if (!data?.order) return;
 
-    setOrders(prev => {
-      if (prev.some(o => o._id === data.order._id)) {
-        return prev.map(o => (o._id === data.order._id ? data.order : o));
-      }
+  setOrders(prev => {
+    const exists = prev.some(o => o._id === data.order._id);
+
+    if (!exists) {
+      playSound("/sounds/new-order.mp3");
+  // 🔊 Play sound for new order
       return [data.order, ...prev];
-    });
+    }
+
+    // If already exists, update it but no sound
+    return prev.map(o => (o._id === data.order._id ? data.order : o));
   });
+});
+
 
   // Prevent double update for status change
   socket.on("order:status_update", (order: Order) => {

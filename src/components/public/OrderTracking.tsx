@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChefHat, Package, CheckCircle2, Clock } from "lucide-react";
 import { socket, joinHotelRoom } from "@/lib/socket";
+import { playSound } from "@/lib/sound";
 
 interface Props {
   orderId: string;
@@ -48,6 +49,7 @@ export default function OrderTracking({ orderId, hotelId, placeName, source }: P
 
         // Clear saved tracking once delivered
         if (order.status === "DELIVERED") {
+          playSound("/sounds/status-update.mp3");
           localStorage.removeItem("activeOrderId");
           localStorage.removeItem("activeOrderHotelId");
           localStorage.removeItem("orderReturnUrl");
