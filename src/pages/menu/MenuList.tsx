@@ -9,7 +9,20 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { CreateCategoryDialog } from "@/components/CreateCategoryDialog";
 import { getCategoriesApi } from "@/api/menuApi";
-import { getMenuItemsApi } from "@/api/menuItemApi";
+import { deleteMenuItemApi, getMenuItemsApi } from "@/api/menuItemApi";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogTitle } from "@radix-ui/react-dialog";
+import { DialogHeader } from "@/components/ui/dialog";
 
 export default function MenuList() {
   const navigate = useNavigate();
@@ -22,6 +35,13 @@ export default function MenuList() {
 
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
+
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const [editItem, setEditItem] = useState<any>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // ----------------------------------
   // Load categories
@@ -177,14 +197,32 @@ export default function MenuList() {
                       </span>
 
                       <div className="flex gap-2">
-                        <Button size="icon" variant="ghost">
+                        {/* Edit */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditItem(item);
+                            setEditOpen(true);
+                          }}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
 
-                        <Button size="icon" variant="ghost" className="text-destructive">
+                        {/* Delete */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => {
+                            setDeleteId(item._id);
+                            setDeleteOpen(true);
+                          }}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
+
                     </div>
                   </div>
                 </CardContent>
@@ -193,6 +231,66 @@ export default function MenuList() {
           </div>
         )}
       </div>
+      {/* DELETE CONFIRMATION */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Menu Item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The item will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={async () => {
+                if (!deleteId) return;
+                try {
+                  setDeleting(true); // show loader
+                  await deleteMenuItemApi(deleteId);
+                  toast.success("Item deleted");
+                  loadMenuItems(selectedCategory);
+                } catch {
+                  toast.error("Delete failed");
+                } finally {
+                  setDeleting(false); // hide loader
+                  setDeleteOpen(false);
+                }
+              }}
+            >
+              {deleting ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* EDIT ITEM DIALOG */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Menu Item</DialogTitle>
+          </DialogHeader>
+
+          {/* {editItem && (
+      <EditItemForm
+        item={editItem}
+        categories={categoriesData}
+        onUpdated={() => {
+          loadMenuItems(selectedCategory);
+          setEditOpen(false);
+        }}
+      />
+    )} */}
+        </DialogContent>
+      </Dialog>
+
     </Layout>
   );
 }

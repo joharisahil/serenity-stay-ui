@@ -64,23 +64,24 @@ export default function CustomerMenu() {
   const [orderId, setOrderId] = useState("");
   const [step, setStep] = useState("menu");
   const [placeName, setPlaceName] = useState("");
+  const [placingOrder, setPlacingOrder] = useState(false);
 
   const [filterType, setFilterType] = useState<"all" | "veg" | "nonveg">("all");
 
   // Load existing order (persisted)
- useEffect(() => {
-  // If user clicked "Order More", orderReturnUrl will exist but activeOrderId should be removed
-  const activeId = localStorage.getItem("activeOrderId");
-  const activeHotel = localStorage.getItem("activeOrderHotelId");
+  useEffect(() => {
+    // If user clicked "Order More", orderReturnUrl will exist but activeOrderId should be removed
+    const activeId = localStorage.getItem("activeOrderId");
+    const activeHotel = localStorage.getItem("activeOrderHotelId");
 
-  if (activeId && activeHotel) {
-    setOrderId(activeId);
-    setStep("order-placed");
-  } else {
-    // 👇 IMPORTANT FIX: Go back to menu
-    setStep("menu");
-  }
-}, []);
+    if (activeId && activeHotel) {
+      setOrderId(activeId);
+      setStep("order-placed");
+    } else {
+      // 👇 IMPORTANT FIX: Go back to menu
+      setStep("menu");
+    }
+  }, []);
 
 
   // ---------------------------------------------
@@ -95,8 +96,8 @@ export default function CustomerMenu() {
         setCategories(data.menu.categories);
         setItems(data.menu.items);
         if (data.meta) {
-  setPlaceName(data.meta.name || data.meta.number || id);
-}
+          setPlaceName(data.meta.name || data.meta.number || id);
+        }
 
 
       } catch (err) {
@@ -161,6 +162,7 @@ export default function CustomerMenu() {
   // ---------------------------------------------
   const placeOrder = async () => {
     try {
+      setPlacingOrder(true);
       const body = {
         hotel_id: hotelId,
         source: source.toUpperCase(),
@@ -183,6 +185,8 @@ export default function CustomerMenu() {
 
     } catch {
       toast.error("Failed to place order");
+    } finally {
+      setPlacingOrder(false);  // stop loader
     }
   };
 
@@ -194,15 +198,15 @@ export default function CustomerMenu() {
   // ---------------------------------------------
   // UI: Tracking
   // ---------------------------------------------
-if (step === "order-placed")
-  return (
-    <OrderTracking
-      orderId={orderId}
-      hotelId={hotelId}
-      placeName={placeName}
-      source={source}
-    />
-  );
+  if (step === "order-placed")
+    return (
+      <OrderTracking
+        orderId={orderId}
+        hotelId={hotelId}
+        placeName={placeName}
+        source={source}
+      />
+    );
 
 
   // ---------------------------------------------
@@ -226,9 +230,9 @@ if (step === "order-placed")
           <div>
             <h1 className="text-2xl font-bold">Order Delicious Food</h1>
             <p className="text-sm text-muted-foreground">
-             {placeName
-  ? (source === "table" ? `Table: ${placeName}` : `Room: ${placeName}`)
-  : (source === "table" ? `Table ${id}` : `Room ${id}`)}
+              {placeName
+                ? (source === "table" ? `Table: ${placeName}` : `Room: ${placeName}`)
+                : (source === "table" ? `Table ${id}` : `Room ${id}`)}
 
             </p>
           </div>
@@ -283,7 +287,7 @@ if (step === "order-placed")
                 .filter((it) => it.category_id === cat._id)
                 .filter((it) =>
                   filterType === "veg" ? it.isVeg :
-                  filterType === "nonveg" ? !it.isVeg : true
+                    filterType === "nonveg" ? !it.isVeg : true
                 )
                 .map((item) => {
                   const prices = {
@@ -400,9 +404,18 @@ if (step === "order-placed")
             </div>
 
             {/* BUTTON */}
-            <Button onClick={placeOrder} className="w-full py-5 text-lg font-semibold rounded-full">
-              Place Order • ₹{total}
+            <Button
+              onClick={placeOrder}
+              className="w-full py-5 text-lg font-semibold rounded-full"
+              disabled={placingOrder}
+            >
+              {placingOrder ? (
+                <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+              ) : (
+                <>Place Order • ₹{total}</>
+              )}
             </Button>
+
 
           </div>
         </div>

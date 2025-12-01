@@ -13,3 +13,13 @@ export const getMenuItemsApi = async (categoryId?: string) => {
   });
   return res.data.items;
 };
+
+export const updateMenuItemApi = async (id: string, payload: any) => {
+  const res = await api.put(`/menu/item/${id}`, payload);
+  return res.data;
+};
+
+export const deleteMenuItemApi = async (id: string) => {
+  const res = await api.delete(`/menu/item/${id}`);
+  return res.data;
+};
