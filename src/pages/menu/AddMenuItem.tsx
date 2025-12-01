@@ -24,6 +24,7 @@ export default function AddMenuItem() {
 
   const [categories, setCategories] = useState<any[]>([]);
   const [loadingCats, setLoadingCats] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -62,36 +63,36 @@ export default function AddMenuItem() {
       return;
     }
 
-    // Build payload according to pricingType
     const payload: any = {
-      category_id: formData.category_id,
       name: formData.name,
+      category_id: formData.category_id,
       description: formData.description,
       isActive: formData.isActive,
       prepTimeMins: Number(formData.prepTimeMins || 0),
       imageUrl: formData.imageUrl,
-      isVeg: formData.isVeg 
+      isVeg: formData.isVeg,
     };
 
-    if (formData.pricingType === "single") {
-      payload.price = Number(formData.price);
-    } else if (formData.pricingType === "half_full") {
+    if (formData.pricingType === "single") payload.price = Number(formData.price);
+    if (formData.pricingType === "half_full") {
       payload.priceHalf = Number(formData.priceHalf);
-      payload.priceFull = Number(formData.priceFull);
-    } else if (formData.pricingType === "only_half") {
-      payload.priceHalf = Number(formData.priceHalf);
-    } else if (formData.pricingType === "only_full") {
       payload.priceFull = Number(formData.priceFull);
     }
+    if (formData.pricingType === "only_half") payload.priceHalf = Number(formData.priceHalf);
+    if (formData.pricingType === "only_full") payload.priceFull = Number(formData.priceFull);
 
     try {
+      setSubmitting(true);
       await createMenuItemApi(payload);
       toast.success("Menu item created!");
       navigate("/menu");
     } catch (err) {
       toast.error("Unable to create menu item");
+    } finally {
+      setSubmitting(false);
     }
   };
+
 
   return (
     <Layout>
@@ -268,23 +269,23 @@ export default function AddMenuItem() {
                 </div>
 
                 {/* Veg / Non-Veg Toggle */}
-<div className="flex items-center justify-between border p-3 rounded-md">
-  <Label>Veg / Non-Veg</Label>
-  <Select
-    value={formData.isVeg ? "veg" : "nonveg"}
-    onValueChange={(v) =>
-      setFormData({ ...formData, isVeg: v === "veg" })
-    }
-  >
-    <SelectTrigger className="w-32">
-      <SelectValue />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="veg">Veg</SelectItem>
-      <SelectItem value="nonveg">Non-Veg</SelectItem>
-    </SelectContent>
-  </Select>
-</div>
+                <div className="flex items-center justify-between border p-3 rounded-md">
+                  <Label>Veg / Non-Veg</Label>
+                  <Select
+                    value={formData.isVeg ? "veg" : "nonveg"}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, isVeg: v === "veg" })
+                    }
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="veg">Veg</SelectItem>
+                      <SelectItem value="nonveg">Non-Veg</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
 
                 {/* Availability */}
@@ -306,9 +307,16 @@ export default function AddMenuItem() {
             <Button variant="outline" onClick={() => navigate("/menu")}>
               Cancel
             </Button>
-            <Button type="submit">
-              <Save className="mr-2 h-4 w-4" /> Add Item
+            <Button type="submit" disabled={submitting} className="min-w-[120px]">
+              {submitting ? (
+                <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" /> Add Item
+                </>
+              )}
             </Button>
+
           </div>
         </form>
       </div>
