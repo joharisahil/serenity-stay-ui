@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { getRoomTypesApi, getRoomsByTypeApi, getRoomPlansApi } from "@/api/bookingApi";
 
 export default function CreateBooking() {
   const navigate = useNavigate();
@@ -19,11 +20,37 @@ export default function CreateBooking() {
     checkOut: "",
     roomType: "",
     roomNumber: "",
+    plan: "",
     guests: "",
     paymentMode: "",
     advance: "",
     notes: "",
   });
+  const [roomTypes, setRoomTypes] = useState<string[]>([]);
+const [rooms, setRooms] = useState<any[]>([]);
+const [plans, setPlans] = useState<any[]>([]);
+
+useEffect(() => {
+  getRoomTypesApi()
+    .then(setRoomTypes)
+    .catch(() => toast.error("Failed to load room types"));
+}, []);
+
+useEffect(() => {
+  if (!formData.roomType) return;
+
+  getRoomsByTypeApi(formData.roomType)
+    .then(setRooms)
+    .catch(() => toast.error("Failed to fetch rooms"));
+}, [formData.roomType]);
+
+useEffect(() => {
+  if (!formData.roomNumber) return;
+
+  getRoomPlansApi(formData.roomNumber)
+    .then(setPlans)
+    .catch(() => toast.error("Failed to fetch room plans"));
+}, [formData.roomNumber]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,31 +118,69 @@ export default function CreateBooking() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="roomType">Room Type *</Label>
-                  <Select value={formData.roomType} onValueChange={(value) => setFormData({ ...formData, roomType: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select room type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">Standard - ₹2,500/night</SelectItem>
-                      <SelectItem value="deluxe">Deluxe - ₹3,500/night</SelectItem>
-                      <SelectItem value="suite">Suite - ₹5,500/night</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Select
+  value={formData.roomType}
+  onValueChange={(value) => {
+    setFormData({ ...formData, roomType: value, roomNumber: "", plan: "" });
+  }}
+>
+  <SelectTrigger>
+    <SelectValue placeholder="Select room type" />
+  </SelectTrigger>
+
+  <SelectContent>
+    {roomTypes.map((type) => (
+      <SelectItem key={type} value={type}>
+        {type}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="roomNumber">Room Number *</Label>
-                  <Select value={formData.roomNumber} onValueChange={(value) => setFormData({ ...formData, roomNumber: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select room" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="101">101 - Available</SelectItem>
-                      <SelectItem value="201">201 - Available</SelectItem>
-                      <SelectItem value="301">301 - Available</SelectItem>
-                      <SelectItem value="302">302 - Available</SelectItem>
-                    </SelectContent>
-                  </Select>
+                 <Select
+  value={formData.roomNumber}
+  onValueChange={(value) =>
+    setFormData({ ...formData, roomNumber: value })
+  }
+>
+  <SelectTrigger>
+    <SelectValue placeholder="Select room" />
+  </SelectTrigger>
+
+  <SelectContent>
+    {rooms.map((room) => (
+      <SelectItem key={room._id} value={room._id}>
+        {room.number}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
                 </div>
+                <div className="space-y-2">
+  <Label>Room Plan *</Label>
+
+  <Select
+    value={formData.plan}
+    onValueChange={(value) => setFormData({ ...formData, plan: value })}
+  >
+    <SelectTrigger>
+      <SelectValue placeholder="Select plan" />
+    </SelectTrigger>
+
+    <SelectContent>
+      {plans.map((p) => (
+        <SelectItem key={p.key} value={p.key}>
+          {p.label} — ₹{p.price}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
+
               </CardContent>
             </Card>
 
