@@ -10,7 +10,8 @@ import { createRoomApi } from "@/api/roomApi";
 interface Plan {
   code: string;
   name: string;
-  rate: number;
+  singlePrice: number;
+  doublePrice: number;
 }
 
 export function CreateRoomDialog({ onRoomCreated }: { onRoomCreated?: () => void }) {
@@ -23,29 +24,27 @@ export function CreateRoomDialog({ onRoomCreated }: { onRoomCreated?: () => void
     maxGuests: "",
   });
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [currentPlan, setCurrentPlan] = useState({ code: "", name: "", rate: "" });
+  const [currentPlan, setCurrentPlan] = useState({ code: "", name: "", singlePrice: "", doublePrice: "" });
 
   // Allow adding plan even if rate is 0.
   const handleAddPlan = () => {
-    const code = currentPlan.code.trim();
-    const name = currentPlan.name.trim();
-    const rateNum = Number(currentPlan.rate);
+    const { code, name, singlePrice, doublePrice } = currentPlan;
 
     // require code and name, allow rate 0 (but reject NaN / empty)
     if (!code || !name) {
       toast.error("Please enter plan code and name");
       return;
     }
-    if (currentPlan.rate === "" || isNaN(rateNum)) {
-      toast.error("Please enter a valid rate (0 or greater)");
+    if (singlePrice === "" || doublePrice === "") {
+      toast.error("Please enter both rates");
       return;
     }
 
     setPlans([
       ...plans,
-      { code, name, rate: rateNum }
+      { code, name, singlePrice: Number(singlePrice), doublePrice: Number(doublePrice) }
     ]);
-    setCurrentPlan({ code: "", name: "", rate: "" });
+    setCurrentPlan({ code: "", name: "", singlePrice: "", doublePrice: "" });
   };
 
   const handleRemovePlan = (index: number) => {
@@ -58,7 +57,7 @@ export function CreateRoomDialog({ onRoomCreated }: { onRoomCreated?: () => void
       // Reset everything when dialog closes
       setFormData({ number: "", type: "", floor: "", baseRate: "", maxGuests: "" });
       setPlans([]);
-      setCurrentPlan({ code: "", name: "", rate: "" });
+      setCurrentPlan({ code: "", name: "", singlePrice: "", doublePrice: "" });
     }
   };
 
@@ -71,13 +70,16 @@ export function CreateRoomDialog({ onRoomCreated }: { onRoomCreated?: () => void
     // Also include current un-added plan if it has code+name and a valid rate (allow 0)
     const code = currentPlan.code.trim();
     const name = currentPlan.name.trim();
-    const rateValue = currentPlan.rate;
-    const rateNum = rateValue === "" ? NaN : Number(rateValue);
 
-    if (code || name || rateValue !== "") {
+    const rateSingleNum =
+      currentPlan.singlePrice === "" ? NaN : Number(currentPlan.singlePrice);
+    const rateDoubleNum =
+      currentPlan.doublePrice === "" ? NaN : Number(currentPlan.doublePrice);
+
+    if (code || name || currentPlan.singlePrice !== "" || currentPlan.doublePrice !== "") {
       // Only include if code & name present and rate is a valid number (0 allowed)
-      if (code && name && !isNaN(rateNum)) {
-        finalPlans.push({ code, name, rate: rateNum });
+      if (code && name && !isNaN(rateSingleNum) && !isNaN(rateDoubleNum)) {
+        finalPlans.push({ code, name, singlePrice: rateSingleNum, doublePrice: rateDoubleNum });
       } else {
         // If user has partially filled last row but it's invalid, ignore it silently
         // or you can show a toast — choosing silent ignore to match request
@@ -92,8 +94,10 @@ export function CreateRoomDialog({ onRoomCreated }: { onRoomCreated?: () => void
         p.code.trim() !== "" &&
         typeof p.name === "string" &&
         p.name.trim() !== "" &&
-        typeof p.rate === "number" &&
-        !isNaN(p.rate)
+        typeof p.singlePrice === "number" &&
+        !isNaN(p.singlePrice) &&
+        typeof p.doublePrice === "number" &&
+        !isNaN(p.doublePrice)
     );
 
     const roomData = {
@@ -114,7 +118,7 @@ export function CreateRoomDialog({ onRoomCreated }: { onRoomCreated?: () => void
       setOpen(false);
       setFormData({ number: "", type: "", floor: "", baseRate: "", maxGuests: "" });
       setPlans([]);
-      setCurrentPlan({ code: "", name: "", rate: "" });
+      setCurrentPlan({ code: "", name: "", singlePrice: "", doublePrice: "" });
     } catch (error: any) {
       console.error(error);
       toast.error(error.response?.data?.message || "Failed to create room");
@@ -200,8 +204,10 @@ export function CreateRoomDialog({ onRoomCreated }: { onRoomCreated?: () => void
                 {plans.map((plan, index) => (
                   <div key={index} className="flex items-center gap-2 p-2 bg-secondary rounded-md">
                     <div className="flex-1 text-sm">
-                      <span className="font-medium">{plan.code}</span> - {plan.name} (₹{plan.rate})
+                      <span className="font-medium">{plan.code}</span> - {plan.name}
+                      (Single: ₹{plan.singlePrice}, Double: ₹{plan.doublePrice})
                     </div>
+
                     <Button
                       type="button"
                       variant="ghost"
@@ -216,40 +222,35 @@ export function CreateRoomDialog({ onRoomCreated }: { onRoomCreated?: () => void
             )}
 
             <div className="grid grid-cols-12 gap-2">
+              <div className="col-span-2">
+                <Input placeholder="Code" value={currentPlan.code}
+                  onChange={(e) => setCurrentPlan({ ...currentPlan, code: e.target.value })} />
+              </div>
+
+              <div className="col-span-4">
+                <Input placeholder="Plan Name" value={currentPlan.name}
+                  onChange={(e) => setCurrentPlan({ ...currentPlan, name: e.target.value })} />
+              </div>
+
               <div className="col-span-3">
-                <Input
-                  placeholder="Code"
-                  value={currentPlan.code}
-                  onChange={(e) => setCurrentPlan({ ...currentPlan, code: e.target.value })}
-                />
+                <Input type="number" placeholder="Single Rate"
+                  value={currentPlan.singlePrice}
+                  onChange={(e) => setCurrentPlan({ ...currentPlan, singlePrice: e.target.value })} />
               </div>
-              <div className="col-span-5">
-                <Input
-                  placeholder="Plan Name"
-                  value={currentPlan.name}
-                  onChange={(e) => setCurrentPlan({ ...currentPlan, name: e.target.value })}
-                />
-              </div>
+
               <div className="col-span-3">
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="Rate (0 allowed)"
-                  value={currentPlan.rate}
-                  onChange={(e) => setCurrentPlan({ ...currentPlan, rate: e.target.value })}
-                />
+                <Input type="number" placeholder="Double Rate"
+                  value={currentPlan.doublePrice}
+                  onChange={(e) => setCurrentPlan({ ...currentPlan, doublePrice: e.target.value })} />
               </div>
+
               <div className="col-span-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleAddPlan}
-                >
+                <Button type="button" variant="outline" size="icon" onClick={handleAddPlan}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
             </div>
+
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

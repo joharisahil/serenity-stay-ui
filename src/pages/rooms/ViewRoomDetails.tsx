@@ -104,7 +104,8 @@ export default function ViewRoomDetails() {
                     {room.plans.map((p: any, idx: number) => (
                       <div key={idx} className="flex justify-between text-sm border-b py-1">
                         <span>{p.code} - {p.name}</span>
-                        <span>₹{p.rate}</span>
+                        <span>Single Price-₹{p.singlePrice}</span>
+                        <span>Double Price-₹{p.doublePrice}</span>
                       </div>
                     ))}
                   </div>

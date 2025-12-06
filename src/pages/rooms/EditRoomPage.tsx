@@ -26,7 +26,13 @@ export default function EditRoomPage() {
   });
 
   const [plans, setPlans] = useState<any[]>([]);
-  const [currentPlan, setCurrentPlan] = useState({ code: "", name: "", rate: "" });
+  const [currentPlan, setCurrentPlan] = useState({
+    code: "",
+    name: "",
+    singlePrice: "",
+    doublePrice: ""
+  });
+
 
   useEffect(() => {
     const loadRoom = async () => {
@@ -44,7 +50,15 @@ export default function EditRoomPage() {
           status: data.status || "AVAILABLE",
         });
 
-        setPlans(data.plans || []);
+        setPlans(
+          (data.plans || []).map((p: any) => ({
+            code: p.code,
+            name: p.name,
+            singlePrice: p.singlePrice,
+            doublePrice: p.doublePrice
+          }))
+        );
+
 
       } catch (err) {
         toast.error("Unable to load room");
@@ -56,15 +70,33 @@ export default function EditRoomPage() {
   }, [id]);
 
   const handleAddPlan = () => {
-    if (currentPlan.code && currentPlan.name && currentPlan.rate) {
-      setPlans([...plans, { 
-        code: currentPlan.code, 
-        name: currentPlan.name, 
-        rate: Number(currentPlan.rate)
-      }]);
-      setCurrentPlan({ code: "", name: "", rate: "" });
+    if (
+      currentPlan.code &&
+      currentPlan.name &&
+      currentPlan.singlePrice !== "" &&
+      currentPlan.doublePrice !== ""
+    ) {
+      setPlans([
+        ...plans,
+        {
+          code: currentPlan.code,
+          name: currentPlan.name,
+          singlePrice: Number(currentPlan.singlePrice),
+          doublePrice: Number(currentPlan.doublePrice)
+        }
+      ]);
+
+      setCurrentPlan({
+        code: "",
+        name: "",
+        singlePrice: "",
+        doublePrice: ""
+      });
+    } else {
+      toast.error("Please enter all plan fields");
     }
   };
+
 
   const handleRemovePlan = (i: number) => {
     setPlans(plans.filter((_, idx) => idx !== i));
@@ -80,7 +112,13 @@ export default function EditRoomPage() {
       baseRate: Number(formData.baseRate),
       maxGuests: Number(formData.maxGuests),
       status: formData.status,
-      plans,
+      plans: plans.map((p) => ({
+        code: p.code,
+        name: p.name,
+        singlePrice: Number(p.singlePrice),
+        doublePrice: Number(p.doublePrice)
+      })),
+
     };
 
     try {
@@ -157,18 +195,18 @@ export default function EditRoomPage() {
                   />
                 </div>
                 <div>
-  <Label>Status</Label>
-  <select
-    className="border rounded-md px-3 py-2 w-full"
-    value={formData.status}
-    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-  >
-    <option value="AVAILABLE">Available</option>
-    <option value="OCCUPIED">Occupied</option>
-    <option value="CLEANING">Cleaning</option>
-    <option value="MAINTENANCE">Maintenance</option>
-  </select>
-</div>
+                  <Label>Status</Label>
+                  <select
+                    className="border rounded-md px-3 py-2 w-full"
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  >
+                    <option value="AVAILABLE">Available</option>
+                    <option value="OCCUPIED">Occupied</option>
+                    <option value="CLEANING">Cleaning</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                  </select>
+                </div>
 
               </div>
 
@@ -178,7 +216,11 @@ export default function EditRoomPage() {
 
                 {plans.map((p, i) => (
                   <div key={i} className="flex items-center gap-2 p-2 border rounded">
-                    <span className="flex-1">{p.code} - {p.name} (₹{p.rate})</span>
+                    <span className="flex-1">
+                      {p.code} - {p.name}
+                      (Single: ₹{p.singlePrice}, Double: ₹{p.doublePrice})
+                    </span>
+
                     <Button type="button" variant="ghost" size="icon" onClick={() => handleRemovePlan(i)}>
                       <X className="h-4 w-4" />
                     </Button>
@@ -187,24 +229,35 @@ export default function EditRoomPage() {
 
                 <div className="grid grid-cols-12 gap-2">
                   <Input
-                    className="col-span-3"
+                    className="col-span-2"
                     placeholder="Code"
                     value={currentPlan.code}
                     onChange={(e) => setCurrentPlan({ ...currentPlan, code: e.target.value })}
                   />
+
                   <Input
-                    className="col-span-5"
+                    className="col-span-4"
                     placeholder="Plan Name"
                     value={currentPlan.name}
                     onChange={(e) => setCurrentPlan({ ...currentPlan, name: e.target.value })}
                   />
+
                   <Input
                     className="col-span-3"
                     type="number"
-                    placeholder="Rate"
-                    value={currentPlan.rate}
-                    onChange={(e) => setCurrentPlan({ ...currentPlan, rate: e.target.value })}
+                    placeholder="Single Price"
+                    value={currentPlan.singlePrice}
+                    onChange={(e) => setCurrentPlan({ ...currentPlan, singlePrice: e.target.value })}
                   />
+
+                  <Input
+                    className="col-span-3"
+                    type="number"
+                    placeholder="Double Price"
+                    value={currentPlan.doublePrice}
+                    onChange={(e) => setCurrentPlan({ ...currentPlan, doublePrice: e.target.value })}
+                  />
+
                   <Button
                     className="col-span-1"
                     type="button"
