@@ -30,3 +30,11 @@ export const checkoutRestaurantBillApi = async (payload: {
   const res = await api.post("/billing-restaurant/checkout", payload);
   return res.data; // { success, transaction, invoiceId }
 };
+
+export const getPendingRoomBillsApi = () =>
+  api.get("/billing-restaurant/pending-rooms").then(res => res.data);
+
+export const getRoomServiceBillApi = async (roomId: string) => {
+  const res = await api.get(`/billing-restaurant/room/${roomId}`);
+  return res.data;
+};

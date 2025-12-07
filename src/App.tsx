@@ -35,6 +35,7 @@ import ViewTableDetails from "./pages/tables/ViewTableDetails";
 import EditCategoriesPage from "./pages/menu/EditCategory";
 import OldBillsList from "./pages/billing/OldBillsList";
 import ViewBillPage from "./pages/billing/ViewBillPage";
+import RoomBillingList from "./pages/billing/RoomBillingList";
 
 const queryClient = new QueryClient();
 
@@ -81,12 +82,12 @@ const App = () => (
 
             <Route path="/rooms/bookings" element={<ProtectedRoute><RoomList /></ProtectedRoute>} />
             <Route path="/rooms/bookings/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
-            <Route path="/rooms/bookings/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
+            {/* <Route path="/rooms/bookings/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} /> */}
             {/* Legacy redirects */}
             <Route path="/rooms" element={<ProtectedRoute><RoomList /></ProtectedRoute>} />
-            <Route path="/rooms/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
-            <Route path="/rooms/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
-
+            {/* <Route path="/rooms//bookings/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} /> */}
+            <Route path="/rooms/bookings/:roomId" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
+            <Route path="/rooms/bills" element={<ProtectedRoute><RoomBillingList /></ProtectedRoute>} />
             {/* Room Routes
             <Route path="/rooms" element={
               <ProtectedRoute><RoomList /></ProtectedRoute>
@@ -172,9 +173,12 @@ const App = () => (
             <Route path="/billing/restaurant/:tableId" element={
               <ProtectedRoute><GenerateBill /></ProtectedRoute>
             } />
-            <Route path="/old-bills" element={ <ProtectedRoute><OldBillsList /></ProtectedRoute>} />
-<Route path="/view/:billId" element={<ProtectedRoute><ViewBillPage /></ProtectedRoute>} />
-
+            <Route path="/old-bills" element={ 
+              <ProtectedRoute><OldBillsList /></ProtectedRoute>
+            } />
+            <Route path="/view/:billId" element={
+              <ProtectedRoute><ViewBillPage /></ProtectedRoute>
+            } />
 
             {/* Inventory Routes */}
             <Route path="/inventory" element={

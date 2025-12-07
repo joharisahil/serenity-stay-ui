@@ -25,3 +25,8 @@ export const deleteRoomApi = async (roomId: string) => {
   return res.data;
 };
 
+export const getAllRoomsApi = () =>
+  api.get("/rooms").then(res => res.data.rooms);
+
+export const getRoomCurrentBookingApi = (roomId: string) =>
+  api.get(`/room-bookings/current/${roomId}`).then(res => res.data.booking);

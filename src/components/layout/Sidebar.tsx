@@ -29,6 +29,7 @@ const navigationItems = [
     submenu: [
       { title: "Manage Rooms", url: "/rooms/manage" },
       { title: "Room Bookings", url: "/rooms/bookings" },
+      { title: "Room Bills", url: "/rooms/bills" },
     ],
   },
     {
