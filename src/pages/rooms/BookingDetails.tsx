@@ -132,106 +132,135 @@ export default function BookingDetails() {
           </CardContent>
         </Card>
 
-        {/* BILLING SUMMARY */}
-        <Card>
-          <CardHeader><CardTitle>Billing Summary</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-2">
+{/* BILLING SUMMARY */}
+<Card>
+  <CardHeader>
+    <CardTitle>Billing Summary</CardTitle>
+  </CardHeader>
 
-              {/* ROOM STAY */}
-              <div className="flex justify-between">
-                <span>Room ({nights} nights × ₹{roomPrice})</span>
-                <span>₹{roomStayTotal}</span>
+  <CardContent>
+    <div className="space-y-4">
+
+      {/* ROOM STAY */}
+      <div className="flex justify-between">
+        <span className="font-medium">Room ({nights} nights × ₹{roomPrice})</span>
+        <span>₹{roomStayTotal}</span>
+      </div>
+
+      {/* EXTRA SERVICES */}
+      {(booking.addedServices || []).map((s: any, i: number) => (
+        <div key={i} className="flex justify-between">
+          <span>{s.name}</span>
+          <span>₹{s.price}</span>
+        </div>
+      ))}
+
+      {/* --------------------------- */}
+      {/* ROOM SERVICE ORDERS SECTION */}
+      {/* --------------------------- */}
+      {roomOrders.length > 0 && (
+        <>
+          <div className="pt-4 border-t">
+            <h3 className="text-primary font-semibold mb-2">Room Service Orders</h3>
+          </div>
+
+          {roomOrders.map((order: any, index: number) => (
+            <div
+              key={index}
+              className="border rounded-lg p-3 bg-secondary/20 space-y-2"
+            >
+              {/* ORDER HEADER */}
+              <div className="flex justify-between font-medium">
+                <span>Order #{order._id}</span>
+                <span>₹{order.total}</span>
               </div>
 
-              {/* EXTRAS */}
-              {(booking.addedServices || []).map((s: any, i: number) => (
-                <div key={i} className="flex justify-between">
-                  <span>{s.name}</span>
-                  <span>₹{s.price}</span>
-                </div>
-              ))}
+              {/* ORDER DATE */}
+              <div className="text-xs text-muted-foreground flex justify-between">
+                <span>Ordered At:</span>
+                <span>{new Date(order.createdAt).toLocaleString()}</span>
+              </div>
 
-              {/* FOOD ORDER SECTION */}
-              {roomOrders.length > 0 && (
-                <>
-                  <div className="border-t pt-2 font-semibold text-primary">Room Service Orders</div>
-
-                  {roomOrders.map((order: any, index: number) => (
-                    <div key={index} className="border rounded p-2 bg-secondary/30">
-                      <div className="flex justify-between font-medium">
-                        <span>Order #{order._id}</span>
-                        <span>₹{order.total}</span>
-                      </div>
-
-                      {/* Food Items */}
-                      {order.items.map((item: any, i: number) => (
-                        <div key={i} className="flex justify-between text-sm">
-                          <span>{item.name} ({item.qty} × ₹{item.unitPrice})</span>
-                          <span>₹{item.totalPrice}</span>
-                        </div>
-                      ))}
-
-                      {/* Order GST */}
-                      <div className="flex justify-between text-sm  text-muted-foreground">
-                        <span>GST</span>
-                        <span>₹{order.gst}</span>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* FOOD SUMMARY */}
-                  <div className="flex justify-between font-medium">
-                    <span>Food Subtotal</span>
-                    <span>₹{foodSubtotal}</span>
+              {/* ORDER ITEMS */}
+              <div className="pt-1 space-y-1">
+                {order.items.map((item: any, i: number) => (
+                  <div
+                    key={i}
+                    className="flex justify-between text-sm"
+                  >
+                    <span>
+                      {item.name} ({item.qty} × ₹{item.unitPrice})
+                    </span>
+                    <span>₹{item.totalPrice}</span>
                   </div>
-
-                  <div className="flex justify-between font-medium">
-                    <span>Food GST (2.5%)</span>
-                    <span>₹{foodGST}</span>
-                  </div>
-
-                  <div className="flex justify-between font-bold">
-                    <span>Food Total</span>
-                    <span>₹{foodTotal}</span>
-                  </div>
-                </>
-              )}
-
-              {/* SUBTOTAL */}
-              <div className="flex justify-between border-t pt-2">
-                <span>Subtotal</span>
-                <span>₹{subtotal}</span>
+                ))}
               </div>
 
-              <div className="flex justify-between">
-                <span>Discount</span>
-                <span>- ₹{booking.discount || 0}</span>
+              {/* GST */}
+              <div className="flex justify-between text-sm text-muted-foreground border-t pt-1">
+                <span>GST (5%)</span>
+                <span>₹{order.gst}</span>
               </div>
-
-              <div className="flex justify-between">
-                <span>GST (18% on stay + extras)</span>
-                <span>₹{tax}</span>
-              </div>
-
-              <div className="flex justify-between text-lg font-bold border-t pt-2">
-                <span>Total</span>
-                <span>₹{total}</span>
-              </div>
-
-              <div className="flex justify-between text-success">
-                <span>Advance Paid</span>
-                <span>₹{booking.advancePaid}</span>
-              </div>
-
-              <div className="flex justify-between text-lg font-bold border-t pt-2">
-                <span>Balance Due</span>
-                <span className="text-warning">₹{balance}</span>
-              </div>
-
             </div>
-          </CardContent>
-        </Card>
+          ))}
+
+          {/* FOOD BILL SUMMARIES */}
+          <div className="space-y-1 pt-2">
+            <div className="flex justify-between font-medium">
+              <span>Food Subtotal</span>
+              <span>₹{foodSubtotal}</span>
+            </div>
+
+            <div className="flex justify-between font-medium">
+              <span>Food GST</span>
+              <span>₹{foodGST}</span>
+            </div>
+
+            <div className="flex justify-between font-bold">
+              <span>Food Total</span>
+              <span>₹{foodTotal}</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* --------------------------- */}
+      {/* MAIN BILL TOTALS */}
+      {/* --------------------------- */}
+      <div className="flex justify-between border-t pt-4">
+        <span className="font-medium">Subtotal</span>
+        <span>₹{subtotal}</span>
+      </div>
+
+      <div className="flex justify-between">
+        <span>Discount</span>
+        <span>- ₹{booking.discount || 0}</span>
+      </div>
+
+      <div className="flex justify-between">
+        <span>GST (18% on stay + extras)</span>
+        <span>₹{tax}</span>
+      </div>
+
+      <div className="flex justify-between text-lg font-bold border-t pt-2">
+        <span>Total</span>
+        <span>₹{total}</span>
+      </div>
+
+      <div className="flex justify-between text-success">
+        <span>Advance Paid</span>
+        <span>₹{booking.advancePaid}</span>
+      </div>
+
+      <div className="flex justify-between text-lg font-bold border-t pt-2">
+        <span>Balance Due</span>
+        <span className="text-warning">₹{balance}</span>
+      </div>
+
+    </div>
+  </CardContent>
+</Card>
+
 
         {/* ACTION BUTTONS */}
         <div className="flex flex-wrap gap-4">
