@@ -17,28 +17,84 @@ export default function KitchenOrders() {
   const [draggedOrder, setDraggedOrder] = useState<string | null>(null);
 
   // ---------------------------------------------------------------
-  // AUTOPLAY FIX → Required for browsers to allow looping sound
+  // AUTOPLAY FIX (IMPORTANT)
   // ---------------------------------------------------------------
   useEffect(() => {
     const enableSound = () => {
-      const a = new Audio();
-      a.play().catch(() => {});
+      const tmp = new Audio();
+      tmp.play().catch(() => {});
       window.removeEventListener("click", enableSound);
     };
 
     window.addEventListener("click", enableSound);
 
-    return () => {
-      window.removeEventListener("click", enableSound);
-    };
+    return () => window.removeEventListener("click", enableSound);
   }, []);
 
-  // Helper to stop looping sound when no NEW orders exist
+  // ---------------------------------------------------------------
+  // PRINT KOT FUNCTION
+  // ---------------------------------------------------------------
+  const printKOT = (order: any) => {
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+
+    if (!printWindow) {
+      console.error("Popup blocked! Allow popups for this site.");
+      alert("Please allow pop-ups for printing KOT.");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <html>
+      <head>
+        <title>KOT</title>
+      </head>
+      <body style="font-family: monospace; padding: 16px;">
+        <h2 style="text-align:center;">KITCHEN ORDER TICKET</h2>
+        <hr />
+        <p><b>Order ID:</b> ${order._id}</p>
+        <p><b>Table:</b> ${order.table_id?.name || "N/A"}</p>
+        <p><b>Time:</b> ${new Date(order.createdAt).toLocaleString()}</p>
+        <hr />
+        <h3>Items</h3>
+        ${order.items
+          .map(
+            (item: any) =>
+              `<p>${item.qty} × ${item.name} (${item.size || ""})</p>`
+          )
+          .join("")}
+        <hr />
+        <p><b>Total:</b> ₹${order.total}</p>
+        <hr />
+        
+        <script>
+          // Wait until window is ready
+          const interval = setInterval(() => {
+            if (document.readyState === "complete") {
+              clearInterval(interval);
+              window.print();
+              window.close();
+            }
+          }, 200);
+        </script>
+      </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+  };
+
+  // ----------------------------------------------------------------
+  // SOUND STOP HELPER
+  // ----------------------------------------------------------------
   const stopSoundIfNoNewOrders = (updatedOrders: any[]) => {
     const hasNew = updatedOrders.some((o) => o.status === "NEW");
     if (!hasNew) stopAlertSound();
   };
 
+  // ----------------------------------------------------------------
+  // SOCKET + INITIAL LOAD
+  // ----------------------------------------------------------------
   useEffect(() => {
     if (!hotelId) return;
 
@@ -47,7 +103,7 @@ export default function KitchenOrders() {
 
     joinHotelRoom(hotelId, "KITCHEN_MANAGER");
 
-    // ORDER CREATED EVENT
+    // NEW ORDER RECEIVED
     socket.on("order:created", (data: OrderCreatedEvent) => {
       if (!data?.order) return;
 
@@ -55,7 +111,6 @@ export default function KitchenOrders() {
         const exists = prev.some((o) => o._id === data.order._id);
 
         if (!exists) {
-          // console.log("🔔 NEW ORDER → Start looping alert");
           startAlertSound();
           return [data.order, ...prev];
         }
@@ -64,7 +119,7 @@ export default function KitchenOrders() {
       });
     });
 
-    // ORDER STATUS UPDATE EVENT
+    // STATUS UPDATED
     socket.on("order:status_update", (order: Order) => {
       if (!order) return;
 
@@ -72,20 +127,17 @@ export default function KitchenOrders() {
         const updated = prev.map((o) =>
           o._id === order._id ? order : o
         );
-
         stopSoundIfNoNewOrders(updated);
         return updated;
       });
     });
 
-    // INITIAL LOAD
+    // FETCH LIVE ORDERS
     getLiveOrdersApi(hotelId)
       .then((res) => {
         setOrders(res.orders);
 
-        // If any NEW orders already exist → start alert
         if (res.orders.some((o: any) => o.status === "NEW")) {
-          // console.log("🔔 Existing NEW orders on load → Start alert");
           startAlertSound();
         }
       })
@@ -97,17 +149,13 @@ export default function KitchenOrders() {
     };
   }, [hotelId]);
 
-  // DRAG START
-  const onDragStart = (orderId: string) => {
-    setDraggedOrder(orderId);
-  };
+  // ----------------------------------------------------------------
+  // DRAG/DROP HANDLERS
+  // ----------------------------------------------------------------
+  const onDragStart = (orderId: string) => setDraggedOrder(orderId);
 
-  // ALLOW DROP
-  const allowDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+  const allowDrop = (e: React.DragEvent) => e.preventDefault();
 
-  // DROP HANDLER
   const onDrop = async (e: React.DragEvent, newStatus: string) => {
     e.preventDefault();
     if (!draggedOrder) return;
@@ -116,7 +164,6 @@ export default function KitchenOrders() {
       const updated = prev.map((o) =>
         o._id === draggedOrder ? { ...o, status: newStatus } : o
       );
-
       stopSoundIfNoNewOrders(updated);
       return updated;
     });
@@ -125,16 +172,31 @@ export default function KitchenOrders() {
     setDraggedOrder(null);
   };
 
-  // UPDATE STATUS
+  // ----------------------------------------------------------------
+  // UPDATE STATUS (AND AUTO-PRINT)
+  // ----------------------------------------------------------------
   const updateStatus = async (orderId: string, status: string) => {
     try {
+      let changedOrder: any = null;
+
       setOrders((prev) => {
-        const updated = prev.map((o) =>
-          o._id === orderId ? { ...o, status } : o
-        );
+        const updated = prev.map((o) => {
+          if (o._id === orderId) {
+            changedOrder = { ...o, status };
+            return changedOrder;
+          }
+          return o;
+        });
+
         stopSoundIfNoNewOrders(updated);
         return updated;
       });
+
+      // AUTO PRINT KOT
+      const oldOrder = orders.find((o) => o._id === orderId);
+      if (oldOrder?.status === "NEW" && status !== "NEW") {
+        printKOT(oldOrder);
+      }
 
       await updateOrderStatusApi(orderId, status);
     } catch {
@@ -142,6 +204,7 @@ export default function KitchenOrders() {
     }
   };
 
+  // UI Helpers
   const statusFlow = ["NEW", "PREPARING", "COMING", "DELIVERED"];
 
   const getColumn = (status: string) => {
@@ -194,6 +257,7 @@ export default function KitchenOrders() {
                 </div>
 
                 <div className="border p-4 min-h-[500px] rounded-b-lg space-y-4 bg-white">
+                  
                   {filtered.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center pt-4">
                       No orders
@@ -224,14 +288,13 @@ export default function KitchenOrders() {
                       </CardHeader>
 
                       <CardContent className="space-y-3">
-                        <div className="space-y-1 text-sm">
-                          {order.items.map((i, idx) => (
-                            <div key={idx} className="flex justify-between">
-                              <span>{i.name} ({i.size})</span>
-                              <span>× {i.qty}</span>
-                            </div>
-                          ))}
-                        </div>
+                        
+                        {order.items.map((i, idx) => (
+                          <div key={idx} className="flex justify-between text-sm">
+                            <span>{i.name} ({i.size})</span>
+                            <span>× {i.qty}</span>
+                          </div>
+                        ))}
 
                         <div className="border-t pt-2 flex justify-between font-semibold">
                           <span>Total</span>
