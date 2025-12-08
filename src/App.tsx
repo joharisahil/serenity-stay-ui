@@ -176,7 +176,7 @@ const App = () => (
             <Route path="/old-bills" element={ 
               <ProtectedRoute><OldBillsList /></ProtectedRoute>
             } />
-            <Route path="/view/:billId" element={
+            <Route path="/view/:type/:billId" element={
               <ProtectedRoute><ViewBillPage /></ProtectedRoute>
             } />
 

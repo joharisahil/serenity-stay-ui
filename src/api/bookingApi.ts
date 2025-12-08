@@ -14,3 +14,8 @@ export const createBookingApi = (payload: any) =>
 export const getBookingByRoomApi = async (roomId: string) => {
   return api.get(`/room-bookings/current/${roomId}`).then(res => res.data);
 };
+
+export const checkoutBookingApi = async (bookingId: string) => {
+  const res = await api.post(`/room-bookings/${bookingId}/checkout`);
+  return res.data;
+};

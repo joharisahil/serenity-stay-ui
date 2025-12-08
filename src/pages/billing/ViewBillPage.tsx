@@ -3,10 +3,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { getBillByIdApi } from "@/api/billApi";
-import { openPrintWindow } from "@/utils/printInvoice";
+import { getBillByIdApi, getRoomBillByIdApi } from "@/api/billApi";
 
 export default function ViewBillPage() {
   const { billId } = useParams<{ billId: string }>();
@@ -15,40 +14,52 @@ export default function ViewBillPage() {
   const [bill, setBill] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadBill = async () => {
-    try {
-      const data = await getBillByIdApi(billId!);
-      if (data.success) {
-        setBill(data.bill);
-      } else {
-        toast.error("Bill not found");
-        navigate("/billing");
-      }
-    } catch (err) {
-      toast.error("Failed to load bill");
+const { type} = useParams();
+
+const loadBill = async () => {
+  try {
+    let data: { success: any; bill: any; };
+
+    if (type?.toLowerCase() === "room") {
+      data = await getRoomBillByIdApi(billId!);
+    } else {
+      data = await getBillByIdApi(billId!);
     }
-    setLoading(false);
-  };
+
+    if (data.success) {
+      setBill(data.bill);
+    } else {
+      toast.error("Bill not found");
+      navigate("/old-bills");
+    }
+
+  } catch {
+    toast.error("Failed to load bill");
+    navigate("/old-bills");
+  }
+
+  setLoading(false);
+};
 
   useEffect(() => {
     loadBill();
   }, [billId]);
 
-  if (loading) {
+  if (loading)
     return (
       <Layout>
         <p className="p-10 text-center text-muted-foreground">Loading bill...</p>
       </Layout>
     );
-  }
 
-  if (!bill) {
+  if (!bill)
     return (
       <Layout>
         <p className="p-10 text-center text-muted-foreground">Bill not found</p>
       </Layout>
     );
-  }
+
+  const isRoom = bill.source === "ROOM";
 
   return (
     <Layout>
@@ -58,6 +69,7 @@ export default function ViewBillPage() {
           <Button variant="ghost" size="icon" onClick={() => navigate("/old-bills")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
+
           <div>
             <h1 className="text-3xl font-bold">Bill #{bill.billNumber}</h1>
             <p className="text-muted-foreground">
@@ -66,78 +78,132 @@ export default function ViewBillPage() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Bill Details</CardTitle>
-          </CardHeader>
+        {/* ------------------------------ */}
+        {/* RESTAURANT BILL VIEW           */}
+        {/* ------------------------------ */}
+        {!isRoom && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Restaurant Bill</CardTitle>
+            </CardHeader>
 
-          <CardContent className="space-y-4">
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <p><b>Customer:</b> {bill.customerName || "N/A"}</p>
+                <p><b>Phone:</b> {bill.customerPhone || "N/A"}</p>
+                <p><b>Table:</b> {bill.table_id?.name}</p>
+              </div>
 
-            {/* Customer Info */}
-            <div className="space-y-1">
-              <p><b>Customer:</b> {bill.customerName || "N/A"}</p>
-              <p><b>Phone:</b> {bill.customerPhone || "N/A"}</p>
-              <p><b>Payment Mode:</b> {bill.paymentMode}</p>
-              <p><b>Table:</b> {bill.table_id?.name}</p>
-            </div>
+              <div className="border rounded-lg p-4 space-y-3">
+                <h2 className="font-semibold text-lg">Items</h2>
 
-            {/* Items */}
-            <div className="border rounded-lg p-4 space-y-3">
-              <h2 className="font-semibold text-lg">Items</h2>
+                {bill.orders.map((order: any, idx: number) => (
+                  <div key={idx} className="border p-3 rounded-md">
+                    <h3 className="font-medium text-sm">Order #{String(order.order_id).slice(-4)}</h3>
 
-              {bill.orders.map((order: any, idx: number) => (
-                <div key={idx} className="border p-3 rounded-md">
-                  <h3 className="font-medium text-sm">
-                    Order #{String(order.order_id).slice(-4)}
-                  </h3>
+                    <div className="mt-2 space-y-1 text-sm">
+                      {order.items.map((item: any, i: number) => (
+                        <div key={i} className="flex justify-between">
+                          <span>{item.name} × {item.qty}</span>
+                          <span>₹{item.totalPrice}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                  <div className="mt-2 space-y-1 text-sm">
-                    {order.items.map((item: any, i: number) => (
-                      <div key={i} className="flex justify-between">
-                        <span>
-                          {item.name} ({item.size}) × {item.qty}
-                        </span>
+              <div className="border-t pt-4 text-lg space-y-2">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>₹{bill.subtotal}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GST (5%)</span>
+                  <span>₹{bill.gst}</span>
+                </div>
+                <div className="flex justify-between font-bold text-primary text-xl">
+                  <span>Total</span>
+                  <span>₹{bill.finalAmount}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ------------------------------ */}
+        {/* ROOM FINAL INVOICE VIEW        */}
+        {/* ------------------------------ */}
+        {isRoom && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Room Invoice (Stay + Food)</CardTitle>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+
+              <div className="space-y-1">
+                <p><b>Guest:</b> {bill.customerName}</p>
+                <p><b>Phone:</b> {bill.customerPhone}</p>
+                <p><b>Room:</b> {bill.room_id?.number}</p>
+              </div>
+
+              {/* Stay Charges */}
+              <div>
+                <h2 className="font-semibold text-lg mb-2">Stay Charges</h2>
+
+                <div className="flex justify-between">
+                  <span>Room Rate × Nights</span>
+                  <span>₹{bill.fullInvoice.stayAmount}</span>
+                </div>
+
+                {bill.fullInvoice.extraServices.map((s: any, i: number) => (
+                  <div key={i} className="flex justify-between">
+                    <span>{s.name}</span>
+                    <span>₹{s.price}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Food Orders */}
+              <div>
+                <h2 className="font-semibold text-lg mb-2">Room Service Orders</h2>
+
+                {bill.fullInvoice.foodOrders.map((o: any, i: number) => (
+                  <div key={i} className="border rounded-md p-3 mb-3">
+                    <b>Order #{o.order_id}</b>
+
+                    {o.items.map((item: any, n: number) => (
+                      <div key={n} className="flex justify-between text-sm">
+                        <span>{item.name} × {item.qty}</span>
                         <span>₹{item.totalPrice}</span>
                       </div>
                     ))}
+
+                    <div className="flex justify-between text-sm mt-2">
+                      <span><b>GST</b></span>
+                      <span>₹{o.gst}</span>
+                    </div>
                   </div>
+                ))}
+              </div>
+
+              {/* Summary */}
+              <div className="border-t pt-4 space-y-2 text-lg">
+                <div className="flex justify-between">
+                  <span><b>Total Amount</b></span>
+                  <span>₹{bill.fullInvoice.totalAmount}</span>
                 </div>
-              ))}
-            </div>
 
-            {/* Summary */}
-            <div className="border-t pt-4 text-lg space-y-2">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>₹{bill.subtotal}</span>
+                <div className="flex justify-between text-primary text-xl font-bold">
+                  <span>Balance Due</span>
+                  <span>₹{bill.fullInvoice.balanceDue}</span>
+                </div>
               </div>
 
-              <div className="flex justify-between">
-                <span>GST (5%)</span>
-                <span>₹{bill.gst}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>Discount</span>
-                <span>₹{bill.discount}</span>
-              </div>
-
-              <div className="flex justify-between font-bold text-primary text-xl">
-                <span>Total</span>
-                <span>₹{bill.finalAmount}</span>
-              </div>
-            </div>
-
-            {/* <Button
-              className="w-full mt-4"
-              onClick={() => openPrintWindow(bill)}
-            >
-              <Printer className="mr-2 h-4 w-4" />
-              Print Bill
-            </Button> */}
-
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
       </div>
     </Layout>

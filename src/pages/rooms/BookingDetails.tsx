@@ -7,7 +7,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { getBookingByRoomApi } from "@/api/bookingApi";
+import { checkoutBookingApi, getBookingByRoomApi } from "@/api/bookingApi";
 import { getRoomServiceBillApi } from "@/api/billingRestaurantApi";
 
 export default function BookingDetails() {
@@ -19,6 +19,8 @@ export default function BookingDetails() {
   const [roomOrders, setRoomOrders] = useState<any[]>([]);
   const [roomOrderSummary, setRoomOrderSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [confirmCheckout, setConfirmCheckout] = useState(false);
 
   // LOAD BOOKING + ROOM SERVICE ORDERS
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function BookingDetails() {
   const nights = Math.max(
     1,
     (new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) /
-      (1000 * 60 * 60 * 24)
+    (1000 * 60 * 60 * 24)
   );
 
   let roomPrice = 0;
@@ -91,17 +93,17 @@ export default function BookingDetails() {
   const balance = total - booking.advancePaid;
 
   // Print helper
-const printHTML = (html: string) => {
-  const printWindow = window.open("", "_blank", "width=800,height=600");
-  printWindow!.document.write(html);
-  printWindow!.document.close();
-  printWindow!.focus();
-  printWindow!.print();
-};
+  const printHTML = (html: string) => {
+    const printWindow = window.open("", "_blank", "width=800,height=600");
+    printWindow!.document.write(html);
+    printWindow!.document.close();
+    printWindow!.focus();
+    printWindow!.print();
+  };
 
-// ROOM INVOICE ONLY
-const printRoomInvoice = () => {
-  const html = `
+  // ROOM INVOICE ONLY
+  const printRoomInvoice = () => {
+    const html = `
     <html>
       <head>
         <title>Room Invoice</title>
@@ -124,8 +126,8 @@ const printRoomInvoice = () => {
         <div class="row"><span>Room (${nights} nights × ₹${roomPrice})</span><span>₹${roomStayTotal}</span></div>
 
         ${booking.addedServices
-          ?.map((s: any) => `<div class='row'><span>${s.name}</span><span>₹${s.price}</span></div>`)
-          .join("")}
+        ?.map((s: any) => `<div class='row'><span>${s.name}</span><span>₹${s.price}</span></div>`)
+        .join("")}
 
         <div class='divider'></div>
 
@@ -133,12 +135,12 @@ const printRoomInvoice = () => {
       </body>
     </html>
   `;
-  printHTML(html);
-};
+    printHTML(html);
+  };
 
-// FOOD INVOICE ONLY
-const printFoodInvoice = () => {
-  const html = `
+  // FOOD INVOICE ONLY
+  const printFoodInvoice = () => {
+    const html = `
     <html>
       <head>
         <title>Food Invoice</title>
@@ -157,8 +159,8 @@ const printFoodInvoice = () => {
         <div class="divider"></div>
 
         ${roomOrders
-          .map(
-            (o: any) => `
+        .map(
+          (o: any) => `
             <h4>Order #${o._id}</h4>
             <p><small>${new Date(o.createdAt).toLocaleString()}</small></p>
 
@@ -172,19 +174,19 @@ const printFoodInvoice = () => {
             <div class='row'><span>GST</span><span>₹${o.gst}</span></div>
             <div class="divider"></div>
         `
-          )
-          .join("")}
+        )
+        .join("")}
 
         <div class='row'><strong>Total Food Amount</strong><strong>₹${foodTotal}</strong></div>
       </body>
     </html>
   `;
-  printHTML(html);
-};
+    printHTML(html);
+  };
 
-// COMBINED INVOICE
-const printCombinedInvoice = () => {
-  const html = `
+  // COMBINED INVOICE
+  const printCombinedInvoice = () => {
+    const html = `
     <html>
       <head>
         <title>Full Invoice</title>
@@ -206,8 +208,8 @@ const printCombinedInvoice = () => {
         <div class="section-title">Room Stay Charges</div>
         <div class='row'><span>Room (${nights} nights × ₹${roomPrice})</span><span>₹${roomStayTotal}</span></div>
         ${booking.addedServices
-          ?.map((s: any) => `<div class='row'><span>${s.name}</span><span>₹${s.price}</span></div>`)
-          .join("")}
+        ?.map((s: any) => `<div class='row'><span>${s.name}</span><span>₹${s.price}</span></div>`)
+        .join("")}
 
         <div class="divider"></div>
 
@@ -215,8 +217,8 @@ const printCombinedInvoice = () => {
         <div class="section-title">Room Service Orders</div>
 
         ${roomOrders
-          .map(
-            (o: any) => `
+        .map(
+          (o: any) => `
             <h4>Order #${o._id}</h4>
             <p><small>${new Date(o.createdAt).toLocaleString()}</small></p>
 
@@ -230,8 +232,8 @@ const printCombinedInvoice = () => {
             <div class='row'><span>GST</span><span>₹${o.gst}</span></div>
             <div class="divider"></div>
           `
-          )
-          .join("")}
+        )
+        .join("")}
 
         <!-- TOTAL SUMMARY -->
         <div class='row'><strong>Grand Total</strong><strong>₹${total}</strong></div>
@@ -241,7 +243,27 @@ const printCombinedInvoice = () => {
       </body>
     </html>
   `;
-  printHTML(html);
+    printHTML(html);
+  };
+
+  const handleCheckout = async () => {
+  if (!booking?._id) return;
+
+  try {
+    setCheckingOut(true);
+
+    const res = await checkoutBookingApi(booking._id);
+
+    toast.success("Guest checked out successfully!");
+
+    // Optional: Navigate back to rooms
+    navigate("/rooms");
+
+  } catch (err: any) {
+    toast.error(err.response?.data?.message || "Checkout failed");
+  }
+
+  setCheckingOut(false);
 };
 
 
@@ -288,171 +310,202 @@ const printCombinedInvoice = () => {
           </CardContent>
         </Card>
 
-{/* BILLING SUMMARY */}
-<Card>
-  <CardHeader>
-    <CardTitle>Billing Summary</CardTitle>
-  </CardHeader>
+        {/* BILLING SUMMARY */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Billing Summary</CardTitle>
+          </CardHeader>
 
-  <CardContent>
-    <div className="space-y-4">
+          <CardContent>
+            <div className="space-y-4">
 
-      {/* ROOM STAY */}
-      <div className="flex justify-between">
-        <span className="font-medium">Room ({nights} nights × ₹{roomPrice})</span>
-        <span>₹{roomStayTotal}</span>
-      </div>
-
-      {/* EXTRA SERVICES */}
-      {(booking.addedServices || []).map((s: any, i: number) => (
-        <div key={i} className="flex justify-between">
-          <span>{s.name}</span>
-          <span>₹{s.price}</span>
-        </div>
-      ))}
-
-      {/* --------------------------- */}
-      {/* ROOM SERVICE ORDERS SECTION */}
-      {/* --------------------------- */}
-      {roomOrders.length > 0 && (
-        <>
-          <div className="pt-4 border-t">
-            <h3 className="text-primary font-semibold mb-2">Room Service Orders</h3>
-          </div>
-
-          {roomOrders.map((order: any, index: number) => (
-            <div
-              key={index}
-              className="border rounded-lg p-3 bg-secondary/20 space-y-2"
-            >
-              {/* ORDER HEADER */}
-              <div className="flex justify-between font-medium">
-                <span>Order #{order._id}</span>
-                <span>₹{order.total}</span>
+              {/* ROOM STAY */}
+              <div className="flex justify-between">
+                <span className="font-medium">Room ({nights} nights × ₹{roomPrice})</span>
+                <span>₹{roomStayTotal}</span>
               </div>
 
-              {/* ORDER DATE */}
-              <div className="text-xs text-muted-foreground flex justify-between">
-                <span>Ordered At:</span>
-                <span>{new Date(order.createdAt).toLocaleString()}</span>
-              </div>
+              {/* EXTRA SERVICES */}
+              {(booking.addedServices || []).map((s: any, i: number) => (
+                <div key={i} className="flex justify-between">
+                  <span>{s.name}</span>
+                  <span>₹{s.price}</span>
+                </div>
+              ))}
 
-              {/* ORDER ITEMS */}
-              <div className="pt-1 space-y-1">
-                {order.items.map((item: any, i: number) => (
-                  <div
-                    key={i}
-                    className="flex justify-between text-sm"
-                  >
-                    <span>
-                      {item.name} ({item.qty} × ₹{item.unitPrice})
-                    </span>
-                    <span>₹{item.totalPrice}</span>
+              {/* --------------------------- */}
+              {/* ROOM SERVICE ORDERS SECTION */}
+              {/* --------------------------- */}
+              {roomOrders.length > 0 && (
+                <>
+                  <div className="pt-4 border-t">
+                    <h3 className="text-primary font-semibold mb-2">Room Service Orders</h3>
                   </div>
-                ))}
+
+                  {roomOrders.map((order: any, index: number) => (
+                    <div
+                      key={index}
+                      className="border rounded-lg p-3 bg-secondary/20 space-y-2"
+                    >
+                      {/* ORDER HEADER */}
+                      <div className="flex justify-between font-medium">
+                        <span>Order #{order._id}</span>
+                        <span>₹{order.total}</span>
+                      </div>
+
+                      {/* ORDER DATE */}
+                      <div className="text-xs text-muted-foreground flex justify-between">
+                        <span>Ordered At:</span>
+                        <span>{new Date(order.createdAt).toLocaleString()}</span>
+                      </div>
+
+                      {/* ORDER ITEMS */}
+                      <div className="pt-1 space-y-1">
+                        {order.items.map((item: any, i: number) => (
+                          <div
+                            key={i}
+                            className="flex justify-between text-sm"
+                          >
+                            <span>
+                              {item.name} ({item.qty} × ₹{item.unitPrice})
+                            </span>
+                            <span>₹{item.totalPrice}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* GST */}
+                      <div className="flex justify-between text-sm text-muted-foreground border-t pt-1">
+                        <span>GST (5%)</span>
+                        <span>₹{order.gst}</span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* FOOD BILL SUMMARIES */}
+                  <div className="space-y-1 pt-2">
+                    <div className="flex justify-between font-medium">
+                      <span>Food Subtotal</span>
+                      <span>₹{foodSubtotal}</span>
+                    </div>
+
+                    <div className="flex justify-between font-medium">
+                      <span>Food GST</span>
+                      <span>₹{foodGST}</span>
+                    </div>
+
+                    <div className="flex justify-between font-bold">
+                      <span>Food Total</span>
+                      <span>₹{foodTotal}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* --------------------------- */}
+              {/* MAIN BILL TOTALS */}
+              {/* --------------------------- */}
+              <div className="flex justify-between border-t pt-4">
+                <span className="font-medium">Subtotal</span>
+                <span>₹{subtotal}</span>
               </div>
 
-              {/* GST */}
-              <div className="flex justify-between text-sm text-muted-foreground border-t pt-1">
-                <span>GST (5%)</span>
-                <span>₹{order.gst}</span>
+              <div className="flex justify-between">
+                <span>Discount</span>
+                <span>- ₹{booking.discount || 0}</span>
               </div>
+
+              <div className="flex justify-between">
+                <span>GST (18% on stay + extras)</span>
+                <span>₹{tax}</span>
+              </div>
+
+              <div className="flex justify-between text-lg font-bold border-t pt-2">
+                <span>Total</span>
+                <span>₹{total}</span>
+              </div>
+
+              <div className="flex justify-between text-success">
+                <span>Advance Paid</span>
+                <span>₹{booking.advancePaid}</span>
+              </div>
+
+              <div className="flex justify-between text-lg font-bold border-t pt-2">
+                <span>Balance Due</span>
+                <span className="text-warning">₹{balance}</span>
+              </div>
+
             </div>
-          ))}
-
-          {/* FOOD BILL SUMMARIES */}
-          <div className="space-y-1 pt-2">
-            <div className="flex justify-between font-medium">
-              <span>Food Subtotal</span>
-              <span>₹{foodSubtotal}</span>
-            </div>
-
-            <div className="flex justify-between font-medium">
-              <span>Food GST</span>
-              <span>₹{foodGST}</span>
-            </div>
-
-            <div className="flex justify-between font-bold">
-              <span>Food Total</span>
-              <span>₹{foodTotal}</span>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* --------------------------- */}
-      {/* MAIN BILL TOTALS */}
-      {/* --------------------------- */}
-      <div className="flex justify-between border-t pt-4">
-        <span className="font-medium">Subtotal</span>
-        <span>₹{subtotal}</span>
-      </div>
-
-      <div className="flex justify-between">
-        <span>Discount</span>
-        <span>- ₹{booking.discount || 0}</span>
-      </div>
-
-      <div className="flex justify-between">
-        <span>GST (18% on stay + extras)</span>
-        <span>₹{tax}</span>
-      </div>
-
-      <div className="flex justify-between text-lg font-bold border-t pt-2">
-        <span>Total</span>
-        <span>₹{total}</span>
-      </div>
-
-      <div className="flex justify-between text-success">
-        <span>Advance Paid</span>
-        <span>₹{booking.advancePaid}</span>
-      </div>
-
-      <div className="flex justify-between text-lg font-bold border-t pt-2">
-        <span>Balance Due</span>
-        <span className="text-warning">₹{balance}</span>
-      </div>
-
-    </div>
-  </CardContent>
-</Card>
+          </CardContent>
+        </Card>
 
 
         {/* ACTION BUTTONS */}
         <div className="flex flex-wrap gap-4">
-          <Button><CheckCircle className="mr-2 h-4 w-4" /> Mark Check-out</Button>
+          <Button
+  disabled={checkingOut}
+  onClick={() => setConfirmCheckout(true)}
+>
+  <CheckCircle className="mr-2 h-4 w-4" />
+  {checkingOut ? "Processing..." : "Mark Check-out"}
+</Button>
+
           <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> Change Room</Button>
           <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> Extend Stay</Button>
           <Button variant="outline" onClick={() => setInvoiceModal(true)}>
-  <Download className="mr-2 h-4 w-4" /> Download Invoice
-</Button>
+            <Download className="mr-2 h-4 w-4" /> Download Invoice
+          </Button>
 
         </div>
 
       </div>
       <Dialog open={invoiceModal} onOpenChange={setInvoiceModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Invoice Type</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 py-3">
+            <Button className="w-full" onClick={printRoomInvoice}>
+              Room Invoice Only
+            </Button>
+
+            <Button className="w-full" onClick={printFoodInvoice} disabled={roomOrders.length === 0}>
+              Food Invoice Only
+            </Button>
+
+            <Button className="w-full" onClick={printCombinedInvoice}>
+              Full Invoice (Room + Food)
+            </Button>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInvoiceModal(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={confirmCheckout} onOpenChange={setConfirmCheckout}>
   <DialogContent>
     <DialogHeader>
-      <DialogTitle>Select Invoice Type</DialogTitle>
+      <DialogTitle>Confirm Checkout</DialogTitle>
     </DialogHeader>
 
-    <div className="space-y-3 py-3">
-      <Button className="w-full" onClick={printRoomInvoice}>
-        Room Invoice Only
-      </Button>
+    <p>Are you sure you want to mark this room as checked out?</p>
 
-      <Button className="w-full" onClick={printFoodInvoice} disabled={roomOrders.length === 0}>
-        Food Invoice Only
+    <DialogFooter className="mt-4 flex justify-end gap-4">
+      <Button variant="outline" onClick={() => setConfirmCheckout(false)}>
+        Cancel
       </Button>
-
-      <Button className="w-full" onClick={printCombinedInvoice}>
-        Full Invoice (Room + Food)
-      </Button>
-    </div>
-
-    <DialogFooter>
-      <Button variant="outline" onClick={() => setInvoiceModal(false)}>
-        Close
+      <Button
+        onClick={() => {
+          setConfirmCheckout(false);
+          handleCheckout();
+        }}
+        disabled={checkingOut}
+      >
+        {checkingOut ? "Processing..." : "Confirm"}
       </Button>
     </DialogFooter>
   </DialogContent>

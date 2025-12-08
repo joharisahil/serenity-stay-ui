@@ -8,47 +8,63 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Eye, Search } from "lucide-react";
 import { toast } from "sonner";
-import { getAllBillsApi } from "@/api/billApi";
+import { getBillsApi, getRoomBillsApi } from "@/api/billApi";
 
 export default function OldBillsPage() {
     const navigate = useNavigate();
 
     const [bills, setBills] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
-    const [activeType, setActiveType] = useState("RESTAURANT"); // default tab
+    const [activeType, setActiveType] = useState("RESTAURANT");
     const [search, setSearch] = useState("");
 
-    // ------------ LOAD ALL BILLS ------------
-    const loadBills = async () => {
+    // ---------- LOAD BILLS BASED ON TAB ----------
+    const loadBills = async (type: string) => {
+        setLoading(true);
+
         try {
-            const data = await getAllBillsApi();
-            if (data.success) {
-                setBills(data.bills);
+            let res;
+
+            if (type === "RESTAURANT") {
+                res = await getBillsApi("RESTAURANT");
+            } 
+            else if (type === "BANQUET") {
+                res = await getBillsApi("BANQUET");
+            } 
+            else if (type === "ROOM") {
+                res = await getRoomBillsApi(); // optimized!
+            }
+
+            if (res?.success) {
+                setBills(res.bills);
             }
         } catch (err) {
             toast.error("Failed to load bills");
         }
+
         setLoading(false);
     };
 
+    // FIRST LOAD — restaurant by default
     useEffect(() => {
-        loadBills();
+        loadBills("RESTAURANT");
     }, []);
+
+    // LOAD WHEN TAB CHANGES
+    useEffect(() => {
+        loadBills(activeType);
+    }, [activeType]);
 
     // ------------ FILTERED BILLS ------------
     const filteredBills = useMemo(() => {
-        return bills
-            .filter((b) => b.source === activeType) // match TYPE (ROOM/RESTAURANT/BANQUET)
-            .filter((b) => {
-                const text = search.toLowerCase();
-                return (
-                    b.customerName?.toLowerCase().includes(text) ||
-                    b.customerPhone?.toLowerCase().includes(text) ||
-                    b.billNumber?.toLowerCase().includes(text)
-                );
-            });
-    }, [activeType, search, bills]);
+        const text = search.toLowerCase();
+        return bills.filter((b) =>
+            b.customerName?.toLowerCase().includes(text) ||
+            b.customerPhone?.toLowerCase().includes(text) ||
+            b.billNumber?.toLowerCase().includes(text)
+        );
+    }, [search, bills]);
 
     return (
         <Layout>
@@ -61,11 +77,11 @@ export default function OldBillsPage() {
                     </Button>
                     <div>
                         <h1 className="text-3xl font-bold">All Bills</h1>
-                        <p className="text-muted-foreground">View room,  or banquet bills</p>
+                        <p className="text-muted-foreground">View restaurant, room & banquet bills</p>
                     </div>
                 </div>
 
-                {/* --- TABS --- */}
+                {/* TABS */}
                 <Tabs value={activeType} onValueChange={setActiveType} className="w-full">
                     <TabsList className="grid grid-cols-3 mb-4">
                         <TabsTrigger value="RESTAURANT">Restaurant</TabsTrigger>
@@ -74,7 +90,7 @@ export default function OldBillsPage() {
                     </TabsList>
                 </Tabs>
 
-                {/* SEARCH BAR */}
+                {/* SEARCH */}
                 <div className="flex items-center gap-2 mb-4">
                     <Search className="h-5 w-5 text-muted-foreground" />
                     <Input
@@ -106,17 +122,17 @@ export default function OldBillsPage() {
                                                 Bill #{bill.billNumber}
                                             </h2>
 
-                                            {bill.source === "RESTAURANT" && (
+                                            {activeType === "RESTAURANT" && (
                                                 <p className="text-sm text-muted-foreground">
                                                     Table: {bill.table_id?.name}
                                                 </p>
                                             )}
-                                            {bill.source === "ROOM" && (
+                                            {activeType === "ROOM" && (
                                                 <p className="text-sm text-muted-foreground">
                                                     Room: {bill.room_id?.number}
                                                 </p>
                                             )}
-                                            {bill.source === "BANQUET" && (
+                                            {activeType === "BANQUET" && (
                                                 <p className="text-sm text-muted-foreground">
                                                     Banquet: {bill.banquet_id?.name}
                                                 </p>
@@ -126,16 +142,14 @@ export default function OldBillsPage() {
                                                 Customer: {bill.customerName || "N/A"}
                                             </p>
 
-                                            <p className="text-primary font-bold">
-                                                ₹{bill.finalAmount}
-                                            </p>
+                                            <p className="text-primary font-bold">₹{bill.finalAmount}</p>
 
                                             <p className="text-xs text-muted-foreground">
                                                 {new Date(bill.createdAt).toLocaleString()}
                                             </p>
                                         </div>
 
-                                        <Button onClick={() => navigate(`/view/${bill._id}`)}>
+                                        <Button onClick={() => navigate(`/view/${bill.source.toLowerCase()}/${bill._id}`)}>
                                             <Eye className="mr-2 h-4 w-4" /> View Bill
                                         </Button>
                                     </div>
@@ -148,3 +162,4 @@ export default function OldBillsPage() {
         </Layout>
     );
 }
+
