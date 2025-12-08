@@ -55,7 +55,7 @@ export default function KitchenOrders() {
         const exists = prev.some((o) => o._id === data.order._id);
 
         if (!exists) {
-          console.log("🔔 NEW ORDER → Start looping alert");
+          // console.log("🔔 NEW ORDER → Start looping alert");
           startAlertSound();
           return [data.order, ...prev];
         }
@@ -85,7 +85,7 @@ export default function KitchenOrders() {
 
         // If any NEW orders already exist → start alert
         if (res.orders.some((o: any) => o.status === "NEW")) {
-          console.log("🔔 Existing NEW orders on load → Start alert");
+          // console.log("🔔 Existing NEW orders on load → Start alert");
           startAlertSound();
         }
       })

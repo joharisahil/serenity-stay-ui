@@ -1,5 +1,3 @@
-// /lib/sound.ts
-
 let alertAudio: HTMLAudioElement | null = null;
 
 // 🔁 Continuous alert for NEW orders
