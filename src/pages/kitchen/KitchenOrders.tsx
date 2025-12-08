@@ -38,7 +38,7 @@ export default function KitchenOrders() {
     const printWindow = window.open("", "_blank", "width=400,height=600");
 
     if (!printWindow) {
-      console.error("Popup blocked! Allow popups for this site.");
+      // console.error("Popup blocked! Allow popups for this site.");
       alert("Please allow pop-ups for printing KOT.");
       return;
     }
