@@ -1,105 +1,141 @@
 import { useEffect, useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, ChefHat, ArrowRight } from "lucide-react";
+import { ChefHat, ArrowRight } from "lucide-react";
 import { joinHotelRoom, socket } from "@/lib/socket";
 import { updateOrderStatusApi, getLiveOrdersApi } from "@/api/orderApi";
 import { toast } from "sonner";
-import { playSound } from "@/lib/sound";
+import { startAlertSound, stopAlertSound } from "@/lib/sound";
 import { Order, OrderCreatedEvent } from "@/types/order";
 
 export default function KitchenOrders() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const hotelId = user.hotel_id;
-  console.log("KITCHEN HOTEL ID:", hotelId);
 
   const [orders, setOrders] = useState<any[]>([]);
   const [draggedOrder, setDraggedOrder] = useState<string | null>(null);
-useEffect(() => {
-  if (!hotelId) return;
 
-  socket.off("order:created");
-  socket.off("order:status_update");
+  // ---------------------------------------------------------------
+  // AUTOPLAY FIX → Required for browsers to allow looping sound
+  // ---------------------------------------------------------------
+  useEffect(() => {
+    const enableSound = () => {
+      const a = new Audio();
+      a.play().catch(() => {});
+      window.removeEventListener("click", enableSound);
+    };
 
-  joinHotelRoom(hotelId, "KITCHEN_MANAGER");
+    window.addEventListener("click", enableSound);
 
-  // Prevent duplicate orders
-socket.on("order:created", (data: OrderCreatedEvent) => {
-  if (!data?.order) return;
+    return () => {
+      window.removeEventListener("click", enableSound);
+    };
+  }, []);
 
-  setOrders(prev => {
-    const exists = prev.some(o => o._id === data.order._id);
+  // Helper to stop looping sound when no NEW orders exist
+  const stopSoundIfNoNewOrders = (updatedOrders: any[]) => {
+    const hasNew = updatedOrders.some((o) => o.status === "NEW");
+    if (!hasNew) stopAlertSound();
+  };
 
-    if (!exists) {
-      playSound("/sounds/new-order.mp3");
-  // 🔊 Play sound for new order
-      return [data.order, ...prev];
-    }
+  useEffect(() => {
+    if (!hotelId) return;
 
-    // If already exists, update it but no sound
-    return prev.map(o => (o._id === data.order._id ? data.order : o));
-  });
-});
-
-
-  // Prevent double update for status change
-  socket.on("order:status_update", (order: Order) => {
-    if (!order) return;
-
-    setOrders(prev => {
-      const alreadySame = prev.some(
-        o => o._id === order._id && o.status === order.status
-      );
-      if (alreadySame) return prev;
-
-      return prev.map(o => (o._id === order._id ? order : o));
-    });
-  });
-
-  getLiveOrdersApi(hotelId)
-    .then((res) => setOrders(res.orders))
-    .catch(() => toast.error("Failed to load kitchen orders"));
-
-  return () => {
     socket.off("order:created");
     socket.off("order:status_update");
-  };
-}, [hotelId]);
 
-  // When dragging starts
+    joinHotelRoom(hotelId, "KITCHEN_MANAGER");
+
+    // ORDER CREATED EVENT
+    socket.on("order:created", (data: OrderCreatedEvent) => {
+      if (!data?.order) return;
+
+      setOrders((prev) => {
+        const exists = prev.some((o) => o._id === data.order._id);
+
+        if (!exists) {
+          console.log("🔔 NEW ORDER → Start looping alert");
+          startAlertSound();
+          return [data.order, ...prev];
+        }
+
+        return prev.map((o) => (o._id === data.order._id ? data.order : o));
+      });
+    });
+
+    // ORDER STATUS UPDATE EVENT
+    socket.on("order:status_update", (order: Order) => {
+      if (!order) return;
+
+      setOrders((prev) => {
+        const updated = prev.map((o) =>
+          o._id === order._id ? order : o
+        );
+
+        stopSoundIfNoNewOrders(updated);
+        return updated;
+      });
+    });
+
+    // INITIAL LOAD
+    getLiveOrdersApi(hotelId)
+      .then((res) => {
+        setOrders(res.orders);
+
+        // If any NEW orders already exist → start alert
+        if (res.orders.some((o: any) => o.status === "NEW")) {
+          console.log("🔔 Existing NEW orders on load → Start alert");
+          startAlertSound();
+        }
+      })
+      .catch(() => toast.error("Failed to load kitchen orders"));
+
+    return () => {
+      socket.off("order:created");
+      socket.off("order:status_update");
+    };
+  }, [hotelId]);
+
+  // DRAG START
   const onDragStart = (orderId: string) => {
     setDraggedOrder(orderId);
   };
 
-  // Allows drop
+  // ALLOW DROP
   const allowDrop = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
-  // When dropped into a column
+  // DROP HANDLER
   const onDrop = async (e: React.DragEvent, newStatus: string) => {
-  e.preventDefault();
-  if (!draggedOrder) return;
+    e.preventDefault();
+    if (!draggedOrder) return;
 
-  // 1️⃣ Update UI immediately (optimistic update)
-  setOrders((prev) =>
-    prev.map((o) =>
-      o._id === draggedOrder ? { ...o, status: newStatus } : o
-    )
-  );
+    setOrders((prev) => {
+      const updated = prev.map((o) =>
+        o._id === draggedOrder ? { ...o, status: newStatus } : o
+      );
 
-  // 2️⃣ Send update to backend (socket will sync others)
-  await updateStatus(draggedOrder, newStatus);
+      stopSoundIfNoNewOrders(updated);
+      return updated;
+    });
 
-  setDraggedOrder(null);
-};
+    await updateStatus(draggedOrder, newStatus);
+    setDraggedOrder(null);
+  };
 
-
-
+  // UPDATE STATUS
   const updateStatus = async (orderId: string, status: string) => {
     try {
+      setOrders((prev) => {
+        const updated = prev.map((o) =>
+          o._id === orderId ? { ...o, status } : o
+        );
+        stopSoundIfNoNewOrders(updated);
+        return updated;
+      });
+
       await updateOrderStatusApi(orderId, status);
     } catch {
       toast.error("Failed to update order");
@@ -126,6 +162,8 @@ socket.on("order:created", (data: OrderCreatedEvent) => {
   return (
     <Layout>
       <div className="space-y-6">
+
+        {/* HEADER */}
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
             <ChefHat className="h-6 w-6 text-primary-foreground" />
@@ -136,14 +174,11 @@ socket.on("order:created", (data: OrderCreatedEvent) => {
           </div>
         </div>
 
-        {/* KANBAN GRID */}
+        {/* GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
           {statusFlow.map((status) => {
             const col = getColumn(status);
-            const filtered = orders
-              .filter((o) => o && o.status) // <- prevent crash
-              .filter((o) => o.status === status);
-
+            const filtered = orders.filter((o) => o.status === status);
 
             return (
               <div
@@ -153,12 +188,16 @@ socket.on("order:created", (data: OrderCreatedEvent) => {
                 onDrop={(e) => onDrop(e, status)}
               >
                 <div className={`border-l-4 border-${col.color}-500 p-4 rounded-t-lg bg-${col.color}-50`}>
-                  <h3 className={`font-bold text-${col.color}-600`}>{col.label}</h3>
+                  <h3 className={`font-bold text-${col.color}-600`}>
+                    {col.label}
+                  </h3>
                 </div>
 
                 <div className="border p-4 min-h-[500px] rounded-b-lg space-y-4 bg-white">
                   {filtered.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center pt-4">No orders</p>
+                    <p className="text-sm text-muted-foreground text-center pt-4">
+                      No orders
+                    </p>
                   )}
 
                   {filtered.map((order) => (
@@ -174,9 +213,10 @@ socket.on("order:created", (data: OrderCreatedEvent) => {
                             {order.table_id?.name
                               ? `Table ${order.table_id.name}`
                               : order.room_id?.number
-                                ? `Room ${order.room_id.number}`
-                                : "Unknown"}
+                              ? `Room ${order.room_id.number}`
+                              : "Unknown"}
                           </span>
+
                           <span className="text-muted-foreground text-xs">
                             #{order._id.slice(-4)}
                           </span>
@@ -201,7 +241,9 @@ socket.on("order:created", (data: OrderCreatedEvent) => {
                         {nextStatus(order.status) && (
                           <Button
                             className="w-full mt-2"
-                            onClick={() => updateStatus(order._id, nextStatus(order.status)!)}
+                            onClick={() =>
+                              updateStatus(order._id, nextStatus(order.status)!)
+                            }
                           >
                             Move to {getColumn(nextStatus(order.status)!).label}
                             <ArrowRight className="ml-2 h-4 w-4" />
@@ -212,7 +254,6 @@ socket.on("order:created", (data: OrderCreatedEvent) => {
                   ))}
                 </div>
               </div>
-
             );
           })}
         </div>
