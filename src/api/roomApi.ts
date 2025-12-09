@@ -30,3 +30,8 @@ export const getAllRoomsApi = () =>
 
 export const getRoomCurrentBookingApi = (roomId: string) =>
   api.get(`/room-bookings/current/${roomId}`).then(res => res.data.booking);
+
+export const getAvailableRoomsApi = async (hotel_id: any) => {
+  const res = await api.get("/rooms/available");
+  return res.data;
+};
