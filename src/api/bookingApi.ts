@@ -19,3 +19,18 @@ export const checkoutBookingApi = async (bookingId: string) => {
   const res = await api.post(`/room-bookings/${bookingId}/checkout`);
   return res.data;
 };
+
+export const cancelBookingApi = async (bookingId: string) => {
+  const res = await api.post(`/room-bookings/${bookingId}/cancel`);
+  return res.data;
+};
+
+export const changeRoomApi = async (bookingId: string, newRoomId: string) => {
+  const res = await api.post(`/roombooking/${bookingId}/change-room`, { newRoomId });
+  return res.data;
+};
+
+export const extendStayApi = async (bookingId: string, newCheckOut: string) => {
+  const res = await api.post(`/roombooking/${bookingId}/extend-stay`, { newCheckOut });
+  return res.data;
+};

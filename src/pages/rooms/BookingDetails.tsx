@@ -18,9 +18,13 @@ import {
 import {
   getBookingByRoomApi,
   checkoutBookingApi,
+  cancelBookingApi,
+  changeRoomApi,
+  extendStayApi,
 } from "@/api/bookingApi";
 import { getRoomServiceBillApi } from "@/api/billingRestaurantApi";
 import { getHotelApi } from "@/api/hotelApi"; // <-- ensure this exists in your frontend API layer
+import { Input } from "@/components/ui/input";
 
 // --------- Helpers ----------
 const PLAN_NAMES: Record<string, string> = {
@@ -74,6 +78,11 @@ export default function BookingDetails() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [confirmCheckout, setConfirmCheckout] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showChangeRoom, setShowChangeRoom] = useState(false);
+  const [newRoomId, setNewRoomId] = useState("");
+  const [showExtendStay, setShowExtendStay] = useState(false);
+  const [newCheckOut, setNewCheckOut] = useState("");
 
   // Load booking, orders and hotel info
   useEffect(() => {
@@ -367,6 +376,16 @@ export default function BookingDetails() {
     }
   };
 
+const handleCancelBooking = async () => {
+  try {
+    await cancelBookingApi(booking._id);
+    toast.success("Booking cancelled");
+    navigate("/rooms");
+  } catch (e:any) {
+    toast.error(e?.response?.data?.message || "Failed to cancel");
+  }
+};
+
   // ------------------ UI ------------------
   return (
     <Layout>
@@ -520,9 +539,9 @@ export default function BookingDetails() {
             <CheckCircle className="mr-2 h-4 w-4" />
             {checkingOut ? "Processing..." : "Mark Check-out"}
           </Button>
-
-          <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> Change Room</Button>
-          <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> Extend Stay</Button>
+          <Button variant="destructive" onClick={() => setShowCancelModal(true)}>Cancel Booking</Button>
+          <Button variant="outline" onClick={() => setShowChangeRoom(true)}><Edit className="mr-2 h-4 w-4" /> Change Room</Button>
+          <Button variant="outline" onClick={() => setShowExtendStay(true)}><Edit className="mr-2 h-4 w-4" /> Extend Stay</Button>
           <Button variant="outline" onClick={() => setInvoiceModal(true)}>
             <Download className="mr-2 h-4 w-4" /> Download Invoice
           </Button>
@@ -569,6 +588,94 @@ export default function BookingDetails() {
           </DialogContent>
         </Dialog>
       </div>
+      <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Cancel Booking</DialogTitle>
+    </DialogHeader>
+
+    <p>Are you sure you want to cancel this booking? This will release the room immediately.</p>
+
+    <DialogFooter className="mt-4 flex justify-end gap-4">
+      <Button variant="outline" onClick={() => setShowCancelModal(false)}>Close</Button>
+
+      <Button
+        variant="destructive"
+        onClick={() => {
+          setShowCancelModal(false);
+          handleCancelBooking();
+        }}
+      >
+        Confirm Cancel
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+<Dialog open={showChangeRoom} onOpenChange={setShowChangeRoom}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Change Room</DialogTitle>
+    </DialogHeader>
+
+    <p>Select new room ID:</p>
+    <Input
+      placeholder="Enter room ID"
+      value={newRoomId}
+      onChange={(e) => setNewRoomId(e.target.value)}
+      className="mt-2"
+    />
+
+    <DialogFooter className="mt-4">
+      <Button variant="outline" onClick={() => setShowChangeRoom(false)}>Cancel</Button>
+      <Button
+        onClick={async () => {
+          try {
+            await changeRoomApi(booking._id, newRoomId);
+            toast.success("Room changed successfully");
+            navigate("/rooms");
+          } catch {
+            toast.error("Failed to change room");
+          }
+        }}
+      >
+        Confirm
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+<Dialog open={showExtendStay} onOpenChange={setShowExtendStay}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Extend Stay</DialogTitle>
+    </DialogHeader>
+
+    <p>New Checkout Date:</p>
+    <Input
+      type="date"
+      value={newCheckOut}
+      onChange={(e) => setNewCheckOut(e.target.value)}
+      className="mt-2"
+    />
+
+    <DialogFooter className="mt-4">
+      <Button variant="outline" onClick={() => setShowExtendStay(false)}>Cancel</Button>
+      <Button
+        onClick={async () => {
+          try {
+            await extendStayApi(booking._id, newCheckOut);
+            toast.success("Stay extended");
+            navigate("/rooms");
+          } catch {
+            toast.error("Failed to extend stay");
+          }
+        }}
+      >
+        Confirm
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
     </Layout>
   );
 }
