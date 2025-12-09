@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 
-import { getPublicMenuApi } from "@/api/publicMenuApi";
+import { getPublicMenuApi, startQrSessionApi } from "@/api/publicMenuApi";
 import { createPublicOrderApi } from "@/api/orderApi";
 
 import PublicMenuSkeleton from "@/components/skeletons/PublicMenuSkeleton";
@@ -65,6 +65,7 @@ export default function CustomerMenu() {
   const [step, setStep] = useState("menu");
   const [placeName, setPlaceName] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [sessionToken, setSessionToken] = useState("");
 
   const [filterType, setFilterType] = useState<"all" | "veg" | "nonveg">("all");
 
@@ -98,7 +99,9 @@ export default function CustomerMenu() {
         if (data.meta) {
           setPlaceName(data.meta.name || data.meta.number || id);
         }
-
+       // ⭐ Request QR session token
+      const session = await startQrSessionApi(source!, id!, hotelId!);
+      setSessionToken(session.sessionToken);
 
       } catch (err) {
         toast.error("Unable to load menu");
@@ -168,6 +171,7 @@ export default function CustomerMenu() {
         source: source.toUpperCase(),
         table_id: source === "table" ? id : undefined,
         room_id: source === "room" ? id : undefined,
+        sessionToken, 
         items: selectedItems.map((i) => ({
           item_id: i.item_id,
           size: i.size,
@@ -176,7 +180,14 @@ export default function CustomerMenu() {
       };
 
       const data = await createPublicOrderApi(body);
-      if (!data.success) throw new Error();
+      if (!data.success) {
+    if (data.message?.includes("QR session expired")) {
+      toast.error("QR expired! Please rescan the QR code.");
+      window.location.reload(); // force user to rescan
+      return;
+    }
+    throw new Error();
+  }
 
       confetti({ particleCount: 100, spread: 60 });
 

@@ -13,3 +13,15 @@ export const getPublicMenuApi = async (
 
   return res.json();
 };
+
+export const startQrSessionApi = async (source: string, id: string, hotelId: string) => {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/qr/session/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source, id, hotelId })
+  });
+
+  if (!res.ok) throw new Error("Failed to start QR session");
+
+  return res.json();
+};
