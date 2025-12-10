@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
 
 import {
   getRoomTypesApi,
@@ -42,6 +43,8 @@ export default function CreateBooking() {
   const [guestIds, setGuestIds] = useState<
     { type: string; idNumber: string; nameOnId: string }[]
   >([]);
+  const [loading, setLoading] = useState(false);
+
 
 
   // Billing Summary
@@ -109,9 +112,11 @@ export default function CreateBooking() {
 
     const extrasTotal = extras.reduce((sum, e) => sum + Number(e.price || 0), 0);
 
-    const discount = Number(formData.discount || 0);
+    const discountPercent = Number(formData.discount || 0);
+    const baseAmount = roomPrice + extrasTotal;
+    const discountAmount = +(baseAmount * (discountPercent / 100)).toFixed(2);
 
-    const taxable = roomPrice + extrasTotal - discount;
+    const taxable = baseAmount - discountAmount;
 
     const cgst = +(taxable * 0.025).toFixed(2);
     const sgst = +(taxable * 0.025).toFixed(2);
@@ -180,6 +185,7 @@ export default function CreateBooking() {
   ---------------------------------------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     const payload = {
       room_id: formData.roomNumber,
@@ -191,7 +197,7 @@ export default function CreateBooking() {
       adults: Number(formData.adults),
       children: Number(formData.children),
       advancePaid: Number(formData.advancePaid || 0),
-      discount: Number(formData.discount || 0),    // ⭐ NEW
+      discount: Number(formData.discount || 0),
       balanceDue: summary.balanceDue,
       addedServices: extras.map((e) => ({
         name: e.name,
@@ -206,8 +212,11 @@ export default function CreateBooking() {
       navigate("/rooms/bookings");
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Booking failed");
+    } finally {
+      setLoading(false);  // always stop spinner
     }
   };
+
 
   /* ----------------------------------------------
       UI STARTS 
@@ -515,10 +524,20 @@ export default function CreateBooking() {
             <Button variant="outline" onClick={() => navigate("/rooms/bookings")}>
               Cancel
             </Button>
-            <Button type="submit">
-              <Save className="mr-2 h-4 w-4" />
-              Create Booking
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Create Booking
+                </>
+              )}
             </Button>
+
           </div>
         </form>
       </div>

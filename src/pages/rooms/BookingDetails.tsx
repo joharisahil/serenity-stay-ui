@@ -5,7 +5,7 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, Edit, CheckCircle } from "lucide-react";
+import { ArrowLeft, Download, Edit, CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -143,11 +143,14 @@ export default function BookingDetails() {
   }, [roomId]);
 
   if (loading)
-    return (
-      <Layout>
-        <p className="p-6">Loading...</p>
-      </Layout>
-    );
+  return (
+    <Layout>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    </Layout>
+  );
+
 
   if (!booking)
     return (
