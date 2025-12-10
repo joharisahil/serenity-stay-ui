@@ -143,13 +143,13 @@ export default function BookingDetails() {
   }, [roomId]);
 
   if (loading)
-  return (
-    <Layout>
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    </Layout>
-  );
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
 
 
   if (!booking)
@@ -194,9 +194,31 @@ export default function BookingDetails() {
   const foodGST = roomOrderSummary?.gst || 0;
   const foodTotal = roomOrderSummary?.total || 0;
 
-  const discount = booking.discount || 0;
-  const total = roomBase + GST + foodTotal - discount;
+  // ---------------- Billing Logic -----------------
+  // ---------------- Correct Billing Logic -----------------
+
+  // discount only applies on ROOM charges
+  const discountPercent = Number(booking.discount || 0);
+
+  // ROOM GROSS (Room + GST)
+  const roomGross = roomBase + GST;
+
+  // room-only discount
+  const roomDiscountAmount = +((roomGross * discountPercent) / 100).toFixed(2);
+
+  // net room total after discount
+  const roomNet = roomGross - roomDiscountAmount;
+
+  // food total stays untouched
+  const foodNet = foodTotal;
+
+  // final combined total
+  const total = roomNet + foodNet;
+
+  // balance logic stays same
   const balance = total - (booking.advancePaid || 0);
+
+
 
   const buildHeaderHtml = (
     invoiceTitle: string,
@@ -230,9 +252,20 @@ export default function BookingDetails() {
   `;
   };
 
+
+  // ⭐ FIX — ROOM ONLY INVOICE CALCULATION
   const buildRoomHtml = () => {
     const invoiceNumber = `ROOM-${booking._id?.toString().slice(-6)}`;
     const createdAt = new Date().toLocaleString();
+
+    const roomGross = roomBase + GST;
+    const roomDiscountAmount = +(
+      (roomGross * discountPercent) /
+      100
+    ).toFixed(2);
+
+    const roomNet = roomGross - roomDiscountAmount;
+    const roomBalance = roomNet - (booking.advancePaid || 0);
 
     return `
   <html>
@@ -245,9 +278,18 @@ export default function BookingDetails() {
     </head>
 
     <body>
-      ${buildHeaderHtml("Room Invoice", invoiceNumber, createdAt, booking.guestName, booking.guestPhone, booking.room_id.number)}
+      ${buildHeaderHtml(
+      "Room Invoice",
+      invoiceNumber,
+      createdAt,
+      booking.guestName,
+      booking.guestPhone,
+      booking.room_id.number
+    )}
 
-      <div class="row"><div><strong>Plan</strong></div><div>${readablePlan(booking.planCode)}</div></div>
+      <div class="row"><div><strong>Plan</strong></div><div>${readablePlan(
+      booking.planCode
+    )}</div></div>
 
       <div class="row">
         <div>Room Rate × Nights</div>
@@ -255,22 +297,35 @@ export default function BookingDetails() {
       </div>
 
       ${(booking.addedServices || [])
-        .map(s => `<div class="row"><div>${s.name}</div><div>₹${fmt(s.price)}</div></div>`)
+        .map(
+          (s) =>
+            `<div class="row"><div>${s.name}</div><div>₹${fmt(
+              s.price
+            )}</div></div>`
+        )
         .join("")}
 
       <hr/>
 
-      <div class="row"><strong>Room Subtotal</strong><strong>₹${fmt(roomBase)}</strong></div>
+      <div class="row"><strong>Room Subtotal</strong><strong>₹${fmt(
+          roomBase
+        )}</strong></div>
       <div class="row"><div>CGST (2.5%)</div><div>₹${fmt(CGST)}</div></div>
       <div class="row"><div>SGST (2.5%)</div><div>₹${fmt(SGST)}</div></div>
 
-      <hr/>
+      <div class="row"><strong>Discount (${discountPercent}%)</strong><strong>₹${fmt(
+          roomDiscountAmount
+        )}</strong></div>
 
-      <div class="row"><strong>Room Total</strong><strong>₹${fmt(roomBase + GST)}</strong></div>
+      <div class="row"><strong>Room Total</strong><strong>₹${fmt(
+          roomNet
+        )}</strong></div>
 
       <div style="margin-top:40px;">
         <div>Advance Paid: ₹${fmt(booking.advancePaid)}</div>
-        <div style="margin-top:8px; font-weight:700;">Balance: ₹${fmt((roomBase + GST) - (booking.advancePaid || 0))}</div>
+        <div style="margin-top:8px; font-weight:700;">Balance: ₹${fmt(
+          roomBalance
+        )}</div>
       </div>
 
       <div style="margin-top:60px;">
@@ -411,8 +466,13 @@ export default function BookingDetails() {
       <div class="row"><div>Food GST (included)</div><div>₹${fmt(foodGST)}</div></div>
 
       <hr/>
-      <div class="row"><strong>Discount</strong><strong>₹${fmt(discount)}</strong></div>
-      <div class="row"><strong>Grand Total</strong><strong>₹${fmt(total)}</strong></div>
+      <div class="row">
+  <div><strong>Room Discount (${discountPercent}%)</strong></div>
+  <div><strong>₹${fmt(roomDiscountAmount)}</strong></div>
+</div>
+
+<div class="row"><strong>Grand Total</strong><strong>₹${fmt(total)}</strong></div>
+
       <div class="row"><div>Advance Paid</div><div>₹${fmt(booking.advancePaid)}</div></div>
       <div class="row" style="font-weight:700;"><div>Balance Due</div><div>₹${fmt(balance)}</div></div>
 
@@ -608,24 +668,24 @@ export default function BookingDetails() {
               </div>
 
               <div className="flex justify-between">
-  <span>CGST (2.5%)</span>
-  <span>₹{fmt(CGST)}</span>
-</div>
+                <span>CGST (2.5%)</span>
+                <span>₹{fmt(CGST)}</span>
+              </div>
 
-<div className="flex justify-between">
-  <span>SGST (2.5%)</span>
-  <span>₹{fmt(SGST)}</span>
-</div>
+              <div className="flex justify-between">
+                <span>SGST (2.5%)</span>
+                <span>₹{fmt(SGST)}</span>
+              </div>
 
-<div className="flex justify-between font-medium">
-  <span>Total GST (5%)</span>
-  <span>₹{fmt(GST)}</span>
-</div>
+              <div className="flex justify-between font-medium">
+                <span>Total GST (5%)</span>
+                <span>₹{fmt(GST)}</span>
+              </div>
 
 
               <div className="flex justify-between">
                 <span>Discount</span>
-                <span>-₹{fmt(discount)}</span>
+                <span>-₹{fmt(discountPercent)}%</span>
               </div>
 
               <div className="flex justify-between font-bold text-lg border-t pt-2">
