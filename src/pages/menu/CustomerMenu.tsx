@@ -86,21 +86,25 @@ export default function CustomerMenu() {
   }, []);
 
 
-  // ---------------------------------------------
-  // Load Menu
-  // ---------------------------------------------
-
+// ---------------------------------------------
+// Load Menu + Session Handling (PATCHED)
+// ---------------------------------------------
 useEffect(() => {
-  const load = async () => {
+  const init = async () => {
     try {
-      // 1️⃣ Start session first
-      const session = await startQrSessionApi(source!, id!, hotelId!);
-      const token = session.sessionToken;
+      const localToken = localStorage.getItem("qrSessionToken");
 
-      localStorage.setItem("qrSessionToken", token);
-      setSessionToken(token);
+      // ❌ If QR session was cleared after delivery → block reorder
+      if (!localToken) {
+        toast.error("QR expired! Please scan again.");
+        setLoading(false);
+        return;
+      }
 
-      // 2️⃣ Now load menu
+      // Use existing token (do NOT create new session)
+      setSessionToken(localToken);
+
+      // Load menu normally
       const data = await getPublicMenuApi(source!, id!, hotelId!);
 
       if (!data.success) {
@@ -122,12 +126,51 @@ useEffect(() => {
     }
   };
 
-  // Only run on first load (not tracking orders)
-  if (!localStorage.getItem("activeOrderId")) {
-    load();
+  const startFirstSession = async () => {
+    try {
+      // 1️⃣ Create first session ONLY when qrSessionToken does NOT exist
+      const session = await startQrSessionApi(source!, id!, hotelId!);
+
+      const token = session.sessionToken;
+      localStorage.setItem("qrSessionToken", token);
+      setSessionToken(token);
+
+      // 2️⃣ Load menu
+      const data = await getPublicMenuApi(source!, id!, hotelId!);
+
+      if (!data.success) {
+        toast.error("Invalid QR. Please rescan.");
+        return;
+      }
+
+      setCategories(data.menu.categories);
+      setItems(data.menu.items);
+
+      if (data.meta) {
+        setPlaceName(data.meta.name || data.meta.number || id);
+      }
+
+    } catch (err) {
+      toast.error("Failed to load menu");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // If already placed order → show tracking screen
+  if (localStorage.getItem("activeOrderId")) return;
+
+  // ⭐ Decide whether session should be created or reused
+  const localToken = localStorage.getItem("qrSessionToken");
+
+  if (!localToken) {
+    // 🟢 First scan → start new session
+    startFirstSession();
+  } else {
+    // 🔵 Page refresh → DO NOT create new session
+    init();
   }
 }, []);
-
 
 
   // ---------------------------------------------

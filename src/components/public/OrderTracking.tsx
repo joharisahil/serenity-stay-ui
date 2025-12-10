@@ -55,6 +55,7 @@ export default function OrderTracking({ orderId, hotelId, placeName, source }: P
           localStorage.removeItem("orderReturnUrl");
 
           localStorage.removeItem("qrSessionToken");
+           setStatus("DELIVERED");
         }
       }
     };
