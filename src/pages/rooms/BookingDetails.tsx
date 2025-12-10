@@ -183,7 +183,9 @@ export default function BookingDetails() {
     (booking.addedServices || []).reduce((a: number, b: any) => a + (b.price || 0), 0) || 0;
 
   const roomBase = roomStayTotal + serviceExtraTotal;
-  const GST = +(roomBase * 0.18).toFixed(2);
+  const CGST = +(roomBase * 0.025).toFixed(2);
+  const SGST = +(roomBase * 0.025).toFixed(2);
+  const GST = CGST + SGST; // total 5%
 
   const foodSubtotal = roomOrderSummary?.subtotal || 0;
   const foodGST = roomOrderSummary?.gst || 0;
@@ -256,7 +258,8 @@ export default function BookingDetails() {
       <hr/>
 
       <div class="row"><strong>Room Subtotal</strong><strong>₹${fmt(roomBase)}</strong></div>
-      <div class="row"><div>Room GST (18%)</div><div>₹${fmt(GST)}</div></div>
+      <div class="row"><div>CGST (2.5%)</div><div>₹${fmt(CGST)}</div></div>
+      <div class="row"><div>SGST (2.5%)</div><div>₹${fmt(SGST)}</div></div>
 
       <hr/>
 
@@ -370,7 +373,8 @@ export default function BookingDetails() {
         .join("")}
 
       <div class="row"><div>Room Subtotal</div><div>₹${fmt(roomBase)}</div></div>
-      <div class="row"><div>Room GST (18%)</div><div>₹${fmt(GST)}</div></div>
+      <div class="row"><div>CGST (2.5%)</div><div>₹${fmt(CGST)}</div></div>
+      <div class="row"><div>SGST (2.5%)</div><div>₹${fmt(SGST)}</div></div>
 
       <h3 style="margin-top:12px;">Food</h3>
 
@@ -497,6 +501,29 @@ export default function BookingDetails() {
             <p><strong>Plan:</strong> {readablePlan(booking.planCode)}</p>
           </CardContent>
         </Card>
+        {/* Guest ID Proofs */}
+        {booking.guestIds && booking.guestIds.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Guest ID Proofs</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+
+              {booking.guestIds.map((id: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="border p-3 rounded-md bg-secondary/30 space-y-1"
+                >
+                  <p><strong>ID Type:</strong> {id.type}</p>
+                  <p><strong>ID Number:</strong> {id.idNumber}</p>
+                  <p><strong>Name on ID:</strong> {id.nameOnId}</p>
+                </div>
+              ))}
+
+            </CardContent>
+          </Card>
+        )}
+
 
         {/* Stay Info */}
         <Card>
@@ -578,9 +605,20 @@ export default function BookingDetails() {
               </div>
 
               <div className="flex justify-between">
-                <span>Room GST (18%)</span>
-                <span>₹{fmt(GST)}</span>
-              </div>
+  <span>CGST (2.5%)</span>
+  <span>₹{fmt(CGST)}</span>
+</div>
+
+<div className="flex justify-between">
+  <span>SGST (2.5%)</span>
+  <span>₹{fmt(SGST)}</span>
+</div>
+
+<div className="flex justify-between font-medium">
+  <span>Total GST (5%)</span>
+  <span>₹{fmt(GST)}</span>
+</div>
+
 
               <div className="flex justify-between">
                 <span>Discount</span>

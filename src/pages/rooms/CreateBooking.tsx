@@ -10,11 +10,11 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { 
-  getRoomTypesApi, 
-  getRoomsByTypeApi, 
-  getRoomPlansApi, 
-  createBookingApi 
+import {
+  getRoomTypesApi,
+  getRoomsByTypeApi,
+  getRoomPlansApi,
+  createBookingApi
 } from "@/api/bookingApi";
 
 export default function CreateBooking() {
@@ -39,6 +39,10 @@ export default function CreateBooking() {
   const [rooms, setRooms] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [extras, setExtras] = useState<{ name: string; price: string }[]>([]);
+  const [guestIds, setGuestIds] = useState<
+    { type: string; idNumber: string; nameOnId: string }[]
+  >([]);
+
 
   // Billing Summary
   const [summary, setSummary] = useState({
@@ -46,6 +50,9 @@ export default function CreateBooking() {
     roomPrice: 0,
     extrasTotal: 0,
     grandTotal: 0,
+    taxable: 0,
+    cgst: 0,
+    sgst: 0,
     balanceDue: 0,
   });
 
@@ -87,33 +94,53 @@ export default function CreateBooking() {
   /* ----------------------------------------------
       BILLING SUMMARY AUTO CALCULATION
   ---------------------------------------------- */
-useEffect(() => {
-  if (!formData.checkIn || !formData.checkOut || !formData.planCode) return;
+  useEffect(() => {
+    if (!formData.checkIn || !formData.checkOut || !formData.planCode) return;
 
-  const checkIn = new Date(formData.checkIn);
-  const checkOut = new Date(formData.checkOut);
-  const nights = Math.max(1, (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+    const checkIn = new Date(formData.checkIn);
+    const checkOut = new Date(formData.checkOut);
+    const nights = Math.max(
+      1,
+      (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
-  const selectedPlan = plans.find((p) => p.key === formData.planCode);
-  const roomPrice = selectedPlan ? selectedPlan.price * nights : 0;
+    const selectedPlan = plans.find((p) => p.key === formData.planCode);
+    const roomPrice = selectedPlan ? selectedPlan.price * nights : 0;
 
-  const extrasTotal = extras.reduce((sum, e) => sum + Number(e.price || 0), 0);
+    const extrasTotal = extras.reduce((sum, e) => sum + Number(e.price || 0), 0);
 
-  const discount = Number(formData.discount || 0);
-  const grandTotal = roomPrice + extrasTotal - discount;
+    const discount = Number(formData.discount || 0);
 
-  const advance = Number(formData.advancePaid || 0);
-  const balanceDue = grandTotal - advance;
+    const taxable = roomPrice + extrasTotal - discount;
 
-  setSummary({
-    nights,
-    roomPrice,
-    extrasTotal,
-    grandTotal,
-    balanceDue,
-  });
+    const cgst = +(taxable * 0.025).toFixed(2);
+    const sgst = +(taxable * 0.025).toFixed(2);
 
-}, [formData.checkIn, formData.checkOut, formData.planCode, formData.advancePaid, formData.discount, extras]);
+    const grandTotal = taxable + cgst + sgst;
+
+    const advancePaid = Number(formData.advancePaid || 0);
+
+    const balanceDue = grandTotal - advancePaid;
+
+    setSummary({
+      nights,
+      roomPrice,
+      extrasTotal,
+      grandTotal,
+      taxable,
+      cgst,
+      sgst,
+      balanceDue,
+    });
+  }, [
+    formData.checkIn,
+    formData.checkOut,
+    formData.planCode,
+    formData.advancePaid,
+    formData.discount,
+    extras,
+  ]);
+
 
 
   /* ----------------------------------------------
@@ -133,6 +160,21 @@ useEffect(() => {
     setExtras(extras.filter((_, i) => i !== index));
   };
 
+  const addGuestId = () => {
+    setGuestIds([...guestIds, { type: "", idNumber: "", nameOnId: "" }]);
+  };
+
+  const updateGuestId = (index: number, field: string, value: string) => {
+    const updated = [...guestIds];
+    (updated[index] as any)[field] = value;
+    setGuestIds(updated);
+  };
+
+  const removeGuestId = (index: number) => {
+    setGuestIds(guestIds.filter((_, i) => i !== index));
+  };
+
+
   /* ----------------------------------------------
       SUBMIT BOOKING 
   ---------------------------------------------- */
@@ -150,11 +192,12 @@ useEffect(() => {
       children: Number(formData.children),
       advancePaid: Number(formData.advancePaid || 0),
       discount: Number(formData.discount || 0),    // ⭐ NEW
-      balanceDue: summary.balanceDue, 
+      balanceDue: summary.balanceDue,
       addedServices: extras.map((e) => ({
         name: e.name,
         price: Number(e.price),
       })),
+      guestIds,
     };
 
     try {
@@ -197,8 +240,8 @@ useEffect(() => {
 
               <CardContent className="space-y-4">
                 <Label>Guest Name *</Label>
-                <Input 
-                  required 
+                <Input
+                  required
                   value={formData.guestName}
                   onChange={(e) => setFormData({ ...formData, guestName: e.target.value })}
                 />
@@ -227,6 +270,73 @@ useEffect(() => {
                 />
               </CardContent>
             </Card>
+            {/* --------------------------------------- */}
+            {/* GUEST ID PROOFS */}
+            {/* --------------------------------------- */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Guest ID Proofs</CardTitle>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {guestIds.map((id, idx) => (
+                  <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+
+                    {/* ID TYPE */}
+                    <div>
+                      <Label>ID Type *</Label>
+                      <Select
+                        value={id.type}
+                        onValueChange={(value) => updateGuestId(idx, "type", value)}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Select ID Type" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Aadhaar Card">Aadhaar Card</SelectItem>
+                          <SelectItem value="Driving License">Driving License</SelectItem>
+                          <SelectItem value="Passport">Passport</SelectItem>
+                          <SelectItem value="Voter ID">Voter ID</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* ID NUMBER */}
+                    <div>
+                      <Label>ID Number *</Label>
+                      <Input
+                        value={id.idNumber}
+                        onChange={(e) => updateGuestId(idx, "idNumber", e.target.value)}
+                      />
+                    </div>
+
+                    {/* NAME ON ID */}
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <Label>Name on ID *</Label>
+                        <Input
+                          value={id.nameOnId}
+                          onChange={(e) => updateGuestId(idx, "nameOnId", e.target.value)}
+                        />
+                      </div>
+
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="h-10"
+                        onClick={() => removeGuestId(idx)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                  </div>
+                ))}
+
+                <Button type="button" onClick={addGuestId}>
+                  <Plus className="h-4 w-4 mr-2" /> Add ID Proof
+                </Button>
+              </CardContent>
+            </Card>
+
 
             {/* --------------------------------------- */}
             {/* ROOM DETAILS */}
@@ -342,34 +452,48 @@ useEffect(() => {
             <Card className="lg:col-span-2">
               <CardHeader><CardTitle>Billing Summary</CardTitle></CardHeader>
               <CardContent className="space-y-4 text-lg">
-  <p>Nights: <strong>{summary.nights}</strong></p>
-  <p>Room Charges: ₹{summary.roomPrice}</p>
-  <p>Extras: ₹{summary.extrasTotal}</p>
+                <p>Nights: <strong>{summary.nights}</strong></p>
 
-  {/* DISCOUNT */}
-  <Label className="mt-4">Discount</Label>
-  <Input
-    type="number"
-    value={formData.discount}
-    onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
-  />
+                <p>Room Charges: ₹{summary.roomPrice}</p>
+                <p>Extras: ₹{summary.extrasTotal}</p>
 
-  <p className="text-xl font-bold mt-4">
-    Grand Total: ₹{summary.grandTotal}
-  </p>
+                {/* DISCOUNT */}
+                <Label className="mt-4">Discount</Label>
+                <Input
+                  type="number"
+                  value={formData.discount}
+                  onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                />
 
-  {/* ADVANCE */}
-  <Label className="mt-4">Advance Paid</Label>
-  <Input
-    type="number"
-    value={formData.advancePaid}
-    onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
-  />
+                <p className="font-semibold pt-2">Taxable Amount: ₹{summary.taxable}</p>
 
-  <p className="text-2xl font-bold text-primary mt-4">
-    Balance Due: ₹{summary.balanceDue}
-  </p>
-</CardContent>
+                <div className="flex justify-between">
+                  <span>CGST (2.5%)</span>
+                  <span>₹{summary.cgst}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span>SGST (2.5%)</span>
+                  <span>₹{summary.sgst}</span>
+                </div>
+
+                <p className="text-xl font-bold mt-4">
+                  Grand Total: ₹{summary.grandTotal}
+                </p>
+
+                {/* ADVANCE */}
+                <Label className="mt-4">Advance Paid</Label>
+                <Input
+                  type="number"
+                  value={formData.advancePaid}
+                  onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
+                />
+
+                <p className="text-2xl font-bold text-primary mt-4">
+                  Balance Due: ₹{summary.balanceDue}
+                </p>
+              </CardContent>
+
 
             </Card>
 
