@@ -38,7 +38,7 @@ export default function KitchenOrders() {
 // COMPACT THERMAL-PRINTER FRIENDLY KOT PRINT
 // ---------------------------------------------------------------
 const printKOT = (order: any) => {
-  const printWindow = window.open("", "_blank", "width=280,height=400");
+  const printWindow = window.open("", "_blank", "width=280,height=500");
 
   if (!printWindow) {
     alert("Please allow pop-ups for printing KOT.");
@@ -50,22 +50,33 @@ const printKOT = (order: any) => {
     <head>
       <title>KOT</title>
       <style>
+        @page {
+          margin: 0;
+          size: auto;
+        }
+
         body {
           font-family: monospace;
           font-size: 11px;
-          padding: 4px;
           margin: 0;
+          padding: 0;
+          width: 48mm;
+          display: inline-block;
         }
+
         h2 {
           text-align: center;
           margin: 4px 0;
           font-size: 14px;
         }
+
         hr { margin: 4px 0; }
+
         .row {
           display: flex;
           justify-content: space-between;
         }
+
         .item { margin: 2px 0; }
       </style>
     </head>
@@ -79,16 +90,15 @@ const printKOT = (order: any) => {
       <div class="row"><b>Time:</b> <span>${new Date(order.createdAt).toLocaleTimeString()}</span></div>
 
       <hr />
-      <b>Items</b>
-      <br/>
+      <b>Items</b><br/>
 
       ${order.items
         .map(
           (item: any) => `
-          <div class="item row">
-            <span>${item.qty}x ${item.name}${item.size ? ` (${item.size})` : ""}</span>
-          </div>
-        `
+            <div class="item row">
+              <span>${item.qty}x ${item.name}${item.size ? ` (${item.size})` : ""}</span>
+            </div>
+          `
         )
         .join("")}
 
@@ -96,13 +106,10 @@ const printKOT = (order: any) => {
       <div class="row"><b>Total:</b> <span>₹${order.total}</span></div>
 
       <script>
-        const timer = setInterval(() => {
-          if (document.readyState === "complete") {
-            clearInterval(timer);
-            window.print();
-            window.close();
-          }
-        }, 150);
+        setTimeout(() => {
+          window.print();
+          window.close();
+        }, 200);
       </script>
 
     </body>
