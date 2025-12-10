@@ -53,6 +53,8 @@ export default function OrderTracking({ orderId, hotelId, placeName, source }: P
           localStorage.removeItem("activeOrderId");
           localStorage.removeItem("activeOrderHotelId");
           localStorage.removeItem("orderReturnUrl");
+
+          localStorage.removeItem("qrSessionToken");
         }
       }
     };

@@ -65,7 +65,10 @@ export default function CustomerMenu() {
   const [step, setStep] = useState("menu");
   const [placeName, setPlaceName] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
-  const [sessionToken, setSessionToken] = useState("");
+  const [sessionToken, setSessionToken] = useState(
+  localStorage.getItem("qrSessionToken") || ""
+);
+
 
   const [filterType, setFilterType] = useState<"all" | "veg" | "nonveg">("all");
 
@@ -88,30 +91,40 @@ export default function CustomerMenu() {
   // ---------------------------------------------
   // Load Menu
   // ---------------------------------------------
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await getPublicMenuApi(source!, id!, hotelId!);
-        if (!data.success) throw new Error();
+useEffect(() => {
+  const load = async () => {
+    try {
+      const data = await getPublicMenuApi(source!, id!, hotelId!);
+      if (!data.success) throw new Error();
 
-        setCategories(data.menu.categories);
-        setItems(data.menu.items);
-        if (data.meta) {
-          setPlaceName(data.meta.name || data.meta.number || id);
-        }
-       // ⭐ Request QR session token
-      const session = await startQrSessionApi(source!, id!, hotelId!);
-      setSessionToken(session.sessionToken);
+      setCategories(data.menu.categories);
+      setItems(data.menu.items);
 
-      } catch (err) {
-        toast.error("Unable to load menu");
-      } finally {
-        setLoading(false);
+      if (data.meta) {
+        setPlaceName(data.meta.name || data.meta.number || id);
       }
-    };
 
-    load();
-  }, []);
+      // ⭐ Only request new sessionToken if none exists
+      let token = localStorage.getItem("qrSessionToken");
+
+      if (!token) {
+        const session = await startQrSessionApi(source!, id!, hotelId!);
+        token = session.sessionToken;
+        localStorage.setItem("qrSessionToken", token);
+      }
+
+      setSessionToken(token);
+
+    } catch (err) {
+      toast.error("Unable to load menu");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  load();
+}, []);
+
 
   // ---------------------------------------------
   // Add/Remove Items
