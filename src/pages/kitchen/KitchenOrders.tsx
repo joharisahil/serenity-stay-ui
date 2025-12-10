@@ -37,40 +37,88 @@ export default function KitchenOrders() {
  // ---------------------------------------------------------------
 // COMPACT THERMAL-PRINTER FRIENDLY KOT PRINT
 // ---------------------------------------------------------------
-const printKOT = async (order: any) => {
-  const kotLines = [
-    "        KITCHEN ORDER TICKET\n",
-    "-----------------------------\n",
-    `Order: ${order._id.slice(-4)}\n`,
-    `Table: ${order.table_id?.name || "N/A"}\n`,
-    `Time: ${new Date(order.createdAt).toLocaleTimeString()}\n`,
-    "-----------------------------\n",
-    "Items:\n",
-    ...order.items.map((item: any) =>
-      `${item.qty}x ${item.name}${item.size ? ` (${item.size})` : ""}\n`
-    ),
-    "-----------------------------\n",
-    `Total: ₹${order.total}\n`,
-    "-----------------------------\n\n"
-  ];
+const printKOT = (order: any) => {
+  const printWindow = window.open("", "_blank", "width=280,height=500");
 
-  try {
-    // Connect to QZ Tray
-    await qz.websocket.connect();
-
-    // Get default printer
-    const printer = await qz.printers.find();
-
-    // Send RAW text to thermal printer
-    await qz.print(
-      { printer },
-      [{ type: "raw", data: kotLines.join("") }]
-    );
-
-  } catch (error) {
-    console.error("Silent Print Failed:", error);
-    alert("QZ Tray is not running!");
+  if (!printWindow) {
+    alert("Please allow pop-ups for printing KOT.");
+    return;
   }
+
+  const kotHtml = `
+    <html>
+    <head>
+      <title>KOT</title>
+      <style>
+        @page {
+          margin: 0;
+          size: auto;
+        }
+
+        body {
+          font-family: monospace;
+          font-size: 11px;
+          margin: 0;
+          padding: 0;
+          width: 48mm;
+          display: inline-block;
+        }
+
+        h2 {
+          text-align: center;
+          margin: 4px 0;
+          font-size: 14px;
+        }
+
+        hr { margin: 4px 0; }
+
+        .row {
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .item { margin: 2px 0; }
+      </style>
+    </head>
+    <body>
+
+      <h2>KOT</h2>
+      <hr />
+
+      <div class="row"><b>Order:</b> <span>${order._id.slice(-4)}</span></div>
+      <div class="row"><b>Table:</b> <span>${order.table_id?.name || "N/A"}</span></div>
+      <div class="row"><b>Time:</b> <span>${new Date(order.createdAt).toLocaleTimeString()}</span></div>
+
+      <hr />
+      <b>Items</b><br/>
+
+      ${order.items
+        .map(
+          (item: any) => `
+            <div class="item row">
+              <span>${item.qty}x ${item.name}${item.size ? ` (${item.size})` : ""}</span>
+            </div>
+          `
+        )
+        .join("")}
+
+      <hr />
+      <div class="row"><b>Total:</b> <span>₹${order.total}</span></div>
+
+      <script>
+        setTimeout(() => {
+          window.print();
+          window.close();
+        }, 200);
+      </script>
+
+    </body>
+    </html>
+  `;
+
+  printWindow.document.open();
+  printWindow.document.write(kotHtml);
+  printWindow.document.close();
 };
 
 
