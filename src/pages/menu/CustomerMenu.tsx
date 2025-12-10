@@ -65,9 +65,7 @@ export default function CustomerMenu() {
   const [step, setStep] = useState("menu");
   const [placeName, setPlaceName] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
-  const [sessionToken, setSessionToken] = useState(
-  localStorage.getItem("qrSessionToken") || ""
-);
+  const [sessionToken, setSessionToken] = useState("");
 
 
   const [filterType, setFilterType] = useState<"all" | "veg" | "nonveg">("all");
@@ -91,6 +89,7 @@ export default function CustomerMenu() {
   // ---------------------------------------------
   // Load Menu
   // ---------------------------------------------
+
 useEffect(() => {
   const load = async () => {
     try {
@@ -105,15 +104,17 @@ useEffect(() => {
       }
 
       // ⭐ Only request new sessionToken if none exists
-      let token = localStorage.getItem("qrSessionToken");
 
-      if (!token) {
-        const session = await startQrSessionApi(source!, id!, hotelId!);
-        token = session.sessionToken;
-        localStorage.setItem("qrSessionToken", token);
-      }
+      if (!localStorage.getItem("activeOrderId")) {
+  const session = await startQrSessionApi(source, id, hotelId);
+  const token = session.sessionToken;
+  localStorage.setItem("qrSessionToken", token);
+  setSessionToken(token);
+  const data = await getPublicMenuApi(source!, id!, hotelId!);
+}
 
-      setSessionToken(token);
+
+    
 
     } catch (err) {
       toast.error("Unable to load menu");
