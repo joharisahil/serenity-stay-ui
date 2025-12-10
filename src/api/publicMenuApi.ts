@@ -15,7 +15,7 @@ export const getPublicMenuApi = async (
 };
 
 export const startQrSessionApi = async (source: string, id: string, hotelId: string) => {
-  const res = await fetch(`${import.meta.env.VITE_API_URL}/qr/session/start`, {
+  const res = await fetch(`${import.meta.env.VITE_API_URL}/menu/qr/session/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ source, id, hotelId })
