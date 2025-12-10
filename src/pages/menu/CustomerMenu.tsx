@@ -93,8 +93,20 @@ export default function CustomerMenu() {
 useEffect(() => {
   const load = async () => {
     try {
+      // 1️⃣ Start session first
+      const session = await startQrSessionApi(source!, id!, hotelId!);
+      const token = session.sessionToken;
+
+      localStorage.setItem("qrSessionToken", token);
+      setSessionToken(token);
+
+      // 2️⃣ Now load menu
       const data = await getPublicMenuApi(source!, id!, hotelId!);
-      if (!data.success) throw new Error();
+
+      if (!data.success) {
+        toast.error("Invalid QR. Please rescan.");
+        return;
+      }
 
       setCategories(data.menu.categories);
       setItems(data.menu.items);
@@ -103,28 +115,19 @@ useEffect(() => {
         setPlaceName(data.meta.name || data.meta.number || id);
       }
 
-      // ⭐ Only request new sessionToken if none exists
-
-      if (!localStorage.getItem("activeOrderId")) {
-  const session = await startQrSessionApi(source, id, hotelId);
-  const token = session.sessionToken;
-  localStorage.setItem("qrSessionToken", token);
-  setSessionToken(token);
-  const data = await getPublicMenuApi(source!, id!, hotelId!);
-}
-
-
-    
-
     } catch (err) {
-      toast.error("Unable to load menu");
+      toast.error("Failed to load menu");
     } finally {
       setLoading(false);
     }
   };
 
-  load();
+  // Only run on first load (not tracking orders)
+  if (!localStorage.getItem("activeOrderId")) {
+    load();
+  }
 }, []);
+
 
 
   // ---------------------------------------------
