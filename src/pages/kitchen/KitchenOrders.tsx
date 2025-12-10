@@ -34,55 +34,86 @@ export default function KitchenOrders() {
   // ---------------------------------------------------------------
   // PRINT KOT FUNCTION
   // ---------------------------------------------------------------
-  const printKOT = (order: any) => {
-    const printWindow = window.open("", "_blank", "width=400,height=600");
+ // ---------------------------------------------------------------
+// COMPACT THERMAL-PRINTER FRIENDLY KOT PRINT
+// ---------------------------------------------------------------
+const printKOT = (order: any) => {
+  const printWindow = window.open("", "_blank", "width=280,height=400");
 
-    if (!printWindow) {
-      // console.error("Popup blocked! Allow popups for this site.");
-      alert("Please allow pop-ups for printing KOT.");
-      return;
-    }
+  if (!printWindow) {
+    alert("Please allow pop-ups for printing KOT.");
+    return;
+  }
 
-    printWindow.document.open();
-    printWindow.document.write(`
-      <html>
-      <head>
-        <title>KOT</title>
-      </head>
-      <body style="font-family: monospace; padding: 16px;">
-        <h2 style="text-align:center;">KITCHEN ORDER TICKET</h2>
-        <hr />
-        <p><b>Order ID:</b> ${order._id}</p>
-        <p><b>Table:</b> ${order.table_id?.name || "N/A"}</p>
-        <p><b>Time:</b> ${new Date(order.createdAt).toLocaleString()}</p>
-        <hr />
-        <h3>Items</h3>
-        ${order.items
-          .map(
-            (item: any) =>
-              `<p>${item.qty} × ${item.name} (${item.size || ""})</p>`
-          )
-          .join("")}
-        <hr />
-        <p><b>Total:</b> ₹${order.total}</p>
-        <hr />
-        
-        <script>
-          // Wait until window is ready
-          const interval = setInterval(() => {
-            if (document.readyState === "complete") {
-              clearInterval(interval);
-              window.print();
-              window.close();
-            }
-          }, 200);
-        </script>
-      </body>
-      </html>
-    `);
+  const kotHtml = `
+    <html>
+    <head>
+      <title>KOT</title>
+      <style>
+        body {
+          font-family: monospace;
+          font-size: 11px;
+          padding: 4px;
+          margin: 0;
+        }
+        h2 {
+          text-align: center;
+          margin: 4px 0;
+          font-size: 14px;
+        }
+        hr { margin: 4px 0; }
+        .row {
+          display: flex;
+          justify-content: space-between;
+        }
+        .item { margin: 2px 0; }
+      </style>
+    </head>
+    <body>
 
-    printWindow.document.close();
-  };
+      <h2>KOT</h2>
+      <hr />
+
+      <div class="row"><b>Order:</b> <span>${order._id.slice(-4)}</span></div>
+      <div class="row"><b>Table:</b> <span>${order.table_id?.name || "N/A"}</span></div>
+      <div class="row"><b>Time:</b> <span>${new Date(order.createdAt).toLocaleTimeString()}</span></div>
+
+      <hr />
+      <b>Items</b>
+      <br/>
+
+      ${order.items
+        .map(
+          (item: any) => `
+          <div class="item row">
+            <span>${item.qty}x ${item.name}${item.size ? ` (${item.size})` : ""}</span>
+          </div>
+        `
+        )
+        .join("")}
+
+      <hr />
+      <div class="row"><b>Total:</b> <span>₹${order.total}</span></div>
+
+      <script>
+        const timer = setInterval(() => {
+          if (document.readyState === "complete") {
+            clearInterval(timer);
+            window.print();
+            window.close();
+          }
+        }, 150);
+      </script>
+
+    </body>
+    </html>
+  `;
+
+  printWindow.document.open();
+  printWindow.document.write(kotHtml);
+  printWindow.document.close();
+};
+
 
   // ----------------------------------------------------------------
   // SOUND STOP HELPER
