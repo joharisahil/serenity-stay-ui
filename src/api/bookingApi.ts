@@ -81,6 +81,36 @@ export const getBookingByDateRangeApi = async (roomId: string, checkIn: string, 
   return res.data.booking;
 };
 
+/* -----------------------------------------------------------
+   ⭐ UPDATE ROOM BILLING (GST + Discount)
+------------------------------------------------------------ */
+export const updateRoomBillingApi = async (
+  bookingId: string,
+  payload: { discount: number; gstEnabled: boolean }
+) => {
+  const res = await api.patch(
+    `/room-bookings/${bookingId}/room-billing`,
+    payload
+  );
+  return res.data.booking;
+};
+
+/* -----------------------------------------------------------
+   ⭐ UPDATE FOOD BILLING (GST + Discount)
+------------------------------------------------------------ */
+export const updateFoodBillingApi = async (
+  bookingId: string,
+  payload: { foodDiscount: number; foodGSTEnabled: boolean }
+) => {
+  const res = await api.patch(
+    `/room-bookings/${bookingId}/food-billing`,
+    payload
+  );
+  return res.data.booking;
+};
+
+/* ------
+
 
 /* ----------------------------
    GET CURRENT BOOKING FOR A ROOM

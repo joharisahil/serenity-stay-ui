@@ -25,6 +25,8 @@ import {
   getBookingApi,
   getTodayBookingByRoomApi,
   getRoomServiceBillForBookingApi,
+  updateFoodBillingApi,
+  updateRoomBillingApi,
 } from "@/api/bookingApi";
 import { getRoomServiceBillApi } from "@/api/billingRestaurantApi";
 import { getHotelApi } from "@/api/hotelApi";
@@ -92,6 +94,9 @@ export default function BookingDetails() {
   const [showExtendStay, setShowExtendStay] = useState(false);
   const [newCheckOut, setNewCheckOut] = useState("");
 
+  const [roomDiscountInput, setRoomDiscountInput] = useState("");
+  const [foodDiscountInput, setFoodDiscountInput] = useState("");
+
   // ---------------------------------------------
   // Load booking + orders + hotel + available rooms
   // ---------------------------------------------
@@ -127,6 +132,8 @@ export default function BookingDetails() {
 
         if (!mounted) return;
         setBooking(booking);
+        setRoomDiscountInput(String(booking.discount ?? ""));
+        setFoodDiscountInput(String(booking.foodDiscount ?? ""));
 
         /* ----------------------------------------
          * 2️⃣ FETCH HOTEL
@@ -232,58 +239,78 @@ export default function BookingDetails() {
     );
 
   // ---------------- Billing Logic -----------------
-  const nights = Math.max(
-    1,
-    Math.ceil(
-      (new Date(booking.checkOut).getTime() -
-        new Date(booking.checkIn).getTime()) /
+ // ---------------- Billing Logic -----------------
+const nights = Math.max(
+  1,
+  Math.ceil(
+    (new Date(booking.checkOut).getTime() -
+      new Date(booking.checkIn).getTime()) /
       (1000 * 60 * 60 * 24)
-    )
-  );
+  )
+);
 
-  let roomPrice = 0;
-  if (booking.room_id?.plans && booking.planCode) {
-    const [planCode, type] = String(booking.planCode).split("_");
-    const plan = booking.room_id.plans.find((p: any) => p.code === planCode);
-    if (plan) roomPrice = type === "SINGLE" ? plan.singlePrice : plan.doublePrice;
-  } else roomPrice = booking.baseRate || 0;
+// ---------- ROOM PRICE ----------
+let roomPrice = 0;
+if (booking.room_id?.plans && booking.planCode) {
+  const [planCode, type] = String(booking.planCode).split("_");
+  const plan = booking.room_id.plans.find((p: any) => p.code === planCode);
+  if (plan) roomPrice = type === "SINGLE" ? plan.singlePrice : plan.doublePrice;
+} else {
+  roomPrice = booking.baseRate || 0;
+}
 
-  const roomStayTotal = roomPrice * nights;
-  const serviceExtraTotal =
-    (booking.addedServices || []).reduce((a: number, b: any) => a + (b.price || 0), 0) || 0;
+const roomStayTotal = roomPrice * nights;
 
-  const roomBase = roomStayTotal + serviceExtraTotal;
-  const CGST = +(roomBase * 0.025).toFixed(2);
-  const SGST = +(roomBase * 0.025).toFixed(2);
-  const GST = CGST + SGST; // total 5%
+// Extra services
+const serviceExtraTotal =
+  (booking.addedServices || []).reduce((a: number, b: any) => a + (b.price || 0), 0) || 0;
 
-  const foodSubtotal = roomOrderSummary?.subtotal || 0;
-  const foodGST = roomOrderSummary?.gst || 0;
-  const foodTotal = roomOrderSummary?.total || 0;
+// Base room subtotal
+const roomBase = roomStayTotal + serviceExtraTotal;
 
-  // ---------------- Billing Logic -----------------
-  // ---------------- Correct Billing Logic -----------------
+// GST if enabled
+const roomCGST = booking.gstEnabled ? +(roomBase * 0.025).toFixed(2) : 0;
+const roomSGST = booking.gstEnabled ? +(roomBase * 0.025).toFixed(2) : 0;
 
-  // discount only applies on ROOM charges
-  const discountPercent = Number(booking.discount || 0);
+// ROOM GROSS (before discount)
+const roomGross = roomBase + roomCGST + roomSGST;
 
-  // ROOM GROSS (Room + GST)
-  const roomGross = roomBase + GST;
+// Room discount calculation
+const roomDiscountPercent = Number(booking.discount || 0);
+const roomDiscountAmount = +((roomGross * roomDiscountPercent) / 100).toFixed(2);
 
-  // room-only discount
-  const roomDiscountAmount = +((roomGross * discountPercent) / 100).toFixed(2);
+// ROOM NET
+const roomNet = roomGross - roomDiscountAmount;
 
-  // net room total after discount
-  const roomNet = roomGross - roomDiscountAmount;
+// ---------- FOOD BILLING (DISCOUNT ON FOOD SUBTOTAL ONLY) ----------
+const foodSubtotalRaw = roomOrderSummary?.subtotal || 0;
+const foodGSTRaw = roomOrderSummary?.gst || 0;
 
-  // food total stays untouched
-  const foodNet = foodTotal;
+// Discount applies BEFORE GST
+const foodDiscountPercent = Number(booking.foodDiscount || 0);
+const foodDiscountAmount = +((foodSubtotalRaw * foodDiscountPercent) / 100).toFixed(2);
 
-  // final combined total
-  const total = roomNet + foodNet;
+// New discounted subtotal
+const foodSubtotalAfterDiscount = foodSubtotalRaw - foodDiscountAmount;
 
-  // balance logic stays same
-  const balance = total - (booking.advancePaid || 0);
+// Recalculate GST (5%) after discount
+const foodGST = booking.foodGSTEnabled
+  ? +(foodSubtotalAfterDiscount * 0.05).toFixed(2)
+  : 0;
+
+// CGST = SGST = half
+const foodCGST = +(foodGST / 2).toFixed(2);
+const foodSGST = +(foodGST / 2).toFixed(2);
+
+// Final food total
+const foodTotal = foodSubtotalAfterDiscount + foodGST;
+
+// ---------- FINAL TOTAL ----------
+const grandTotal = roomNet + foodTotal;
+
+// BALANCE
+const balance = grandTotal - (booking.advancePaid || 0);
+
 
 
 
@@ -594,6 +621,19 @@ export default function BookingDetails() {
       setAvailableRooms([]);
     }
   };
+  const refreshBooking = async () => {
+  try {
+    const updated = await getBookingApi(booking._id);
+    setBooking(updated);
+
+    const foodRes = await getRoomServiceBillForBookingApi(booking._id);
+    setRoomOrders(foodRes.orders || []);
+    setRoomOrderSummary(foodRes.summary || null);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 
 
   // ============================================================
@@ -612,7 +652,7 @@ export default function BookingDetails() {
             <div>
               <h1 className="text-3xl font-bold">Booking Details</h1>
               <p className="text-muted-foreground">
-                Room {booking.room_id.number} — {booking.room_id.type}
+                Room {booking?.room_id?.number || roomId} — {booking?.room_id?.type || ""}
               </p>
             </div>
           </div>
@@ -668,110 +708,310 @@ export default function BookingDetails() {
         </Card>
 
         {/* Billing */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Billing Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <span>Room ({nights} nights × ₹{fmt(roomPrice)})</span>
-                <span>₹{fmt(roomStayTotal)}</span>
+        {/* BILLING SECTION */}
+<Card>
+  <CardHeader>
+    <CardTitle>Billing Summary</CardTitle>
+  </CardHeader>
+
+  <CardContent className="space-y-6">
+
+    {/* ░░░░░░░░░░░ ROOM BILLING (Collapsible) ░░░░░░░░░░░ */}
+    <details className="border rounded-md p-4 bg-secondary/20">
+      <summary className="cursor-pointer font-semibold text-lg">
+        Room Billing
+      </summary>
+
+      <div className="mt-4 space-y-3">
+
+        {/* Nightly stay details */}
+        <div className="flex justify-between">
+          <span>Room ({nights} nights × ₹{fmt(roomPrice)})</span>
+          <span>₹{fmt(roomStayTotal)}</span>
+        </div>
+
+        {(booking.addedServices || []).map((s: any, i: number) => (
+          <div key={i} className="flex justify-between">
+            <span>{s.name}</span>
+            <span>₹{fmt(s.price)}</span>
+          </div>
+        ))}
+
+        <hr />
+
+        {/* GST */}
+        <div className="flex justify-between">
+          <span>CGST</span>
+          <span>₹{fmt(booking.cgst)}</span>
+        </div>
+
+        <div className="flex justify-between">
+          <span>SGST</span>
+          <span>₹{fmt(booking.sgst)}</span>
+        </div>
+
+        {/* Discount */}
+        <div className="flex justify-between">
+          <span>Room Discount ({booking.discount}%)</span>
+          <span>- ₹{fmt(booking.discountAmount)}</span>
+        </div>
+
+        {/* Room Total */}
+        <div className="flex justify-between font-bold text-lg border-t pt-2">
+          <span>Room Total</span>
+          <span>₹{fmt(
+            booking.taxable +
+              booking.cgst +
+              booking.sgst -
+              booking.discountAmount
+          )}</span>
+        </div>
+
+        {/* Editable fields */}
+        <div className="mt-4 border-t pt-4 space-y-3">
+
+          {/* GST Toggle */}
+          <div className="flex justify-between items-center">
+            <label className="font-medium">Apply Room GST</label>
+            <input
+              type="checkbox"
+              checked={booking.gstEnabled}
+              onChange={async (e) => {
+                try {
+                  await updateRoomBillingApi(booking._id, {
+                    discount: booking.discount,
+                    gstEnabled: e.target.checked,
+                  });
+                  toast.success("Room GST updated");
+                  refreshBooking();
+                } catch {
+                  toast.error("Failed to update room GST");
+                }
+              }}
+            />
+          </div>
+
+          {/* Discount field */}
+          <div>
+            <label className="block text-sm mb-1 font-medium">
+              Room Discount (%)
+            </label>
+<div className="flex gap-2">
+  <Input
+    type="number"
+    placeholder="Enter discount %"
+    value={roomDiscountInput}
+    onChange={(e) => setRoomDiscountInput(e.target.value)}
+  />
+
+  <Button
+    disabled={roomDiscountInput === ""}
+    onClick={async () => {
+      try {
+        await updateRoomBillingApi(booking._id, {
+          discount: Number(roomDiscountInput),
+          gstEnabled: booking.gstEnabled,
+        });
+        toast.success("Room discount applied");
+        refreshBooking();
+      } catch {
+        toast.error("Failed to apply room discount");
+      }
+    }}
+  >
+    Apply
+  </Button>
+</div>
+
+
+          </div>
+
+        </div>
+      </div>
+    </details>
+
+    {/* ░░░░░░░░░░░ FOOD BILLING (Collapsible) ░░░░░░░░░░░ */}
+    <details className="border rounded-md p-4 bg-secondary/20">
+      <summary className="cursor-pointer font-semibold text-lg">
+        Food Billing
+      </summary>
+      {/* FOOD ORDERS SECTION */}
+{roomOrders.length > 0 && (
+  <Card>
+    <CardHeader>
+      <CardTitle>Food / Room Service Orders</CardTitle>
+    </CardHeader>
+
+    <CardContent className="space-y-4">
+
+      {roomOrders.map((order: any) => (
+        <div
+          key={order._id}
+          className="border p-3 rounded-md bg-secondary/30 space-y-2"
+        >
+          {/* Order Header */}
+          <div className="flex justify-between font-medium">
+            <span>Order #{String(order._id).slice(-6)}</span>
+            <span>{new Date(order.createdAt).toLocaleString()}</span>
+          </div>
+
+          {/* Items */}
+          <div className="ml-2">
+            {order.items.map((it: any, idx: number) => (
+              <div key={idx} className="text-sm flex justify-between">
+                <span>
+                  {it.name} × {it.qty}
+                </span>
+                <span>₹{fmt(it.totalPrice)}</span>
               </div>
+            ))}
+          </div>
 
-              {(booking.addedServices || []).map((s: any, i: number) => (
-                <div key={i} className="flex justify-between">
-                  <span>{s.name}</span>
-                  <span>₹{fmt(s.price)}</span>
-                </div>
-              ))}
-
-              {/* Food */}
-              {roomOrders.map((order: any, idx: number) => (
-                <div key={idx} className="p-3 border rounded bg-secondary/20 space-y-2">
-
-                  {/* Order header */}
-                  <div className="flex justify-between font-medium">
-                    <span>Order #{String(order._id).slice(-6)}</span>
-                    <span>₹{fmt(order.total)}</span>
-                  </div>
-
-                  {/* Timestamp */}
-                  <div className="text-xs text-muted-foreground flex justify-between">
-                    <span>Ordered At:</span>
-                    <span>{new Date(order.createdAt).toLocaleString()}</span>
-                  </div>
-
-                  {/* Items */}
-                  <div className="pt-1 space-y-1">
-                    {order.items?.map((item: any, i: number) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span>
-                          {item.name} ({item.qty} × ₹{fmt(item.unitPrice)})
-                        </span>
-                        <span>₹{fmt(item.totalPrice)}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* GST */}
-                  <div className="flex justify-between text-sm text-muted-foreground border-t pt-1">
-                    <span>GST</span>
-                    <span>₹{fmt(order.gst)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-lg border-t pt-2">
-                    <span>Food Total</span>
-                    <span>₹{fmt(order.total)}</span>
-                  </div>
-                </div>
-              ))}
-
-
-              <hr />
-
-              <div className="flex justify-between">
-                <span>Room + Extras</span>
-                <span>₹{fmt(roomBase)}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>CGST (2.5%)</span>
-                <span>₹{fmt(CGST)}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>SGST (2.5%)</span>
-                <span>₹{fmt(SGST)}</span>
-              </div>
-
-              <div className="flex justify-between font-medium">
-                <span>Total GST (5%)</span>
-                <span>₹{fmt(GST)}</span>
-              </div>
-
-
-              <div className="flex justify-between">
-                <span>Discount</span>
-                <span>-₹{fmt(discountPercent)}%</span>
-              </div>
-
-              <div className="flex justify-between font-bold text-lg border-t pt-2">
-                <span>Total</span>
-                <span>₹{fmt(total)}</span>
-              </div>
-
-              <div className="flex justify-between text-success">
-                <span>Advance Paid</span>
-                <span>₹{fmt(booking.advancePaid)}</span>
-              </div>
-
-              <div className="flex justify-between text-lg font-bold border-t pt-2">
-                <span>Balance Due</span>
-                <span className="text-warning">₹{fmt(balance)}</span>
-              </div>
+          {/* Subtotal, GST, Total */}
+          {/* <div className="border-t pt-2 mt-2 text-sm">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>₹{fmt(order.subtotal)}</span>
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="flex justify-between">
+              <span>GST</span>
+              <span>₹{fmt(order.gst)}</span>
+            </div>
+
+            <div className="flex justify-between font-semibold text-md">
+              <span>Total</span>
+              <span>₹{fmt(order.total)}</span>
+            </div>
+          </div> */}
+        </div>
+      ))}
+
+    </CardContent>
+  </Card>
+)}
+
+      <div className="mt-4 space-y-3">
+
+        {/* Food Subtotal */}
+        <div className="flex justify-between">
+          <span>Food Subtotal</span>
+          <span>₹{fmt(foodSubtotalRaw)}</span>
+        </div>
+
+        {/* Discount */}
+        <div className="flex justify-between">
+          <span>Food Discount ({booking.foodDiscount}%)</span>
+          <span>- ₹{fmt(foodDiscountAmount)}</span>
+        </div>
+
+        {/* CGST */}
+<div className="flex justify-between">
+  <span>CGST (2.5%)</span>
+  <span>₹{fmt(foodCGST)}</span>
+</div>
+
+{/* SGST */}
+<div className="flex justify-between">
+  <span>SGST (2.5%)</span>
+  <span>₹{fmt(foodSGST)}</span>
+</div>
+
+
+        {/* Total */}
+        <div className="flex justify-between font-bold text-lg border-t pt-2">
+          <span>Food Total</span>
+          <span>₹{fmt(foodTotal)}</span>
+        </div>
+
+        {/* Editable food billing controls */}
+        <div className="mt-4 border-t pt-4 space-y-3">
+
+          {/* GST Toggle */}
+          <div className="flex justify-between items-center">
+            <label className="font-medium">Apply Food GST</label>
+            <input
+              type="checkbox"
+              checked={booking.foodGSTEnabled}
+              onChange={async (e) => {
+                try {
+                  await updateFoodBillingApi(booking._id, {
+                    foodDiscount: booking.foodDiscount,
+                    foodGSTEnabled: e.target.checked,
+                  });
+                  const foodRes = await getRoomServiceBillForBookingApi(booking._id);
+setRoomOrders(foodRes.orders || []);
+setRoomOrderSummary(foodRes.summary || null);
+                  toast.success("Food GST updated");
+                  refreshBooking();
+                } catch {
+                  toast.error("Failed to update food GST");
+                }
+              }}
+            />
+          </div>
+
+          {/* Discount Field */}
+          <div>
+            <label className="block text-sm mb-1 font-medium">
+              Food Discount (%)
+            </label>
+<div className="flex gap-2">
+  <Input
+    type="number"
+    placeholder="Enter food discount %"
+    value={foodDiscountInput}
+    onChange={(e) => setFoodDiscountInput(e.target.value)}
+  />
+
+  <Button
+    disabled={foodDiscountInput === ""}
+    onClick={async () => {
+      try {
+        await updateFoodBillingApi(booking._id, {
+          foodDiscount: Number(foodDiscountInput),
+          foodGSTEnabled: booking.foodGSTEnabled,
+        });
+        toast.success("Food discount applied");
+        refreshBooking();
+      } catch {
+        toast.error("Failed to apply food discount");
+      }
+    }}
+  >
+    Apply
+  </Button>
+</div>
+
+
+          </div>
+        </div>
+
+      </div>
+    </details>
+
+    {/* ░░░░░░░░░░░ FINAL TOTAL ░░░░░░░░░░░ */}
+    <div className="border rounded-md p-4 bg-secondary/30 space-y-3">
+<div className="flex justify-between font-medium">
+  <span>Grand Total</span>
+  <span>₹{fmt(grandTotal)}</span>
+</div>
+
+<div className="flex justify-between text-success">
+  <span>Advance Paid</span>
+  <span>₹{fmt(booking.advancePaid)}</span>
+</div>
+
+<div className="flex justify-between font-bold text-lg border-t pt-2">
+  <span>Balance Due</span>
+  <span className="text-warning">₹{fmt(balance)}</span>
+</div>
+
+    </div>
+
+  </CardContent>
+</Card>
+
 
         {/* ACTION BUTTONS */}
         <div className="flex flex-wrap gap-4">
