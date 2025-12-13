@@ -23,6 +23,8 @@ import {
   extendStayApi,
   getAvailableRoomsApi,
   getBookingApi,
+  getTodayBookingByRoomApi,
+  getRoomServiceBillForBookingApi,
 } from "@/api/bookingApi";
 import { getRoomServiceBillApi } from "@/api/billingRestaurantApi";
 import { getHotelApi } from "@/api/hotelApi";
@@ -117,8 +119,10 @@ export default function BookingDetails() {
           booking = await getBookingApi(passedBookingId);
         } else {
           // TODAY MODE
-          const res = await getBookingByRoomApi(roomId);
+          const res = await getTodayBookingByRoomApi(roomId);
+
           booking = res.booking || null;
+
         }
 
         if (!mounted) return;
@@ -145,7 +149,7 @@ export default function BookingDetails() {
          * 3️⃣ FETCH ROOM SERVICE / FOOD ORDERS
          * ---------------------------------------- */
         try {
-          const foodRes = await getRoomServiceBillApi(roomId);
+          const foodRes = await getRoomServiceBillForBookingApi(booking._id);
           if (!mounted) return;
 
           if (foodRes.success) {

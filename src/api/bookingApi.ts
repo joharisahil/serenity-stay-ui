@@ -98,6 +98,14 @@ export const getBookingByRoomApi = async (roomId: string) => {
   const res = await api.get(`/room-bookings/current/${roomId}`);
   return res.data; // old code used .then(res => res.data)
 };
+export const getTodayBookingByRoomApi = async (roomId: string) => {
+  const res = await api.get(`/rooms/current/today/${roomId}`);
+  return res.data;
+};
+export const getRoomServiceBillForBookingApi = async (bookingId: string) => {
+  const res = await api.get(`/room-bookings/orders/booking/${bookingId}`);
+  return res.data;
+};
 
 /* ----------------------------
    CHECKOUT / CANCEL / CHANGE ROOM / EXTEND STAY
