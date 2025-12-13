@@ -19,3 +19,8 @@ export const deleteCategoryApi = async (id: string) => {
   const res = await api.delete(`/menu/category/${id}`);
   return res.data;
 };
+
+export const searchMenuItemsApi = async (query: string) => {
+  const res = await api.get(`/menu/search?q=${encodeURIComponent(query)}`);
+  return res.data.items || [];
+};
