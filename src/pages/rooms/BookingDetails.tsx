@@ -6,6 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, Edit, CheckCircle, Loader2 } from "lucide-react";
+import {
+  buildRoomInvoice,
+  buildFoodInvoice,
+  buildCombinedInvoice
+} from "@/utils/printInvoice";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -311,275 +316,26 @@ const grandTotal = roomNet + foodTotal;
 // BALANCE
 const balance = grandTotal - (booking.advancePaid || 0);
 
-
-
-
-  const buildHeaderHtml = (
-    invoiceTitle: string,
-    invoiceNumber: string,
-    createdAt: string,
-    guestName: string,
-    guestPhone: string,
-    roomNumber: string
-  ) => {
-    return `
-    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-      <div style="width:50%; text-align:left;">
-        <div style="font-weight:700; font-size:18px;">${hotel?.name || ""}</div>
-        <div style="font-size:12px; margin-top:6px;">${hotel?.address || ""}</div>
-        <div style="font-size:12px; margin-top:4px;">Phone: ${hotel?.phone || ""}</div>
-        ${hotel?.email ? `<div style="font-size:12px;">Email: ${hotel.email}</div>` : ""}
-        ${hotel?.gstNumber ? `<div style="font-size:12px;">GSTIN: ${hotel.gstNumber}</div>` : ""}
-      </div>
-
-      <div style="width:45%; text-align:right;">
-        <div style="font-weight:700; font-size:16px;">${invoiceTitle}</div>
-        <div style="font-size:13px; margin-top:6px;">Invoice: <strong>${invoiceNumber}</strong></div>
-        <div style="font-size:12px; margin-top:4px;">Date: ${createdAt}</div>
-        <div style="font-size:12px; margin-top:8px;">Guest: ${guestName}</div>
-        <div style="font-size:12px;">Phone: ${guestPhone}</div>
-        <div style="font-size:12px;">Room: ${roomNumber}</div>
-      </div>
-    </div>
-
-    <hr style="margin:12px 0; border:none; border-top:1px solid #ccc;" />
-  `;
-  };
-
-
-  // ⭐ FIX — ROOM ONLY INVOICE CALCULATION
-  const buildRoomHtml = () => {
-    const invoiceNumber = `ROOM-${booking._id?.toString().slice(-6)}`;
-    const createdAt = new Date().toLocaleString();
-
-    const roomGross = roomBase + GST;
-    const roomDiscountAmount = +(
-      (roomGross * discountPercent) /
-      100
-    ).toFixed(2);
-
-    const roomNet = roomGross - roomDiscountAmount;
-    const roomBalance = roomNet - (booking.advancePaid || 0);
-
-    return `
-  <html>
-    <head>
-      <title>Room Invoice</title>
-      <style>
-        body { font-family: Arial; padding:20px; }
-        .row { display:flex; justify-content:space-between; margin:6px 0; }
-      </style>
-    </head>
-
-    <body>
-      ${buildHeaderHtml(
-      "Room Invoice",
-      invoiceNumber,
-      createdAt,
-      booking.guestName,
-      booking.guestPhone,
-      booking.room_id.number
-    )}
-
-      <div class="row"><div><strong>Plan</strong></div><div>${readablePlan(
-      booking.planCode
-    )}</div></div>
-
-      <div class="row">
-        <div>Room Rate × Nights</div>
-        <div>₹${fmt(roomPrice)} × ${nights} = ₹${fmt(roomStayTotal)}</div>
-      </div>
-
-      ${(booking.addedServices || [])
-        .map(
-          (s) =>
-            `<div class="row"><div>${s.name}</div><div>₹${fmt(
-              s.price
-            )}</div></div>`
-        )
-        .join("")}
-
-      <hr/>
-
-      <div class="row"><strong>Room Subtotal</strong><strong>₹${fmt(
-          roomBase
-        )}</strong></div>
-      <div class="row"><div>CGST (2.5%)</div><div>₹${fmt(CGST)}</div></div>
-      <div class="row"><div>SGST (2.5%)</div><div>₹${fmt(SGST)}</div></div>
-
-      <div class="row"><strong>Discount (${discountPercent}%)</strong><strong>₹${fmt(
-          roomDiscountAmount
-        )}</strong></div>
-
-      <div class="row"><strong>Room Total</strong><strong>₹${fmt(
-          roomNet
-        )}</strong></div>
-
-      <div style="margin-top:40px;">
-        <div>Advance Paid: ₹${fmt(booking.advancePaid)}</div>
-        <div style="margin-top:8px; font-weight:700;">Balance: ₹${fmt(
-          roomBalance
-        )}</div>
-      </div>
-
-      <div style="margin-top:60px;">
-        <div>Authorised Signature</div>
-        <div style="margin-top:40px; border-top:1px solid #000; width:160px;"></div>
-      </div>
-    </body>
-  </html>
-  `;
-  };
-
-  const buildFoodHtml = () => {
-    const invoiceNumber = `FOOD-${booking._id?.toString().slice(-6)}`;
-    const createdAt = new Date().toLocaleString();
-
-    return `
-  <html>
-    <head>
-      <title>Food Invoice</title>
-      <style>
-        body { font-family: Arial; padding:20px; }
-        .table { width:100%; border-collapse:collapse; margin-top:8px; }
-        .table th, .table td { border:1px solid #ddd; padding:8px; font-size:13px; }
-        .right { text-align:right; }
-      </style>
-    </head>
-
-    <body>
-      ${buildHeaderHtml("Food Invoice", invoiceNumber, createdAt, booking.guestName, booking.guestPhone, booking.room_id.number)}
-
-      <table class="table">
-        <thead>
-          <tr><th>Order</th><th>Items</th><th class="right">Amount</th></tr>
-        </thead>
-        <tbody>
-          ${roomOrders
-        .map(o => `
-              <tr>
-                <td>
-                  Order #${String(o._id).slice(-6)}
-                  <br/><small>${new Date(o.createdAt).toLocaleString()}</small>
-                </td>
-
-                <td>
-                  ${o.items.map(i => `${i.name} × ${i.qty}`).join("<br/>")}
-                </td>
-
-                <td class="right">₹${fmt(o.total)}</td>
-              </tr>
-            `)
-        .join("")}
-        </tbody>
-      </table>
-
-      <div style="margin-top:12px; text-align:right;">
-        <div>Food Subtotal: ₹${fmt(foodSubtotal)}</div>
-        <div>Food GST (included): ₹${fmt(foodGST)}</div>
-        <div style="font-weight:700; margin-top:8px;">Total: ₹${fmt(foodTotal)}</div>
-      </div>
-
-      <div style="margin-top:60px;">
-        <div>Authorised Signature</div>
-        <div style="margin-top:40px; border-top:1px solid #000; width:160px;"></div>
-      </div>
-    </body>
-  </html>
-  `;
-  };
-
-  const buildCombinedHtml = () => {
-    const invoiceNumber = `FINAL-${booking._id?.toString().slice(-6)}`;
-    const createdAt = new Date().toLocaleString();
-
-    return `
-  <html>
-    <head>
-      <title>Combined Invoice</title>
-      <style>
-        body { font-family: Arial; padding:20px; }
-        .row { display:flex; justify-content:space-between; margin:6px 0; }
-        .items { font-size:12px; margin-left:12px; color:#444; }
-      </style>
-    </head>
-
-    <body>
-      ${buildHeaderHtml(
-      "Final Invoice",
-      invoiceNumber,
-      createdAt,
-      booking.guestName,
-      booking.guestPhone,
-      booking.room_id.number
-    )}
-
-      <h3>Stay Charges</h3>
-      <div class="row"><div>Room (${nights} nights × ₹${fmt(roomPrice)})</div><div>₹${fmt(roomStayTotal)}</div></div>
-
-      ${(booking.addedServices || [])
-        .map(
-          (s) =>
-            `<div class="row"><div>${s.name}</div><div>₹${fmt(s.price)}</div></div>`
-        )
-        .join("")}
-
-      <div class="row"><div>Room Subtotal</div><div>₹${fmt(roomBase)}</div></div>
-      <div class="row"><div>CGST (2.5%)</div><div>₹${fmt(CGST)}</div></div>
-      <div class="row"><div>SGST (2.5%)</div><div>₹${fmt(SGST)}</div></div>
-
-      <h3 style="margin-top:12px;">Food</h3>
-
-      ${roomOrders
-        .map(
-          (o) => `
-          <div class="row">
-            <div>
-              Order #${String(o._id).slice(-6)}
-              <br/>
-              <span style="font-size:11px; color:#777;">
-                ${new Date(o.createdAt).toLocaleString()}
-              </span>
-              <div class="items">
-                ${o.items
-              .map(
-                (it) =>
-                  `${it.name} × ${it.qty} (₹${fmt(it.totalPrice)})`
-              )
-              .join("<br/>")}
-              </div>
-            </div>
-
-            <div>₹${fmt(o.total)}</div>
-          </div>
-        `
-        )
-        .join("")}
-
-      <div class="row"><div>Food Subtotal</div><div>₹${fmt(foodSubtotal)}</div></div>
-      <div class="row"><div>Food GST (included)</div><div>₹${fmt(foodGST)}</div></div>
-
-      <hr/>
-      <div class="row">
-  <div><strong>Room Discount (${discountPercent}%)</strong></div>
-  <div><strong>₹${fmt(roomDiscountAmount)}</strong></div>
-</div>
-
-<div class="row"><strong>Grand Total</strong><strong>₹${fmt(total)}</strong></div>
-
-      <div class="row"><div>Advance Paid</div><div>₹${fmt(booking.advancePaid)}</div></div>
-      <div class="row" style="font-weight:700;"><div>Balance Due</div><div>₹${fmt(balance)}</div></div>
-
-      <div style="margin-top:60px;">
-        <div>Authorised Signature</div>
-        <div style="margin-top:40px; border-top:1px solid #000; width:160px;"></div>
-      </div>
-    </body>
-  </html>
-  `;
-  };
-
-
+const billingData = {
+  nights,
+  roomPrice,
+  roomStayTotal,
+  serviceExtraTotal,
+  roomBase,
+  roomCGST,
+  roomSGST,
+  roomGross,
+  roomDiscountAmount,
+  roomNet,
+  foodSubtotalRaw,
+  foodDiscountAmount,
+  foodSubtotalAfterDiscount,
+  foodCGST,
+  foodSGST,
+  foodTotal,
+  grandTotal,
+  balance
+};
 
   // ---------------- Handlers -----------------
   const handleCheckout = async () => {
@@ -1202,13 +958,19 @@ setRoomOrderSummary(foodRes.summary || null);
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-3">
-              <Button className="w-full" onClick={() => openPrintWindow(buildRoomHtml())}>
+              <Button className="w-full" onClick={() =>
+  openPrintWindow(buildRoomInvoice(booking, hotel, billingData))
+}>
                 Room Invoice Only
               </Button>
-              <Button className="w-full" onClick={() => openPrintWindow(buildFoodHtml())} disabled={roomOrders.length === 0}>
+              <Button className="w-full"  onClick={() =>
+  openPrintWindow(buildFoodInvoice(booking, hotel, billingData, roomOrders))
+} disabled={roomOrders.length === 0}>
                 Food Invoice Only
               </Button>
-              <Button className="w-full" onClick={() => openPrintWindow(buildCombinedHtml())}>
+              <Button className="w-full"  onClick={() =>
+  openPrintWindow(buildCombinedInvoice(booking, hotel, billingData, roomOrders))
+}>
                 Full Invoice (Room + Food)
               </Button>
             </div>
