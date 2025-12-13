@@ -36,6 +36,7 @@ import EditCategoriesPage from "./pages/menu/EditCategory";
 import OldBillsList from "./pages/billing/OldBillsList";
 import ViewBillPage from "./pages/billing/ViewBillPage";
 import RoomBillingList from "./pages/billing/RoomBillingList";
+import CreateRestaurantBill from "./pages/billing/CreateRestaurantBill";
 
 const queryClient = new QueryClient();
 
@@ -169,7 +170,9 @@ const App = () => (
             <Route path="/billing" element={
               <ProtectedRoute><BillingList /></ProtectedRoute>
             } />
-
+            <Route path="/billing/restaurant/create" element={
+              <ProtectedRoute><CreateRestaurantBill /></ProtectedRoute>
+            } />
             <Route path="/billing/restaurant/:tableId" element={
               <ProtectedRoute><GenerateBill /></ProtectedRoute>
             } />

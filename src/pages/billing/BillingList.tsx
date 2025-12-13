@@ -1,8 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Eye } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getPendingRestaurantTablesApi } from "@/api/billingRestaurantApi";
@@ -26,11 +25,23 @@ export default function BillingList() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Restaurant Billing</h1>
-          <p className="text-muted-foreground">
-            Select a table to generate the final bill
-          </p>
+
+        {/* Header with Create Bill Button */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Restaurant Billing</h1>
+            <p className="text-muted-foreground">
+              Select a table to generate the final bill
+            </p>
+          </div>
+
+          <Button
+            className="flex items-center gap-2"
+            onClick={() => navigate("/billing/restaurant/create")}
+          >
+            <Plus className="h-4 w-4" />
+            Create Bill
+          </Button>
         </div>
 
         <Card>
@@ -45,16 +56,20 @@ export default function BillingList() {
               </p>
             ) : null}
 
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {tables.map((t) => (
-                <div key={t.tableId} className="border p-4 rounded-lg flex justify-between items-center">
+                <div
+                  key={t.tableId}
+                  className="border p-4 rounded-lg flex justify-between items-center"
+                >
                   <div>
                     <h2 className="text-lg font-semibold">Table {t.name}</h2>
                     <p className="text-sm text-muted-foreground">
                       {t.orders.length} delivered orders
                     </p>
-                    <p className="text-primary font-bold">Total: ₹{t.summary.total}</p>
+                    <p className="text-primary font-bold">
+                      Total: ₹{t.summary.total}
+                    </p>
                   </div>
 
                   <Button onClick={() => navigate(`/billing/restaurant/${t.tableId}`)}>
@@ -62,7 +77,6 @@ export default function BillingList() {
                   </Button>
                 </div>
               ))}
-
             </div>
           </CardContent>
         </Card>
