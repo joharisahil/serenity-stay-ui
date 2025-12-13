@@ -217,15 +217,15 @@ export default function CreateRestaurantBill() {
     };
 
     // Debounce wrapper (runs API only after 300ms pause)
-const debouncedSearch = debounce(async (value: string) => {
-    if (value.trim() === "") {
-        const items = await getMenuItemsApi();
-        setMenuItems(items);
-    } else {
-        const items = await searchMenuItemsApi(value.trim());
-        setMenuItems(items);
-    }
-}, 300);
+    const debouncedSearch = debounce(async (value: string) => {
+        if (value.trim() === "") {
+            const items = await getMenuItemsApi();
+            setMenuItems(items);
+        } else {
+            const items = await searchMenuItemsApi(value.trim());
+            setMenuItems(items);
+        }
+    }, 300);
 
 
     const transferToRoom = async (room) => {
@@ -278,20 +278,20 @@ const debouncedSearch = debounce(async (value: string) => {
                     {/* MENU SECTION */}
                     <Card className="lg:col-span-2">
                         <CardContent className="p-4 space-y-4">
-          <div className="flex items-center justify-between mb-2">
-    <h2 className="text-xl font-semibold">Menu Items</h2>
+                            <div className="flex items-center justify-between mb-2">
+                                <h2 className="text-xl font-semibold">Menu Items</h2>
 
-    <Input
-        placeholder="Search menu..."
-        value={searchTerm}
-        onChange={(e) => {
-            const value = e.target.value;
-            setSearchTerm(value);
-            debouncedSearch(value);
-        }}
-        className="w-48"
-    />
-</div>
+                                <Input
+                                    placeholder="Search menu..."
+                                    value={searchTerm}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        setSearchTerm(value);
+                                        debouncedSearch(value);
+                                    }}
+                                    className="w-48"
+                                />
+                            </div>
 
 
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
