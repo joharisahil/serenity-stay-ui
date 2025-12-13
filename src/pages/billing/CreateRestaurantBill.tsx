@@ -62,29 +62,16 @@ export default function CreateRestaurantBill() {
 
     const loadOccupiedRooms = async () => {
         try {
-            const res = await api.get("/rooms");
+            const res = await api.get("/room-bookings/active-today");
 
             if (res.data.success) {
-                const occupied = res.data.rooms.filter(r => r.liveStatus === "OCCUPIED");
-
-                // Fetch ACTIVE booking for today
-                const roomsWithBooking = await Promise.all(
-                    occupied.map(async (room) => {
-                        const b = await api.get(`/room-bookings/current/${room._id}`);
-
-                        return {
-                            ...room,
-                            booking: b.data.booking || null
-                        };
-                    })
-                );
-
-                setRoomsToday(roomsWithBooking);
+                setRoomsToday(res.data.rooms); // rooms already include booking
             }
         } catch (err) {
             console.error("Failed to load rooms", err);
         }
     };
+
 
     useEffect(() => {
         if (openRoomTransfer) loadOccupiedRooms();
