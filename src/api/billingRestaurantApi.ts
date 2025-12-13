@@ -38,3 +38,6 @@ export const getRoomServiceBillApi = async (roomId: string) => {
   const res = await api.get(`/billing-restaurant/room/${roomId}`);
   return res.data;
 };
+
+export const transferRestaurantBillToRoomApi = (payload) =>
+  api.post("/billing/restaurant/transfer", payload);

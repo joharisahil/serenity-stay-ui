@@ -11,6 +11,8 @@ import { useNavigate } from "react-router-dom";
 import { createManualRestaurantBillApi } from "@/api/manualBillApi";
 import { toast } from "sonner";
 import { getHotelApi } from "@/api/hotelApi";
+import api from "@/api/authApi";
+import { transferRestaurantBillToRoomApi } from "@/api/billingRestaurantApi";
 
 export default function CreateRestaurantBill() {
     const navigate = useNavigate();
@@ -33,6 +35,9 @@ export default function CreateRestaurantBill() {
     const [printedBillNumber, setPrintedBillNumber] = useState("");
     const [printedBillDate, setPrintedBillDate] = useState("");
 
+    const [openRoomTransfer, setOpenRoomTransfer] = useState(false);
+    const [roomsToday, setRoomsToday] = useState([]);
+
     const CGST = 2.5;
     const SGST = 2.5;
 
@@ -53,6 +58,37 @@ export default function CreateRestaurantBill() {
             }
         })();
     }, []);
+
+
+    const loadOccupiedRooms = async () => {
+        try {
+            const res = await api.get("/rooms");
+
+            if (res.data.success) {
+                const occupied = res.data.rooms.filter(r => r.liveStatus === "OCCUPIED");
+
+                // Fetch ACTIVE booking for today
+                const roomsWithBooking = await Promise.all(
+                    occupied.map(async (room) => {
+                        const b = await api.get(`/room-bookings/current/${room._id}`);
+
+                        return {
+                            ...room,
+                            booking: b.data.booking || null
+                        };
+                    })
+                );
+
+                setRoomsToday(roomsWithBooking);
+            }
+        } catch (err) {
+            console.error("Failed to load rooms", err);
+        }
+    };
+
+    useEffect(() => {
+        if (openRoomTransfer) loadOccupiedRooms();
+    }, [openRoomTransfer]);
 
 
     // total count badge for each item tile
@@ -187,6 +223,32 @@ export default function CreateRestaurantBill() {
             toast.error("Failed to save bill");
             return false;
         }
+    };
+
+    const transferToRoom = async (room) => {
+        const payload = {
+            bookingId: room.booking._id,
+            items: billItems.map(i => ({
+                name: i.name,
+                variant: i.variant.toUpperCase(),
+                qty: i.qty,
+                price: i.price,
+                total: i.qty * i.price
+            })),
+            subtotal,
+            discount: discountAmount,
+            gst: cgstAmount + sgstAmount,
+            finalAmount: grandTotal
+        };
+
+        const res = await transferRestaurantBillToRoomApi(payload);
+
+        if (res.data.success) {
+            toast.success(`Food bill transferred to Room ${room.number}`);
+            resetForm();
+            setOpenRoomTransfer(false);
+        }
+
     };
 
     return (
@@ -402,6 +464,13 @@ export default function CreateRestaurantBill() {
                                     Grand Total: ₹{grandTotal.toFixed(2)}
                                 </p>
                             </div>
+                            <Button
+                                className="w-full bg-yellow-600 hover:bg-yellow-700"
+                                onClick={() => setOpenRoomTransfer(true)}
+                            >
+                                Transfer to Room Bill
+                            </Button>
+
 
                             <Button
                                 className="w-full"
@@ -471,6 +540,48 @@ export default function CreateRestaurantBill() {
                 </div>
 
             </div>
+            {openRoomTransfer && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-xl w-[400px] space-y-4">
+
+                        <h2 className="text-xl font-bold">Select Room</h2>
+
+                        {roomsToday.length === 0 ? (
+                            <p className="text-muted-foreground">No occupied rooms today</p>
+                        ) : (
+                            roomsToday.map(r => (
+                                <button
+                                    key={r._id}
+                                    className="w-full p-3 border rounded-lg text-left hover:bg-gray-100"
+                                    onClick={() => {
+                                        if (!r.booking) {
+                                            toast.error("No active booking found");
+                                            return;
+                                        }
+                                        transferToRoom(r);
+                                    }}
+
+                                >
+                                    <div className="font-semibold">Room {r.number}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                        {r.booking?.guestName || "Guest"}
+                                    </div>
+                                </button>
+                            ))
+                        )}
+
+                        <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => setOpenRoomTransfer(false)}
+                        >
+                            Cancel
+                        </Button>
+
+                    </div>
+                </div>
+            )}
+
         </Layout>
     );
 }
