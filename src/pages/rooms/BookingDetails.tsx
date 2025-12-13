@@ -1,6 +1,6 @@
 // src/pages/BookingDetails.tsx
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,12 @@ import {
   changeRoomApi,
   extendStayApi,
   getAvailableRoomsApi,
+  getBookingApi,
 } from "@/api/bookingApi";
 import { getRoomServiceBillApi } from "@/api/billingRestaurantApi";
 import { getHotelApi } from "@/api/hotelApi";
 import { Input } from "@/components/ui/input";
+import { getAvailableRoomsByDateApi } from "@/api/roomApi";
 
 // --------- Helpers ----------
 const PLAN_NAMES: Record<string, string> = {
@@ -65,7 +67,10 @@ const openPrintWindow = (html: string) => {
 
 export default function BookingDetails() {
   const navigate = useNavigate();
-  const { roomId } = useParams<{ roomId: string }>();
+  const location = useLocation();
+  const { roomId } = useParams();
+  const passedBookingId = location.state?.bookingId || null;
+
 
   const [booking, setBooking] = useState<any | null>(null);
   const [roomOrders, setRoomOrders] = useState<any[]>([]);
@@ -88,6 +93,11 @@ export default function BookingDetails() {
   // ---------------------------------------------
   // Load booking + orders + hotel + available rooms
   // ---------------------------------------------
+  //   const location = useLocation();
+  // const passedBookingId = location.state?.bookingId || null;
+  const selectedCheckIn = location.state?.selectedCheckIn || null;
+  const selectedCheckOut = location.state?.selectedCheckOut || null;
+
   useEffect(() => {
     if (!roomId) return;
 
@@ -95,39 +105,91 @@ export default function BookingDetails() {
 
     const load = async () => {
       setLoading(true);
+
       try {
-        const res = await getBookingByRoomApi(roomId);
-        if (!mounted) return;
+        let booking;
 
-        const b = res.booking || null;
-        setBooking(b);
-
-        // Hotel fetch
-        if (b?.hotel_id) {
-          try {
-            const hotelRes = await getHotelApi(b.hotel_id);
-            if (!mounted) return;
-            if (hotelRes?.success) setHotel(hotelRes.hotel);
-            else setHotel(null);
-          } catch {
-            setHotel(null);
-          }
+        /* ----------------------------------------
+         * 1️⃣ FETCH BOOKING (DATE MODE / TODAY MODE)
+         * ---------------------------------------- */
+        if (passedBookingId) {
+          // DATE RANGE MODE
+          booking = await getBookingApi(passedBookingId);
+        } else {
+          // TODAY MODE
+          const res = await getBookingByRoomApi(roomId);
+          booking = res.booking || null;
         }
 
-        // Food orders
-        const foodRes = await getRoomServiceBillApi(roomId);
         if (!mounted) return;
+        setBooking(booking);
 
-        if (foodRes.success) {
-          setRoomOrders(foodRes.orders || []);
-          setRoomOrderSummary(foodRes.summary || null);
+        /* ----------------------------------------
+         * 2️⃣ FETCH HOTEL
+         * ---------------------------------------- */
+        if (booking?.hotel_id) {
+          try {
+            const hotelRes = await getHotelApi(booking.hotel_id);
+            if (!mounted) return;
+
+            if (hotelRes?.success) setHotel(hotelRes.hotel);
+            else setHotel(null);
+          } catch (e) {
+            setHotel(null);
+          }
         } else {
+          setHotel(null);
+        }
+
+        /* ----------------------------------------
+         * 3️⃣ FETCH ROOM SERVICE / FOOD ORDERS
+         * ---------------------------------------- */
+        try {
+          const foodRes = await getRoomServiceBillApi(roomId);
+          if (!mounted) return;
+
+          if (foodRes.success) {
+            setRoomOrders(foodRes.orders || []);
+            setRoomOrderSummary(foodRes.summary || null);
+          } else {
+            setRoomOrders([]);
+            setRoomOrderSummary(null);
+          }
+        } catch (e) {
           setRoomOrders([]);
           setRoomOrderSummary(null);
         }
 
-        // ⭐ Fetch available rooms of same type
-        // ⭐ Fetch available rooms of same type
+        /* ----------------------------------------
+         * 4️⃣ FETCH AVAILABLE ROOMS OF SAME TYPE
+         * ---------------------------------------- */
+        if (booking?.room_id?.type) {
+          try {
+            const type = booking.room_id.type;
+
+            let availableSameType = [];
+
+            if (passedBookingId && selectedCheckIn && selectedCheckOut) {
+              // 🔹 DATE-RANGE MODE
+              availableSameType = await getAvailableRoomsByDateApi(
+                selectedCheckIn,
+                selectedCheckOut,
+                type
+              );
+            } else {
+              // 🔹 TODAY MODE — USE SIMPLE API
+              const simple = await getAvailableRoomsApi(type);
+              availableSameType = simple || [];
+            }
+
+            if (!mounted) return;
+            setAvailableRooms(availableSameType);
+
+          } catch (e) {
+            if (mounted) setAvailableRooms([]);
+          }
+        }
+
 
       } catch (e) {
         toast.error("Failed to load booking details");
@@ -140,7 +202,8 @@ export default function BookingDetails() {
     return () => {
       mounted = false;
     };
-  }, [roomId]);
+  }, [roomId, passedBookingId, selectedCheckIn, selectedCheckOut]);
+
 
   if (loading)
     return (

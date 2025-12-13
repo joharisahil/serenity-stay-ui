@@ -7,7 +7,8 @@ import { Search, Plus, Bed, Users, Hotel } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { getAllRoomsApi } from "@/api/roomApi";
+import { getAllRoomsApi, getAllRoomsByDateApi, getAvailableRoomsByDateApi } from "@/api/roomApi";
+import { getBookingByDateRangeApi } from "@/api/bookingApi";
 
 const statusConfig: any = {
   AVAILABLE: { label: "Available", className: "bg-room-available text-white" },
@@ -25,25 +26,31 @@ export default function RoomList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  // DATE FILTER STATES
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [selectedRange, setSelectedRange] = useState<{ checkIn: string, checkOut: string } | null>(null);
+
   // -----------------------------
-  // LOAD ROOMS
+  // LOAD ALL ROOMS INITIALLY
   // -----------------------------
   useEffect(() => {
-    const load = async () => {
-      try {
-        const resp = await getAllRoomsApi();
-        setRooms(resp.rooms || resp);
-      } catch (e) {
-        toast.error("Failed to load rooms");
-      }
-      setLoading(false);
-    };
-
-    load();
+    loadAllRooms();
   }, []);
 
+  const loadAllRooms = async () => {
+    try {
+      setLoading(true);
+      const resp = await getAllRoomsApi();
+      setRooms(resp.rooms || resp);
+    } catch (e) {
+      toast.error("Failed to load rooms");
+    }
+    setLoading(false);
+  };
+
   // -----------------------------
-  // FILTER ROOMS
+  // FILTER ROOMS (search + status toggle)
   // -----------------------------
   const filteredRooms = rooms.filter((room) => {
     const statusMatch = filterStatus === "all" || room.status === filterStatus;
@@ -54,6 +61,31 @@ export default function RoomList() {
 
     return statusMatch && searchMatch;
   });
+  const handleRoomClick = async (room) => {
+
+    // MODE A: Today
+    if (!checkIn && !checkOut) {
+      if (room.liveStatus === "OCCUPIED") {
+        navigate(`/rooms/bookings/${room._id}`);
+      } else {
+        toast.info("No booking today for this room");
+      }
+      return;
+    }
+
+    // MODE B: Date range
+    if (room.isBooked && room.bookingId) {
+      navigate(`/rooms/bookings/${room._id}`, {
+        state: {
+          bookingId: room.bookingId,
+          selectedCheckIn: checkIn,
+          selectedCheckOut: checkOut
+        }
+      });
+    } else {
+      toast.info("No booking found in selected dates");
+    }
+  };
 
   return (
     <Layout>
@@ -78,7 +110,9 @@ export default function RoomList() {
 
         {/* FILTERS */}
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 space-y-4">
+
+            {/* SEARCH + STATUS FILTERS */}
             <div className="flex flex-col gap-4 sm:flex-row">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -113,6 +147,75 @@ export default function RoomList() {
                 </Button>
               </div>
             </div>
+
+            {/* DATE FILTERS */}
+            <div className="flex flex-col gap-4 sm:flex-row">
+
+              <div className="flex flex-col flex-1">
+                <label className="text-sm mb-1 text-muted-foreground">Check-In</label>
+                <Input
+                  type="date"
+                  value={checkIn}
+                  onChange={(e) => setCheckIn(e.target.value)}
+                />
+              </div>
+
+              <div className="flex flex-col flex-1">
+                <label className="text-sm mb-1 text-muted-foreground">Check-Out</label>
+                <Input
+                  type="date"
+                  value={checkOut}
+                  onChange={(e) => setCheckOut(e.target.value)}
+                />
+              </div>
+
+              {/* SEARCH AVAILABLE ROOMS */}
+              <Button
+                className="self-end"
+                onClick={async () => {
+                  if (!checkIn || !checkOut) {
+                    toast.error("Please select both dates");
+                    return;
+                  }
+
+                  try {
+                    setLoading(true);
+
+                    const rooms = await getAllRoomsByDateApi(checkIn, checkOut);
+
+                    // Replace liveStatus with date-based status
+                    const normalized = rooms.map(r => ({
+                      ...r,
+                      status: r.isBooked ? "OCCUPIED" : "AVAILABLE",
+                      liveStatus: r.isBooked ? "OCCUPIED" : "AVAILABLE"
+                    }));
+
+                    setRooms(normalized);
+                  } catch (e) {
+                    toast.error("Failed to fetch rooms");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                Search Availability
+              </Button>
+
+
+              {/* RESET DATE FILTER */}
+              <Button
+                variant="outline"
+                className="self-end"
+                onClick={() => {
+                  setCheckIn("");
+                  setCheckOut("");
+                  loadAllRooms();
+                }}
+              >
+                Reset
+              </Button>
+            </div>
+
           </CardContent>
         </Card>
 
@@ -121,28 +224,24 @@ export default function RoomList() {
           {loading ? (
             <p>Loading rooms...</p>
           ) : filteredRooms.length === 0 ? (
-            <p className="text-center text-muted-foreground py-10">
-              No rooms found
-            </p>
+            <p className="text-center text-muted-foreground py-10">No rooms found</p>
           ) : (
             filteredRooms.map((room) => {
-              const status = room.status || "AVAILABLE";
+              const status = room.liveStatus || "AVAILABLE";
               const config = statusConfig[status] || statusConfig.AVAILABLE;
 
               return (
                 <Card
                   key={room._id}
                   className="cursor-pointer hover:shadow-lg transition"
-                  onClick={() => navigate(`/rooms/bookings/${room._id}`)}
+                  onClick={() => handleRoomClick(room)}
                 >
                   <CardContent className="p-6">
                     <div className="space-y-4">
                       <div className="flex items-start justify-between">
                         <div>
                           <h3 className="text-2xl font-bold">Room {room.number}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Floor {room.floor || "-"}
-                          </p>
+                          <p className="text-sm text-muted-foreground">Floor {room.floor || "-"}</p>
                         </div>
                         <Badge className={config.className}>{config.label}</Badge>
                       </div>
@@ -159,19 +258,10 @@ export default function RoomList() {
                         </div>
                       </div>
 
-                      {room.currentGuest && (
-                        <div className="rounded-lg bg-secondary/50 p-2">
-                          <p className="text-xs text-muted-foreground">Guest</p>
-                          <p className="text-sm font-medium">{room.currentGuest}</p>
-                        </div>
-                      )}
-
                       <div className="border-t pt-4">
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-muted-foreground">Base Rate</span>
-                          <span className="text-lg font-bold text-primary">
-                            ₹{room.baseRate || 0}
-                          </span>
+                          <span className="text-lg font-bold text-primary">₹{room.baseRate || 0}</span>
                         </div>
                       </div>
                     </div>

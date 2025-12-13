@@ -1,20 +1,108 @@
+// src/api/bookingApi.ts
 import api from "@/api/authApi";
 
-export const getRoomTypesApi = () => api.get("/rooms/types").then(res => res.data.types);
+/**
+ * Helper: try a request, if it fails (404 or network) optionally try fallback
+ */
+async function tryRequest(primary: () => Promise<any>, fallback?: () => Promise<any>) {
+  try {
+    return await primary();
+  } catch (err: any) {
+    // if fallback provided, try it
+    if (fallback) {
+      try {
+        return await fallback();
+      } catch (e) {
+        throw e;
+      }
+    }
+    throw err;
+  }
+}
 
-export const getRoomsByTypeApi = (type: string) =>
-  api.get(`/rooms/list/${type}`).then(res => res.data.rooms);
-
-export const getRoomPlansApi = (roomId: string) =>
-  api.get(`/rooms/plans/${roomId}`).then(res => res.data.plans);
-
-export const createBookingApi = (payload: any) =>
-  api.post("/room-bookings", payload).then((res) => res.data);
-
-export const getBookingByRoomApi = async (roomId: string) => {
-  return api.get(`/room-bookings/current/${roomId}`).then(res => res.data);
+/* ----------------------------
+   ROOM TYPES
+   - Primary: GET /rooms/types
+-----------------------------*/
+export const getRoomTypesApi = async () => {
+  const res = await api.get("/rooms/types");
+  return res.data.types;
 };
 
+/* ----------------------------
+   ROOMS BY TYPE
+   - Prefer new: /rooms/type/:type
+   - Fallback (legacy): /rooms/list/:type
+   Returns: array of rooms
+-----------------------------*/
+export const getRoomsByTypeApi = async (type: string) => {
+  return tryRequest(
+    () => api.get(`/rooms/type/${encodeURIComponent(type)}`).then(r => r.data.rooms),
+    () => api.get(`/rooms/list/${encodeURIComponent(type)}`).then(r => r.data.rooms)
+  );
+};
+
+/* ----------------------------
+   ROOM PLANS
+   - Prefer: /rooms/:roomId/plans
+   - Fallback (legacy): /rooms/plans/:roomId
+   Returns: array of plans
+-----------------------------*/
+export const getRoomPlansApi = async (roomId: string) => {
+  return tryRequest(
+    () => api.get(`/rooms/${roomId}/plans`).then(r => r.data.plans),
+    () => api.get(`/rooms/plans/${roomId}`).then(r => r.data.plans)
+  );
+};
+
+/* ----------------------------
+   CREATE BOOKING
+   - POST /room-bookings
+   NOTE: older callers expected full res.data, newer sometimes expect res.data.booking
+   We'll return res.data (so old callers work). New callers can pick .booking if needed.
+-----------------------------*/
+export const createBookingApi = async (payload: any) => {
+  const res = await api.post("/room-bookings", payload);
+  return res.data; // contains booking under res.data.booking (and other metadata)
+};
+
+/* ----------------------------
+   GET BOOKING BY ID
+   - GET /room-bookings/:id
+   Returns booking object (res.data.booking)
+-----------------------------*/
+export const getBookingApi = async (bookingId: string) => {
+  const res = await api.get(`/room-bookings/${bookingId}`);
+  return res.data.booking;
+};
+export const getBookingByDateRangeApi = async (roomId: string, checkIn: string, checkOut: string) => {
+  const params = new URLSearchParams({ roomId, checkIn, checkOut });
+  const res = await api.get(`/room-bookings/by-date?${params.toString()}`);
+  return res.data.booking;
+};
+
+
+/* ----------------------------
+   GET CURRENT BOOKING FOR A ROOM
+   - GET /room-bookings/current/:roomId
+   Legacy code used a function named getBookingByRoomApi that returned res.data
+   We'll keep backward compatibility: provide both function names.
+-----------------------------*/
+export const getRoomCurrentBookingApi = async (roomId: string) => {
+  const res = await api.get(`/room-bookings/current/${roomId}`);
+  return res.data.booking;
+};
+
+export const getBookingByRoomApi = async (roomId: string) => {
+  // legacy callers expect res.data shape
+  const res = await api.get(`/room-bookings/current/${roomId}`);
+  return res.data; // old code used .then(res => res.data)
+};
+
+/* ----------------------------
+   CHECKOUT / CANCEL / CHANGE ROOM / EXTEND STAY
+   - Keep endpoints and return res.data for compatibility
+-----------------------------*/
 export const checkoutBookingApi = async (bookingId: string) => {
   const res = await api.post(`/room-bookings/${bookingId}/checkout`);
   return res.data;
@@ -35,7 +123,33 @@ export const extendStayApi = async (bookingId: string, newCheckOut: string) => {
   return res.data;
 };
 
-export const getAvailableRoomsApi = async (type: string) => {
-  const res = await api.get(`/rooms/available?type=${type}`);
-  return res.data.rooms; // return only rooms array
+/* ----------------------------
+   GET AVAILABLE ROOMS (LEGACY)
+   - GET /rooms/available?type=...
+   - kept for old callers that still call getAvailableRoomsApi(type)
+   Returns: array of rooms (res.data.rooms)
+-----------------------------*/
+export const getAvailableRoomsApi = async (type?: string) => {
+  const qs = type ? `?type=${encodeURIComponent(type)}` : "";
+  const res = await api.get(`/rooms/available${qs}`);
+  // older code expected res.data.rooms
+  return res.data.rooms;
+};
+
+/* ----------------------------
+   GET AVAILABLE ROOMS BETWEEN DATETIME RANGE (NEW)
+   - GET /rooms/date/available?checkIn=...&checkOut=...&type=...
+   - Returns array of rooms with metadata (hasSameDayCheckout, checkoutTime)
+   - Provide a fallback to same endpoint if it fails (no legacy equivalent)
+-----------------------------*/
+export const getAvailableRoomsByDateTimeApi = async (
+  checkIn: string,
+  checkOut: string,
+  type?: string
+) => {
+  const params = new URLSearchParams({ checkIn, checkOut });
+  if (type) params.append("type", type);
+
+  const res = await api.get(`/rooms/date/available?${params.toString()}`);
+  return res.data.rooms;
 };
