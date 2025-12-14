@@ -141,10 +141,11 @@ export const getRoomServiceBillForBookingApi = async (bookingId: string) => {
    CHECKOUT / CANCEL / CHANGE ROOM / EXTEND STAY
    - Keep endpoints and return res.data for compatibility
 -----------------------------*/
-export const checkoutBookingApi = async (bookingId: string) => {
-  const res = await api.post(`/room-bookings/${bookingId}/checkout`);
+export const checkoutBookingApi = async (bookingId: string, payload?: any) => {
+  const res = await api.post(`/room-bookings/${bookingId}/checkout`, payload || {});
   return res.data;
 };
+
 
 export const cancelBookingApi = async (bookingId: string) => {
   const res = await api.post(`/room-bookings/${bookingId}/cancel`);

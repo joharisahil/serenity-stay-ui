@@ -42,6 +42,7 @@ export default function CreateBooking() {
     adults: "1",
     children: "0",
     advancePaid: "",
+    advancePaymentMode: "CASH",
     discount: "",
     gstEnabled: "true",
     notes: "",
@@ -245,6 +246,7 @@ export default function CreateBooking() {
       adults: Number(formData.adults),
       children: Number(formData.children),
       advancePaid: Number(formData.advancePaid || 0),
+      advancePaymentMode: formData.advancePaymentMode,
       discount: Number(formData.discount || 0),
       addedServices: extras.map((ex) => ({
         name: ex.name,
@@ -584,6 +586,22 @@ export default function CreateBooking() {
                 </p>
 
                 {/* ADVANCE */}
+                <Label>Advance Payment Mode</Label>
+<Select
+  value={formData.advancePaymentMode}
+  onValueChange={(value) => setFormData({ ...formData, advancePaymentMode: value })}
+>
+  <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
+  <SelectContent>
+    <SelectItem value="CASH">Cash</SelectItem>
+    <SelectItem value="UPI">UPI</SelectItem>
+    <SelectItem value="CARD">Card</SelectItem>
+    <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+    <SelectItem value="ONLINE">Online Payment</SelectItem>
+    <SelectItem value="OTHER">Other</SelectItem>
+  </SelectContent>
+</Select>
+
                 <Label>Advance Paid</Label>
                 <Input
                   type="number"

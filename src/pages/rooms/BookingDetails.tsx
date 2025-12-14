@@ -102,6 +102,9 @@ export default function BookingDetails() {
   const [roomDiscountInput, setRoomDiscountInput] = useState("");
   const [foodDiscountInput, setFoodDiscountInput] = useState("");
 
+  const [finalPaymentReceived, setFinalPaymentReceived] = useState(false);
+  const [finalPaymentMode, setFinalPaymentMode] = useState("CASH");
+
   // ---------------------------------------------
   // Load booking + orders + hotel + available rooms
   // ---------------------------------------------
@@ -343,7 +346,10 @@ const billingData = {
     setCheckingOut(true);
 
     try {
-      await checkoutBookingApi(booking._id);
+      await checkoutBookingApi(booking._id, {
+      finalPaymentReceived,
+      finalPaymentMode
+      });
       toast.success("Guest checked out successfully");
       navigate("/rooms");
     } catch (e: any) {
@@ -424,6 +430,7 @@ const billingData = {
           <CardContent>
             <p><strong>Name:</strong> {booking.guestName}</p>
             <p><strong>Phone:</strong> {booking.guestPhone}</p>
+            <p><strong>Advance Payment Mode:</strong> {booking.advancePaymentMode || "N/A"}</p>
             <p><strong>Plan:</strong> {readablePlan(booking.planCode)}</p>
           </CardContent>
         </Card>
@@ -760,7 +767,33 @@ setRoomOrderSummary(foodRes.summary || null);
 
 <div className="flex justify-between font-bold text-lg border-t pt-2">
   <span>Balance Due</span>
-  <span className="text-warning">₹{fmt(balance)}</span>
+  <span className="text-warning">₹{finalPaymentReceived ? fmt(0) : fmt(balance)}</span>
+</div>
+{/* FINAL PAYMENT SECTION */}
+<div className="space-y-3 mt-4">
+  <label className="flex items-center gap-2">
+    <input
+      type="checkbox"
+      checked={finalPaymentReceived}
+      onChange={(e) => setFinalPaymentReceived(e.target.checked)}
+    />
+    Final Payment Received
+  </label>
+
+  {finalPaymentReceived && (
+    <select
+      className="border rounded p-2 w-full"
+      value={finalPaymentMode}
+      onChange={(e) => setFinalPaymentMode(e.target.value)}
+    >
+      <option value="CASH">Cash</option>
+      <option value="UPI">UPI</option>
+      <option value="CARD">Card</option>
+      <option value="ONLINE">Online</option>
+      <option value="BANK_TRANSFER">Bank Transfer</option>
+      <option value="OTHER">Other</option>
+    </select>
+  )}
 </div>
 
     </div>
