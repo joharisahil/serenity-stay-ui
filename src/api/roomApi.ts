@@ -121,11 +121,6 @@ export const getRoomTypesApi = async () => {
    - legacy fallback: /rooms/plans/:roomId
 -----------------------------*/
 export const getRoomPlansApi = async (roomId: string) => {
-  try {
-    const res = await api.get(`/rooms/${roomId}/plans`);
-    return res.data.plans;
-  } catch (err: any) {
     const res = await api.get(`/rooms/plans/${roomId}`);
     return res.data.plans;
-  }
 };

@@ -48,12 +48,12 @@ export const getRoomsByTypeApi = async (type: string) => {
    - Fallback (legacy): /rooms/plans/:roomId
    Returns: array of plans
 -----------------------------*/
-export const getRoomPlansApi = async (roomId: string) => {
-  return tryRequest(
-    () => api.get(`/rooms/${roomId}/plans`).then(r => r.data.plans),
-    () => api.get(`/rooms/plans/${roomId}`).then(r => r.data.plans)
-  );
-};
+// export const getRoomPlansApi = async (roomId: string) => {
+//   return tryRequest(
+//     () => api.get(`/rooms/${roomId}/plans`).then(r => r.data.plans),
+//     () => api.get(`/rooms/plans/${roomId}`).then(r => r.data.plans)
+//   );
+// };
 
 /* ----------------------------
    CREATE BOOKING

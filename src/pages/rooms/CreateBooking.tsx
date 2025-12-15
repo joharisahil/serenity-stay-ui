@@ -20,10 +20,10 @@ import { toast } from "sonner";
 import {
   getRoomTypesApi,
   getRoomsByTypeApi,
-  getRoomPlansApi,
   getAvailableRoomsByDateTimeApi,
   createBookingApi
 } from "@/api/bookingApi";
+import { getRoomPlansApi } from "@/api/roomApi";
 
 export default function CreateBooking() {
   const navigate = useNavigate();
