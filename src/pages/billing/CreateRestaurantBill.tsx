@@ -127,64 +127,44 @@ export default function CreateRestaurantBill() {
     const grandTotal = taxable + cgstAmount + sgstAmount;
     // ---------------------------------------------------------------------
 
-const printBill = () => {
-    const w = window.open("", "_blank", "width=280,height=600");
+    const printBill = () => {
+        const printContent = document.getElementById("thermal-print")!.innerHTML;
 
-    if (!w) {
-        alert("Please allow pop-ups to print the bill.");
-        return;
-    }
-
-    // Helper functions
-    const pad = (txt = "", len = 16) => txt.padEnd(len, " ");
-    const money = (n = 0) => n.toFixed(2).padStart(8, " ");
-
-    const itemsText = billItems
-        .map(
-            (i) =>
-                `${pad(i.name.substring(0, 16))}${String(i.qty).padStart(3)} ${money(
-                    i.qty * i.price
-                )}`
-        )
-        .join("\n");
-
-    // VERY IMPORTANT: NO leading \n
-    const text = 
-`${hotel?.name || ""}
-${hotel?.address || ""}
-${hotel?.phone ? "Ph: " + hotel.phone : ""}
-${hotel?.gstNumber ? "GSTIN: " + hotel.gstNumber : ""}
-----------------------------------------
-RESTAURANT BILL
-Bill No: ${printedBillNumber}
-Date   : ${printedBillDate}
-----------------------------------------
-Item              Qty     Amt
-----------------------------------------
-${itemsText}
-----------------------------------------
-Subtotal:              ${money(subtotal)}
-Discount:              ${money(discountAmount)}
-${gstEnabled ? `CGST 2.5%:             ${money(cgstAmount)}` : ""}
-${gstEnabled ? `SGST 2.5%:             ${money(sgstAmount)}` : ""}
-----------------------------------------
-Grand Total:          ${money(grandTotal)}
-----------------------------------------
-Thank You! Visit Again`;
-
-    // TVS RP printers require <pre> with monospace font
-    w.document.write(`
-        <pre style="font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2;">
-${text}
-        </pre>
-        <script>
-            setTimeout(() => { window.print(); window.close(); }, 300);
-        </script>
+        const w = window.open("", "_blank", "width=400,height=600");
+        w!.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Print Bill</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    font-family: monospace;
+                    font-size: 14px;
+                }
+                body {
+                    padding: 10px;
+                }
+                .center { text-align: center; }
+                .bold { font-weight: bold; }
+                .line { border-top: 1px dashed #000; margin: 6px 0; }
+            </style>
+        </head>
+        <body>
+            ${printContent}
+        </body>
+        </html>
     `);
 
-    w.document.close();
-};
+        w!.document.close();
+        w!.focus();
 
+        setTimeout(() => {
+            w!.print();
+            w!.close();
+        }, 300);
+    };
 
     const resetForm = () => {
         setCustomerName("");
@@ -622,3 +602,4 @@ ${text}
         </Layout>
     );
 }
+
