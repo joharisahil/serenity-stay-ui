@@ -127,15 +127,15 @@ export default function CreateRestaurantBill() {
     const grandTotal = taxable + cgstAmount + sgstAmount;
     // ---------------------------------------------------------------------
 
-const printBill = () => {
-    const w = window.open("", "_blank", "width=280,height=600");
+    const printBill = () => {
+        const w = window.open("", "_blank", "width=280,height=600");
 
-    if (!w) {
-        alert("Please enable pop-ups to print.");
-        return;
-    }
+        if (!w) {
+            alert("Please enable pop-ups to print.");
+            return;
+        }
 
-    const kotHtml = `
+        const kotHtml = `
         <html>
         <head>
             <title>Bill</title>
@@ -194,13 +194,12 @@ const printBill = () => {
             <div class="row"><span>Subtotal</span><span>₹${subtotal.toFixed(2)}</span></div>
             <div class="row"><span>Discount</span><span>₹${discountAmount.toFixed(2)}</span></div>
 
-            ${
-                gstEnabled
-                    ? `
+            ${gstEnabled
+                ? `
                 <div class="row"><span>CGST 2.5%</span><span>₹${cgstAmount.toFixed(2)}</span></div>
                 <div class="row"><span>SGST 2.5%</span><span>₹${sgstAmount.toFixed(2)}</span></div>
             `
-                    : ""
+                : ""
             }
 
             <hr/>
@@ -221,10 +220,10 @@ const printBill = () => {
         </html>
     `;
 
-    w.document.open();
-    w.document.write(kotHtml);
-    w.document.close();
-};
+        w.document.open();
+        w.document.write(kotHtml);
+        w.document.close();
+    };
 
     const resetForm = () => {
         setCustomerName("");
@@ -313,6 +312,30 @@ const printBill = () => {
         }
 
     };
+    // INCREASE QTY
+    const increaseQty = (id: string, variant: string) => {
+        setBillItems(prev =>
+            prev.map(i =>
+                i._id === id && i.variant === variant
+                    ? { ...i, qty: i.qty + 1 }
+                    : i
+            )
+        );
+    };
+
+    // DECREASE QTY
+    const decreaseQty = (id: string, variant: string) => {
+        setBillItems(prev =>
+            prev
+                .map(i =>
+                    i._id === id && i.variant === variant
+                        ? { ...i, qty: i.qty - 1 }
+                        : i
+                )
+                .filter(i => i.qty > 0) // auto-remove if qty = 0
+        );
+    };
+
 
     return (
         <Layout>
@@ -449,11 +472,39 @@ const printBill = () => {
                                         key={i._id + i.variant}
                                         className="flex justify-between items-center"
                                     >
-                                        <div>
-                                            {i.name} ({i.variant}) × {i.qty}
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">
+                                                {i.name} ({i.variant})
+                                            </span>
+
+                                            {/* QTY BUTTONS */}
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-6 w-6 p-0"
+                                                    onClick={() => decreaseQty(i._id, i.variant)}
+                                                >
+                                                    -
+                                                </Button>
+
+                                                <span className="px-2">{i.qty}</span>
+
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-6 w-6 p-0"
+                                                    onClick={() => increaseQty(i._id, i.variant)}
+                                                >
+                                                    +
+                                                </Button>
+                                            </div>
                                         </div>
+
+                                        {/* PRICE + DELETE */}
                                         <div className="flex items-center gap-2">
-                                            ₹{(i.qty * i.price).toFixed(2)}
+                                            <span>₹{(i.qty * i.price).toFixed(2)}</span>
+
                                             <Trash2
                                                 size={18}
                                                 className="text-red-500 cursor-pointer"
@@ -462,6 +513,7 @@ const printBill = () => {
                                         </div>
                                     </div>
                                 ))}
+
                             </div>
 
                             {/* DISCOUNT */}
