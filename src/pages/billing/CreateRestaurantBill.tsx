@@ -234,6 +234,79 @@ export default function CreateRestaurantBill() {
         w.document.close();
     };
 
+    const printKOT = () => {
+    if (billItems.length === 0) {
+        toast.error("No items to print KOT");
+        return;
+    }
+
+    const w = window.open("", "_blank", "width=280,height=500");
+
+    if (!w) {
+        alert("Please enable pop-ups for printing KOT.");
+        return;
+    }
+
+    const kotHtml = `
+    <html>
+    <head>
+        <title>KOT</title>
+        <style>
+            @page { margin: 0; size: auto; }
+
+            body {
+                font-family: monospace;
+                font-size: 12px;
+                margin: 0;
+                padding: 4px;
+                width: 48mm;
+            }
+
+            .center { text-align: center; font-weight: bold; }
+            hr { border-top: 1px dashed #000; margin: 4px 0; }
+            .item { margin: 4px 0; }
+        </style>
+    </head>
+
+    <body>
+        <div class="center">KITCHEN ORDER TICKET</div>
+        <hr/>
+
+        ${tableNumber ? `<div>Table: ${tableNumber}</div>` : ""}
+        ${customerName ? `<div>Name: ${customerName}</div>` : ""}
+        <div>Time: ${new Date().toLocaleTimeString()}</div>
+
+        <hr/>
+
+        ${billItems
+            .map(
+                (i) => `
+                <div class="item">
+                    ${i.qty} x ${i.name} (${i.variant.toUpperCase()})
+                </div>
+            `
+            )
+            .join("")}
+
+        <hr/>
+        <div class="center">--- END ---</div>
+
+        <script>
+            setTimeout(() => {
+                window.print();
+                window.close();
+            }, 200);
+        </script>
+    </body>
+    </html>
+    `;
+
+    w.document.open();
+    w.document.write(kotHtml);
+    w.document.close();
+};
+
+
     const resetForm = () => {
         setCustomerName("");
         setCustomerNumber("");
@@ -623,7 +696,12 @@ export default function CreateRestaurantBill() {
                             >
                                 Transfer to Room Bill
                             </Button>
-
+                            <Button
+    className="w-full bg-blue-600 hover:bg-blue-700"
+    onClick={printKOT}
+>
+    🧾 Print KOT
+</Button>
 
                             <Button
                                 className="w-full"
