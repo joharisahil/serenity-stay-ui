@@ -127,141 +127,59 @@ export default function CreateRestaurantBill() {
     const grandTotal = taxable + cgstAmount + sgstAmount;
     // ---------------------------------------------------------------------
 
-    // -------------------------------------------------------
-    //                THERMAL PRINT (TEXT ONLY)
-    // -------------------------------------------------------
 const printBill = () => {
     const w = window.open("", "_blank", "width=400,height=600");
-    
-    if (!w) {
-        toast.error("Unable to open print window");
-        return;
-    }
 
-    // Format helpers
-    const pad = (text = "", width = 20) => text.toString().padEnd(width, " ");
-    const money = (num = 0) => `₹${num.toFixed(2)}`.padStart(10, " ");
-    const center = (text = "", width = 42) => {
-        const spaces = Math.max(0, Math.floor((width - text.length) / 2));
-        return " ".repeat(spaces) + text;
-    };
-    const line = () => "─".repeat(42);
+    // Helper functions for alignment
+    const pad = (txt = "", len = 16) => txt.padEnd(len, " ");
+    const money = (n = 0) => n.toFixed(2).padStart(8, " ");
 
-    // Build items list
     const itemsText = billItems
-        .map((i) => {
-            const name = i.name.slice(0, 18);
-            const variant = `(${i.variant})`;
-            const qty = `x${i.qty}`;
-            const amount = money(i.qty * i.price);
-            return `${pad(name, 20)}${qty.padStart(4)} ${amount}`;
-        })
+        .map(
+            (i) =>
+                `${pad(i.name.substring(0, 16))}${String(i.qty).padStart(3)} ${money(
+                    i.qty * i.price
+                )}`
+        )
         .join("\n");
 
-    // Build the complete bill
-    const textBill = `
-${center(hotel?.name || "RESTAURANT")}
-${hotel?.address ? center(hotel.address) : ""}
-${hotel?.phone ? center(`Ph: ${hotel.phone}`) : ""}
-${hotel?.gstNumber ? center(`GSTIN: ${hotel.gstNumber}`) : ""}
-${line()}
-
-${center("RESTAURANT BILL")}
+    const text = `
+${hotel?.name || ""}
+${hotel?.address || ""}
+${hotel?.phone ? "Ph: " + hotel.phone : ""}
+${hotel?.gstNumber ? "GSTIN: " + hotel.gstNumber : ""}
+----------------------------------------
+RESTAURANT BILL
 Bill No: ${printedBillNumber}
 Date   : ${printedBillDate}
-
-Customer: ${customerName || "Walk-in"}
-Phone   : ${customerNumber || "N/A"}
-Table   : ${tableNumber || "N/A"}
-Payment : ${paymentMethod.toUpperCase()}
-
-${line()}
-Item                 Qty      Amount
-${line()}
+----------------------------------------
+Item              Qty     Amt
+----------------------------------------
 ${itemsText}
-${line()}
-
-${pad("Subtotal:", 32)}${money(subtotal)}
-${pad("Discount:", 32)}${money(discountAmount)}
-${gstEnabled ? `${pad("CGST 2.5%:", 32)}${money(cgstAmount)}` : ""}
-${gstEnabled ? `${pad("SGST 2.5%:", 32)}${money(sgstAmount)}` : ""}
-${line()}
-${pad("GRAND TOTAL:", 32)}${money(grandTotal)}
-${line()}
-
-${center("Thank You! Visit Again")}
-
+----------------------------------------
+Subtotal:              ${money(subtotal)}
+Discount:              ${money(discountAmount)}
+${gstEnabled ? `CGST 2.5%:             ${money(cgstAmount)}` : ""}
+${gstEnabled ? `SGST 2.5%:             ${money(sgstAmount)}` : ""}
+----------------------------------------
+Grand Total:          ${money(grandTotal)}
+----------------------------------------
+Thank You! Visit Again
 `;
 
-    // Write HTML with proper styling for thermal printing
-    const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Restaurant Bill</title>
-        <style>
-            @page {
-                size: 80mm auto;
-                margin: 0;
-            }
-            
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
-            
-            body {
-                font-family: 'Courier New', Courier, monospace;
-                font-size: 12px;
-                line-height: 1.4;
-                width: 80mm;
-                padding: 5mm;
-                margin: 0 auto;
-                background: white;
-            }
-            
-            pre {
-                font-family: 'Courier New', Courier, monospace;
-                font-size: 12px;
-                white-space: pre;
-                margin: 0;
-                padding: 0;
-            }
-            
-            @media print {
-                body {
-                    width: 80mm;
-                    padding: 0;
-                    margin: 0;
-                }
-                
-                pre {
-                    page-break-inside: avoid;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <pre>${textBill}</pre>
-        <script>
-            // Auto print and close
-            window.onload = function() {
-                window.print();
-                // Close after print dialog is dismissed
-                setTimeout(function() {
-                    window.close();
-                }, 500);
-            };
-        </script>
-    </body>
-    </html>
-    `;
+    // Write only RAW TEXT (NO HTML AT ALL)
+    w!.document.write(text);
 
-    w.document.write(html);
-    w.document.close();
+    w!.document.close();
+    w!.focus();
+
+    setTimeout(() => {
+        w!.print();
+        w!.close();
+    }, 200);
 };
+
+
 
     const resetForm = () => {
         setCustomerName("");
@@ -274,52 +192,44 @@ ${center("Thank You! Visit Again")}
         setGstEnabled(true);
     };
 
-const saveBillToDB = async () => {
-    try {
-        const payload = {
-            customerName,
-            customerPhone: customerNumber,
-            tableNumber,
-            items: billItems.map((i) => ({
-                name: i.name,
-                variant: i.variant,
-                qty: i.qty,
-                price: i.price,
-                total: i.qty * i.price
-            })),
-            subtotal,
-            discount: discountAmount,
-            gst: cgstAmount + sgstAmount,
-            finalAmount: grandTotal,
-            paymentMethod
-        };
+    const saveBillToDB = async () => {
+        try {
+            const payload = {
+                customerName,
+                customerPhone: customerNumber,
+                tableNumber,
+                items: billItems.map((i) => ({
+                    name: i.name,
+                    variant: i.variant,
+                    qty: i.qty,
+                    price: i.price,
+                    total: i.qty * i.price
+                })),
+                subtotal,
+                discount: discountAmount,
+                gst: cgstAmount + sgstAmount,
+                finalAmount: grandTotal,
+                paymentMethod
+            };
 
-        const res = await createManualRestaurantBillApi(payload);
+            const res = await createManualRestaurantBillApi(payload);
 
-        if (res.success) {
-            // 🔹 Save bill metadata IMMEDIATELY for printing
-            const billNum = res.bill.billNumber || `BILL-${Date.now()}`;
-            const billDate = new Date(res.bill.createdAt).toLocaleString("en-IN", {
-                dateStyle: "short",
-                timeStyle: "short"
-            });
-            
-            setPrintedBillNumber(billNum);
-            setPrintedBillDate(billDate);
+            if (res.success) {
 
-            toast.success(`Bill saved successfully! #${billNum}`);
+                // 🔹 Save bill metadata for printing
+                setPrintedBillNumber(res.bill.billNumber);
+                setPrintedBillDate(new Date(res.bill.createdAt).toLocaleString());
 
-            // Return bill data for immediate printing
-            return { success: true, billNumber: billNum, billDate };
+                toast.success(`Bill saved successfully! #${res.bill.billNumber}`);
+
+                resetForm();
+                return true;
+            }
+        } catch (err) {
+            toast.error("Failed to save bill");
+            return false;
         }
-        
-        return { success: false };
-    } catch (err) {
-        toast.error("Failed to save bill");
-        return { success: false };
-    }
-};
-
+    };
 
     // Debounce wrapper (runs API only after 300ms pause)
     const debouncedSearch = debounce(async (value: string) => {
@@ -594,27 +504,16 @@ const saveBillToDB = async () => {
                             </Button>
 
 
- <Button
-    className="w-full"
-    onClick={async () => {
-        if (billItems.length === 0) {
-            toast.error("Please add items to bill");
-            return;
-        }
-        
-        const result = await saveBillToDB();
-        
-        if (result.success) {
-            // Small delay to ensure state is updated
-            setTimeout(() => {
-                printBill();
-                resetForm();
-            }, 100);
-        }
-    }}
->
-    <Printer className="mr-2" /> Print Bill
-</Button>
+                            <Button
+                                className="w-full"
+                                onClick={async () => {
+                                    const ok = await saveBillToDB();
+                                    if (ok) printBill();
+                                }}
+                            >
+
+                                <Printer className="mr-2" /> Print Bill
+                            </Button>
                         </CardContent>
                     </Card>
                 </div>
