@@ -274,44 +274,52 @@ ${center("Thank You! Visit Again")}
         setGstEnabled(true);
     };
 
-    const saveBillToDB = async () => {
-        try {
-            const payload = {
-                customerName,
-                customerPhone: customerNumber,
-                tableNumber,
-                items: billItems.map((i) => ({
-                    name: i.name,
-                    variant: i.variant,
-                    qty: i.qty,
-                    price: i.price,
-                    total: i.qty * i.price
-                })),
-                subtotal,
-                discount: discountAmount,
-                gst: cgstAmount + sgstAmount,
-                finalAmount: grandTotal,
-                paymentMethod
-            };
+const saveBillToDB = async () => {
+    try {
+        const payload = {
+            customerName,
+            customerPhone: customerNumber,
+            tableNumber,
+            items: billItems.map((i) => ({
+                name: i.name,
+                variant: i.variant,
+                qty: i.qty,
+                price: i.price,
+                total: i.qty * i.price
+            })),
+            subtotal,
+            discount: discountAmount,
+            gst: cgstAmount + sgstAmount,
+            finalAmount: grandTotal,
+            paymentMethod
+        };
 
-            const res = await createManualRestaurantBillApi(payload);
+        const res = await createManualRestaurantBillApi(payload);
 
-            if (res.success) {
+        if (res.success) {
+            // 🔹 Save bill metadata IMMEDIATELY for printing
+            const billNum = res.bill.billNumber || `BILL-${Date.now()}`;
+            const billDate = new Date(res.bill.createdAt).toLocaleString("en-IN", {
+                dateStyle: "short",
+                timeStyle: "short"
+            });
+            
+            setPrintedBillNumber(billNum);
+            setPrintedBillDate(billDate);
 
-                // 🔹 Save bill metadata for printing
-                setPrintedBillNumber(res.bill.billNumber);
-                setPrintedBillDate(new Date(res.bill.createdAt).toLocaleString());
+            toast.success(`Bill saved successfully! #${billNum}`);
 
-                toast.success(`Bill saved successfully! #${res.bill.billNumber}`);
-
-                resetForm();
-                return true;
-            }
-        } catch (err) {
-            toast.error("Failed to save bill");
-            return false;
+            // Return bill data for immediate printing
+            return { success: true, billNumber: billNum, billDate };
         }
-    };
+        
+        return { success: false };
+    } catch (err) {
+        toast.error("Failed to save bill");
+        return { success: false };
+    }
+};
+
 
     // Debounce wrapper (runs API only after 300ms pause)
     const debouncedSearch = debounce(async (value: string) => {
@@ -586,16 +594,27 @@ ${center("Thank You! Visit Again")}
                             </Button>
 
 
-                            <Button
-                                className="w-full"
-                                onClick={async () => {
-                                    const ok = await saveBillToDB();
-                                    if (ok) printBill();
-                                }}
-                            >
-
-                                <Printer className="mr-2" /> Print Bill
-                            </Button>
+ <Button
+    className="w-full"
+    onClick={async () => {
+        if (billItems.length === 0) {
+            toast.error("Please add items to bill");
+            return;
+        }
+        
+        const result = await saveBillToDB();
+        
+        if (result.success) {
+            // Small delay to ensure state is updated
+            setTimeout(() => {
+                printBill();
+                resetForm();
+            }, 100);
+        }
+    }}
+>
+    <Printer className="mr-2" /> Print Bill
+</Button>
                         </CardContent>
                     </Card>
                 </div>
