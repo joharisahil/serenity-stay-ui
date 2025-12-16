@@ -42,11 +42,17 @@ export default function CreateRestaurantBill() {
 
     const [searchTerm, setSearchTerm] = useState("");
 
+    const [loadingMenu, setLoadingMenu] = useState(true);
+
+    const [printing, setPrinting] = useState(false);
+
     const CGST = 2.5;
     const SGST = 2.5;
 
     useEffect(() => {
         (async () => {
+            setLoadingMenu(true); // start loader
+
             const items = await getMenuItemsApi();
             setMenuItems(items);
 
@@ -60,8 +66,11 @@ export default function CreateRestaurantBill() {
             } catch (e) {
                 console.error("Failed to load hotel details", e);
             }
+
+            setLoadingMenu(false); // stop loader
         })();
     }, []);
+
 
 
     const loadOccupiedRooms = async () => {
@@ -378,64 +387,79 @@ export default function CreateRestaurantBill() {
 
 
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                {menuItems.map((item) => {
-                                    const count = getItemCount(item._id);
 
-                                    return (
-                                        <div
-                                            key={item._id}
-                                            className="relative p-3 border rounded-lg hover:shadow space-y-2"
-                                        >
-                                            <p className="font-semibold">{item.name}</p>
+                                {loadingMenu ? (
+                                    <>
+                                        {/* SKELETON LOADER FOR MENU */}
+                                        {[...Array(6)].map((_, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="p-3 border rounded-lg animate-pulse bg-gray-100 h-24"
+                                            ></div>
+                                        ))}
+                                    </>
+                                ) : (
+                                    menuItems.map((item) => {
+                                        const count = getItemCount(item._id);
 
-                                            {/* COUNT BADGE */}
-                                            {count > 0 && (
-                                                <div className="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-0.5 rounded-full shadow">
-                                                    {count} Added
-                                                </div>
-                                            )}
+                                        return (
+                                            <div
+                                                key={item._id}
+                                                className="relative p-3 border rounded-lg hover:shadow space-y-2"
+                                            >
+                                                <p className="font-semibold">{item.name}</p>
 
-                                            {/* SINGLE */}
-                                            {item.priceSingle ? (
-                                                <Button
-                                                    className="w-full"
-                                                    variant="outline"
-                                                    onClick={() =>
-                                                        addToBill(item, "single", item.priceSingle)
-                                                    }
-                                                >
-                                                    Single — ₹{item.priceSingle}
-                                                </Button>
-                                            ) : null}
+                                                {/* COUNT BADGE */}
+                                                {count > 0 && (
+                                                    <div className="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-0.5 rounded-full shadow">
+                                                        {count} Added
+                                                    </div>
+                                                )}
 
-                                            {/* HALF */}
-                                            {item.priceHalf ? (
-                                                <Button
-                                                    className="w-full"
-                                                    variant="outline"
-                                                    onClick={() =>
-                                                        addToBill(item, "half", item.priceHalf)
-                                                    }
-                                                >
-                                                    Half — ₹{item.priceHalf}
-                                                </Button>
-                                            ) : null}
+                                                {/* SINGLE */}
+                                                {item.priceSingle ? (
+                                                    <Button
+                                                        className="w-full"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            addToBill(item, "single", item.priceSingle)
+                                                        }
+                                                    >
+                                                        Single — ₹{item.priceSingle}
+                                                    </Button>
+                                                ) : null}
 
-                                            {/* FULL */}
-                                            {item.priceFull ? (
-                                                <Button
-                                                    className="w-full"
-                                                    onClick={() =>
-                                                        addToBill(item, "full", item.priceFull)
-                                                    }
-                                                >
-                                                    Full — ₹{item.priceFull}
-                                                </Button>
-                                            ) : null}
-                                        </div>
-                                    );
-                                })}
+                                                {/* HALF */}
+                                                {item.priceHalf ? (
+                                                    <Button
+                                                        className="w-full"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            addToBill(item, "half", item.priceHalf)
+                                                        }
+                                                    >
+                                                        Half — ₹{item.priceHalf}
+                                                    </Button>
+                                                ) : null}
+
+                                                {/* FULL */}
+                                                {item.priceFull ? (
+                                                    <Button
+                                                        className="w-full"
+                                                        onClick={() =>
+                                                            addToBill(item, "full", item.priceFull)
+                                                        }
+                                                    >
+                                                        Full — ₹{item.priceFull}
+                                                    </Button>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    })
+                                )}
+
                             </div>
+
                         </CardContent>
                     </Card>
 
@@ -604,12 +628,32 @@ export default function CreateRestaurantBill() {
                             <Button
                                 className="w-full"
                                 onClick={async () => {
+                                    setPrinting(true); // start spinner
+
                                     const ok = await saveBillToDB();
-                                    if (ok) printBill();
+
+                                    if (ok) {
+                                        setTimeout(() => {
+                                            printBill();
+                                            setPrinting(false); // stop spinner
+                                        }, 300);
+                                    } else {
+                                        setPrinting(false);
+                                    }
                                 }}
+
                             >
 
-                                <Printer className="mr-2" /> Print Bill
+                                {printing ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Printing...
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Printer className="mr-2" /> Print Bill
+                                    </>
+                                )}
                             </Button>
                         </CardContent>
                     </Card>
