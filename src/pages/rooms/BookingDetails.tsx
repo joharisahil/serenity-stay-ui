@@ -518,12 +518,12 @@ export default function BookingDetails() {
 
                 {/* GST */}
                 <div className="flex justify-between">
-                  <span>CGST</span>
+                  <span>CGST (2.5%)</span>
                   <span>₹{fmt(booking.cgst)}</span>
                 </div>
 
                 <div className="flex justify-between">
-                  <span>SGST</span>
+                  <span>SGST (2.5%)</span>
                   <span>₹{fmt(booking.sgst)}</span>
                 </div>
 
