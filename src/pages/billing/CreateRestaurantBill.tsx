@@ -128,63 +128,103 @@ export default function CreateRestaurantBill() {
     // ---------------------------------------------------------------------
 
 const printBill = () => {
-    const w = window.open("", "_blank", "width=300,height=600");
+    const w = window.open("", "_blank", "width=280,height=600");
 
     if (!w) {
         alert("Please enable pop-ups to print.");
         return;
     }
 
-    // formatting helpers
-    const pad = (txt = "", len = 18) => txt.padEnd(len, " ");
-    const money = (n = 0) => n.toFixed(2).padStart(8, " ");
+    const kotHtml = `
+        <html>
+        <head>
+            <title>Bill</title>
+            <style>
+                @page { margin: 0; size: auto; }
 
-    const itemsText = billItems
-        .map(
-            (i) =>
-                `${pad(i.name.substring(0, 18))}${String(i.qty).padStart(3)} ${money(
-                    i.qty * i.price
-                )}`
-        )
-        .join("\n");
+                body {
+                    font-family: monospace;
+                    font-size: 12px;
+                    margin: 0;
+                    padding: 4px;
+                    width: 48mm;
+                }
 
-    // raw printable text (NO HTML)
-    const text = 
-`${hotel?.name || ""}
-${hotel?.address || ""}
-${hotel?.phone ? "Ph: " + hotel.phone : ""}
-${hotel?.gstNumber ? "GSTIN: " + hotel.gstNumber : ""}
-----------------------------------------
-RESTAURANT BILL
-Bill No: ${printedBillNumber}
-Date   : ${printedBillDate}
-----------------------------------------
-Item                Qty     Amt
-----------------------------------------
-${itemsText}
-----------------------------------------
-Subtotal:               ${money(subtotal)}
-Discount:               ${money(discountAmount)}
-${gstEnabled ? `CGST 2.5%:              ${money(cgstAmount)}` : ""}
-${gstEnabled ? `SGST 2.5%:              ${money(sgstAmount)}` : ""}
-----------------------------------------
-Grand Total:           ${money(grandTotal)}
-----------------------------------------
-Thank You! Visit Again
-`;
+                .center { text-align: center; }
+                .bold { font-weight: bold; }
+                hr { border-top: 1px dashed #000; margin: 4px 0; }
+                .row { display: flex; justify-content: space-between; }
+            </style>
+        </head>
 
-    w.document.write(`
-        <pre style="font-family: 'Courier New', monospace; font-size: 12px;">
-${text}
-        </pre>
-        <script>
-            setTimeout(() => { window.print(); window.close(); }, 300);
-        </script>
-    `);
+        <body>
+            <div class="center bold">${hotel?.name || ""}</div>
+            <div class="center">${hotel?.address || ""}</div>
+            ${hotel?.phone ? `<div class="center">Ph: ${hotel.phone}</div>` : ""}
+            ${hotel?.gstNumber ? `<div class="center">GSTIN: ${hotel.gstNumber}</div>` : ""}
+            <hr/>
 
+            <div>Bill No: ${printedBillNumber}</div>
+            <div>Date: ${printedBillDate}</div>
+
+            <hr/>
+            <div class="center bold">RESTAURANT BILL</div>
+            <hr/>
+
+            <div>Customer: ${customerName}</div>
+            <div>Mobile: ${customerNumber}</div>
+            <div>Table: ${tableNumber}</div>
+            <div>Payment: ${paymentMethod.toUpperCase()}</div>
+
+            <hr/>
+            <b>Items</b><br/>
+
+            ${billItems
+                .map(
+                    (i) => `
+                <div class="row">
+                    <span>${i.name} (${i.variant}) x ${i.qty}</span>
+                    <span>₹${(i.qty * i.price).toFixed(2)}</span>
+                </div>
+            `
+                )
+                .join("")}
+
+            <hr/>
+            <div class="row"><span>Subtotal</span><span>₹${subtotal.toFixed(2)}</span></div>
+            <div class="row"><span>Discount</span><span>₹${discountAmount.toFixed(2)}</span></div>
+
+            ${
+                gstEnabled
+                    ? `
+                <div class="row"><span>CGST 2.5%</span><span>₹${cgstAmount.toFixed(2)}</span></div>
+                <div class="row"><span>SGST 2.5%</span><span>₹${sgstAmount.toFixed(2)}</span></div>
+            `
+                    : ""
+            }
+
+            <hr/>
+            <div class="row bold"><span>Grand Total</span><span>₹${grandTotal.toFixed(
+                2
+            )}</span></div>
+
+            <hr/>
+            <div class="center bold">Thank You! Visit Again</div>
+
+            <script>
+                setTimeout(() => {
+                    window.print();
+                    window.close();
+                }, 200);
+            </script>
+        </body>
+        </html>
+    `;
+
+    w.document.open();
+    w.document.write(kotHtml);
     w.document.close();
 };
-
 
     const resetForm = () => {
         setCustomerName("");
