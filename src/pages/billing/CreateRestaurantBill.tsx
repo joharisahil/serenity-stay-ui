@@ -127,44 +127,61 @@ export default function CreateRestaurantBill() {
     const grandTotal = taxable + cgstAmount + sgstAmount;
     // ---------------------------------------------------------------------
 
-    const printBill = () => {
-        const printContent = document.getElementById("thermal-print")!.innerHTML;
+const printBill = () => {
+    const w = window.open("", "_blank", "width=400,height=600");
 
-        const w = window.open("", "_blank", "width=400,height=600");
-        w!.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Print Bill</title>
-            <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    font-family: monospace;
-                    font-size: 14px;
-                }
-                body {
-                    padding: 10px;
-                }
-                .center { text-align: center; }
-                .bold { font-weight: bold; }
-                .line { border-top: 1px dashed #000; margin: 6px 0; }
-            </style>
-        </head>
-        <body>
-            ${printContent}
-        </body>
-        </html>
+    // Build TEXT-ONLY printable content
+    const textBill = `
+${hotel?.name || ""}
+${hotel?.address || ""}
+${hotel?.phone ? "Ph: " + hotel.phone : ""}
+${hotel?.gstNumber ? "GSTIN: " + hotel.gstNumber : ""}
+----------------------------------------
+
+RESTAURANT BILL
+Bill No: ${printedBillNumber}
+Date: ${printedBillDate}
+
+Customer: ${customerName}
+Mobile: ${customerNumber}
+Table: ${tableNumber}
+Payment: ${paymentMethod.toUpperCase()}
+
+----------------------------------------
+Items:
+${billItems
+    .map(
+        (i) =>
+            `${i.name} (${i.variant}) x ${i.qty}  = ₹${(i.qty * i.price).toFixed(
+                2
+            )}`
+    )
+    .join("\n")}
+----------------------------------------
+Subtotal: ₹${subtotal.toFixed(2)}
+Discount: ₹${discountAmount.toFixed(2)}
+${gstEnabled ? `CGST: ₹${cgstAmount.toFixed(2)}\nSGST: ₹${sgstAmount.toFixed(2)}` : ""}
+Grand Total: ₹${grandTotal.toFixed(2)}
+----------------------------------------
+Thank You! Visit Again
+`;
+
+    // Write only PLAIN TEXT inside <pre> (thermal printers understand this)
+    w!.document.write(`
+        <pre style="font-family: monospace; font-size: 14px;">
+${textBill}
+        </pre>
     `);
 
-        w!.document.close();
-        w!.focus();
+    w!.document.close();
+    w!.focus();
 
-        setTimeout(() => {
-            w!.print();
-            w!.close();
-        }, 300);
-    };
+    setTimeout(() => {
+        w!.print();
+        w!.close();
+    }, 300);
+};
+
 
     const resetForm = () => {
         setCustomerName("");
