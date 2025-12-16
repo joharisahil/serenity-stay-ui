@@ -127,62 +127,59 @@ export default function CreateRestaurantBill() {
     const grandTotal = taxable + cgstAmount + sgstAmount;
     // ---------------------------------------------------------------------
 
-const printBill = () => {
-    const w = window.open("", "_blank", "width=400,height=600");
+    // -------------------------------------------------------
+    //                THERMAL PRINT (TEXT ONLY)
+    // -------------------------------------------------------
+    const printBill = () => {
+        const w = window.open("", "_blank", "width=350,height=600");
 
-    // Build TEXT-ONLY printable content
-    const textBill = `
+        const pad = (text = "", width = 16) =>
+            text.toString().padEnd(width, " ");
+
+        const money = (num = 0) =>
+            num.toFixed(2).toString().padStart(8, " ");
+
+        const itemsText = billItems
+            .map(
+                (i) =>
+                    `${pad(i.name.slice(0, 16))}${String(i.qty).padStart(3)} ${money(
+                        i.qty * i.price
+                    )}`
+            )
+            .join("\n");
+
+        const textBill = `
 ${hotel?.name || ""}
 ${hotel?.address || ""}
 ${hotel?.phone ? "Ph: " + hotel.phone : ""}
 ${hotel?.gstNumber ? "GSTIN: " + hotel.gstNumber : ""}
 ----------------------------------------
-
 RESTAURANT BILL
 Bill No: ${printedBillNumber}
-Date: ${printedBillDate}
-
-Customer: ${customerName}
-Mobile: ${customerNumber}
-Table: ${tableNumber}
-Payment: ${paymentMethod.toUpperCase()}
-
+Date   : ${printedBillDate}
 ----------------------------------------
-Items:
-${billItems
-    .map(
-        (i) =>
-            `${i.name} (${i.variant}) x ${i.qty}  = ₹${(i.qty * i.price).toFixed(
-                2
-            )}`
-    )
-    .join("\n")}
+Item              Qty     Amt
 ----------------------------------------
-Subtotal: ₹${subtotal.toFixed(2)}
-Discount: ₹${discountAmount.toFixed(2)}
-${gstEnabled ? `CGST: ₹${cgstAmount.toFixed(2)}\nSGST: ₹${sgstAmount.toFixed(2)}` : ""}
-Grand Total: ₹${grandTotal.toFixed(2)}
+${itemsText}
 ----------------------------------------
-Thank You! Visit Again
+Subtotal:              ${money(subtotal)}
+Discount:              ${money(discountAmount)}
+${gstEnabled ? `CGST 2.5%:             ${money(cgstAmount)}` : ""}
+${gstEnabled ? `SGST 2.5%:             ${money(sgstAmount)}` : ""}
+----------------------------------------
+Grand Total:          ${money(grandTotal)}
+----------------------------------------
+     Thank You! Visit Again
 `;
 
-    // Write only PLAIN TEXT inside <pre> (thermal printers understand this)
-    w!.document.write(`
-        <pre style="font-family: monospace; font-size: 14px;">
-${textBill}
-        </pre>
-    `);
+        w!.document.write(`<pre>${textBill}</pre>`);
+        w!.document.close();
 
-    w!.document.close();
-    w!.focus();
-
-    setTimeout(() => {
-        w!.print();
-        w!.close();
-    }, 300);
-};
-
-
+        setTimeout(() => {
+            w!.print();
+            w!.close();
+        }, 200);
+    };
     const resetForm = () => {
         setCustomerName("");
         setCustomerNumber("");
