@@ -128,9 +128,14 @@ export default function CreateRestaurantBill() {
     // ---------------------------------------------------------------------
 
 const printBill = () => {
-    const w = window.open("", "_blank", "width=400,height=600");
+    const w = window.open("", "_blank", "width=280,height=600");
 
-    // Helper functions for alignment
+    if (!w) {
+        alert("Please allow pop-ups to print the bill.");
+        return;
+    }
+
+    // Helper functions
     const pad = (txt = "", len = 16) => txt.padEnd(len, " ");
     const money = (n = 0) => n.toFixed(2).padStart(8, " ");
 
@@ -143,8 +148,9 @@ const printBill = () => {
         )
         .join("\n");
 
-    const text = `
-${hotel?.name || ""}
+    // VERY IMPORTANT: NO leading \n
+    const text = 
+`${hotel?.name || ""}
 ${hotel?.address || ""}
 ${hotel?.phone ? "Ph: " + hotel.phone : ""}
 ${hotel?.gstNumber ? "GSTIN: " + hotel.gstNumber : ""}
@@ -164,21 +170,20 @@ ${gstEnabled ? `SGST 2.5%:             ${money(sgstAmount)}` : ""}
 ----------------------------------------
 Grand Total:          ${money(grandTotal)}
 ----------------------------------------
-Thank You! Visit Again
-`;
+Thank You! Visit Again`;
 
-    // Write only RAW TEXT (NO HTML AT ALL)
-    w!.document.write(text);
+    // TVS RP printers require <pre> with monospace font
+    w.document.write(`
+        <pre style="font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.2;">
+${text}
+        </pre>
+        <script>
+            setTimeout(() => { window.print(); window.close(); }, 300);
+        </script>
+    `);
 
-    w!.document.close();
-    w!.focus();
-
-    setTimeout(() => {
-        w!.print();
-        w!.close();
-    }, 200);
+    w.document.close();
 };
-
 
 
     const resetForm = () => {
