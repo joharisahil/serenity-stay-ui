@@ -130,56 +130,139 @@ export default function CreateRestaurantBill() {
     // -------------------------------------------------------
     //                THERMAL PRINT (TEXT ONLY)
     // -------------------------------------------------------
-    const printBill = () => {
-        const w = window.open("", "_blank", "width=350,height=600");
+const printBill = () => {
+    const w = window.open("", "_blank", "width=400,height=600");
+    
+    if (!w) {
+        toast.error("Unable to open print window");
+        return;
+    }
 
-        const pad = (text = "", width = 16) =>
-            text.toString().padEnd(width, " ");
+    // Format helpers
+    const pad = (text = "", width = 20) => text.toString().padEnd(width, " ");
+    const money = (num = 0) => `₹${num.toFixed(2)}`.padStart(10, " ");
+    const center = (text = "", width = 42) => {
+        const spaces = Math.max(0, Math.floor((width - text.length) / 2));
+        return " ".repeat(spaces) + text;
+    };
+    const line = () => "─".repeat(42);
 
-        const money = (num = 0) =>
-            num.toFixed(2).toString().padStart(8, " ");
+    // Build items list
+    const itemsText = billItems
+        .map((i) => {
+            const name = i.name.slice(0, 18);
+            const variant = `(${i.variant})`;
+            const qty = `x${i.qty}`;
+            const amount = money(i.qty * i.price);
+            return `${pad(name, 20)}${qty.padStart(4)} ${amount}`;
+        })
+        .join("\n");
 
-        const itemsText = billItems
-            .map(
-                (i) =>
-                    `${pad(i.name.slice(0, 16))}${String(i.qty).padStart(3)} ${money(
-                        i.qty * i.price
-                    )}`
-            )
-            .join("\n");
+    // Build the complete bill
+    const textBill = `
+${center(hotel?.name || "RESTAURANT")}
+${hotel?.address ? center(hotel.address) : ""}
+${hotel?.phone ? center(`Ph: ${hotel.phone}`) : ""}
+${hotel?.gstNumber ? center(`GSTIN: ${hotel.gstNumber}`) : ""}
+${line()}
 
-        const textBill = `
-${hotel?.name || ""}
-${hotel?.address || ""}
-${hotel?.phone ? "Ph: " + hotel.phone : ""}
-${hotel?.gstNumber ? "GSTIN: " + hotel.gstNumber : ""}
-----------------------------------------
-RESTAURANT BILL
+${center("RESTAURANT BILL")}
 Bill No: ${printedBillNumber}
 Date   : ${printedBillDate}
-----------------------------------------
-Item              Qty     Amt
-----------------------------------------
+
+Customer: ${customerName || "Walk-in"}
+Phone   : ${customerNumber || "N/A"}
+Table   : ${tableNumber || "N/A"}
+Payment : ${paymentMethod.toUpperCase()}
+
+${line()}
+Item                 Qty      Amount
+${line()}
 ${itemsText}
-----------------------------------------
-Subtotal:              ${money(subtotal)}
-Discount:              ${money(discountAmount)}
-${gstEnabled ? `CGST 2.5%:             ${money(cgstAmount)}` : ""}
-${gstEnabled ? `SGST 2.5%:             ${money(sgstAmount)}` : ""}
-----------------------------------------
-Grand Total:          ${money(grandTotal)}
-----------------------------------------
-     Thank You! Visit Again
+${line()}
+
+${pad("Subtotal:", 32)}${money(subtotal)}
+${pad("Discount:", 32)}${money(discountAmount)}
+${gstEnabled ? `${pad("CGST 2.5%:", 32)}${money(cgstAmount)}` : ""}
+${gstEnabled ? `${pad("SGST 2.5%:", 32)}${money(sgstAmount)}` : ""}
+${line()}
+${pad("GRAND TOTAL:", 32)}${money(grandTotal)}
+${line()}
+
+${center("Thank You! Visit Again")}
+
 `;
 
-        w!.document.write(`<pre>${textBill}</pre>`);
-        w!.document.close();
+    // Write HTML with proper styling for thermal printing
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Restaurant Bill</title>
+        <style>
+            @page {
+                size: 80mm auto;
+                margin: 0;
+            }
+            
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 12px;
+                line-height: 1.4;
+                width: 80mm;
+                padding: 5mm;
+                margin: 0 auto;
+                background: white;
+            }
+            
+            pre {
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 12px;
+                white-space: pre;
+                margin: 0;
+                padding: 0;
+            }
+            
+            @media print {
+                body {
+                    width: 80mm;
+                    padding: 0;
+                    margin: 0;
+                }
+                
+                pre {
+                    page-break-inside: avoid;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <pre>${textBill}</pre>
+        <script>
+            // Auto print and close
+            window.onload = function() {
+                window.print();
+                // Close after print dialog is dismissed
+                setTimeout(function() {
+                    window.close();
+                }, 500);
+            };
+        </script>
+    </body>
+    </html>
+    `;
 
-        setTimeout(() => {
-            w!.print();
-            w!.close();
-        }, 200);
-    };
+    w.document.write(html);
+    w.document.close();
+};
+
     const resetForm = () => {
         setCustomerName("");
         setCustomerNumber("");
