@@ -127,44 +127,64 @@ export default function CreateRestaurantBill() {
     const grandTotal = taxable + cgstAmount + sgstAmount;
     // ---------------------------------------------------------------------
 
-    const printBill = () => {
-        const printContent = document.getElementById("thermal-print")!.innerHTML;
+const printBill = () => {
+    const w = window.open("", "_blank", "width=300,height=600");
 
-        const w = window.open("", "_blank", "width=400,height=600");
-        w!.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Print Bill</title>
-            <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    font-family: monospace;
-                    font-size: 14px;
-                }
-                body {
-                    padding: 10px;
-                }
-                .center { text-align: center; }
-                .bold { font-weight: bold; }
-                .line { border-top: 1px dashed #000; margin: 6px 0; }
-            </style>
-        </head>
-        <body>
-            ${printContent}
-        </body>
-        </html>
+    if (!w) {
+        alert("Please enable pop-ups to print.");
+        return;
+    }
+
+    // formatting helpers
+    const pad = (txt = "", len = 18) => txt.padEnd(len, " ");
+    const money = (n = 0) => n.toFixed(2).padStart(8, " ");
+
+    const itemsText = billItems
+        .map(
+            (i) =>
+                `${pad(i.name.substring(0, 18))}${String(i.qty).padStart(3)} ${money(
+                    i.qty * i.price
+                )}`
+        )
+        .join("\n");
+
+    // raw printable text (NO HTML)
+    const text = 
+`${hotel?.name || ""}
+${hotel?.address || ""}
+${hotel?.phone ? "Ph: " + hotel.phone : ""}
+${hotel?.gstNumber ? "GSTIN: " + hotel.gstNumber : ""}
+----------------------------------------
+RESTAURANT BILL
+Bill No: ${printedBillNumber}
+Date   : ${printedBillDate}
+----------------------------------------
+Item                Qty     Amt
+----------------------------------------
+${itemsText}
+----------------------------------------
+Subtotal:               ${money(subtotal)}
+Discount:               ${money(discountAmount)}
+${gstEnabled ? `CGST 2.5%:              ${money(cgstAmount)}` : ""}
+${gstEnabled ? `SGST 2.5%:              ${money(sgstAmount)}` : ""}
+----------------------------------------
+Grand Total:           ${money(grandTotal)}
+----------------------------------------
+Thank You! Visit Again
+`;
+
+    w.document.write(`
+        <pre style="font-family: 'Courier New', monospace; font-size: 12px;">
+${text}
+        </pre>
+        <script>
+            setTimeout(() => { window.print(); window.close(); }, 300);
+        </script>
     `);
 
-        w!.document.close();
-        w!.focus();
+    w.document.close();
+};
 
-        setTimeout(() => {
-            w!.print();
-            w!.close();
-        }, 300);
-    };
 
     const resetForm = () => {
         setCustomerName("");
