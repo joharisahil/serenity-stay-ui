@@ -1,305 +1,830 @@
-export const openPrintWindow = (bill: any) => {
-  const w = window.open("", "_blank", "width=900,height=1000,scrollbars=yes");
-  if (!w) return alert("Enable popups for printing.");
-
-  const escapeHtml = (s: any) =>
-    String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-
-  const styles = `/* your existing invoice CSS */`;
-
-  const invoiceHtml = (copyLabel: string) => `
-    /* same invoice template you wrote earlier */
-  `;
-
-  w.document.open();
-  w.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head><title>Invoice</title>${styles}</head>
-    <body>
-      ${invoiceHtml("Restaurant Copy")}
-      ${invoiceHtml("Customer Copy")}
-      <button onclick="window.print()">Print</button>
-    </body>
-    </html>
-  `);
-  w.document.close();
-
-  setTimeout(() => w.print(), 400);
-};
-
-// ----------------------------------------------
 // utils/invoiceBuilder.ts
-// Centralized invoice HTML generator
-// ----------------------------------------------
-
-export function buildHeaderHtml(hotel: any, data: any) {
-  return `
-    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-      <div style="width:50%; text-align:left;">
-        <div style="font-weight:700; font-size:18px;">${hotel?.name || ""}</div>
-        <div style="font-size:12px; margin-top:6px;">${hotel?.address || ""}</div>
-        <div style="font-size:12px; margin-top:4px;">Phone: ${hotel?.phone || ""}</div>
-        ${hotel?.email ? `<div style="font-size:12px;">Email: ${hotel.email}</div>` : ""}
-        ${hotel?.gstNumber ? `<div style="font-size:12px;">GSTIN: ${hotel.gstNumber}</div>` : ""}
-      </div>
-
-      <div style="width:45%; text-align:right;">
-        <div style="font-weight:700; font-size:16px;">${data.invoiceTitle}</div>
-        <div style="font-size:13px; margin-top:6px;">Invoice: <strong>${data.invoiceNumber}</strong></div>
-        <div style="font-size:12px; margin-top:4px;">Date: ${data.createdAt}</div>
-        <div style="font-size:12px; margin-top:8px;">Guest: ${data.guestName}</div>
-        <div style="font-size:12px;">Phone: ${data.guestPhone}</div>
-        <div style="font-size:12px;">Room: ${data.roomNumber}</div>
-      </div>
-    </div>
-
-    <hr style="margin:12px 0; border:none; border-top:1px solid #ccc;" />
-  `;
-}
+// Professional invoice HTML generator matching hotel invoice format
 
 const fmt = (n?: number) =>
   (typeof n === "number" ? n : 0).toLocaleString("en-IN", {
     maximumFractionDigits: 2,
   });
 
+const escapeHtml = (s: any) =>
+  String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
-// -----------------------------------------------------
-// ROOM INVOICE ONLY
-// -----------------------------------------------------
-export function buildRoomInvoice(booking: any, hotel: any, bill: any) {
-  const invoiceNumber = `ROOM-${booking._id?.toString().slice(-6)}`;
-  const createdAt = new Date().toLocaleString();
+// Common styles for all invoices
+const invoiceStyles = `
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    
+    .invoice-container {
+      max-width: 800px;
+      margin: 0 auto;
+      border: 1px solid #000;
+      padding: 15px;
+      page-break-inside: avoid;
+    }
+    
+    .header {
+      text-align: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .header h1 {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    
+    .header .subtitle {
+      font-size: 9px;
+      margin-bottom: 1px;
+    }
+    
+    .header .gstin {
+      font-size: 9px;
+      margin-top: 3px;
+    }
+    
+    .invoice-title {
+      text-align: right;
+      font-weight: bold;
+      margin-bottom: 8px;
+      font-size: 10px;
+    }
+    
+    .info-section {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 9px;
+    }
+    
+    .info-left, .info-right {
+      width: 48%;
+    }
+    
+    .info-row {
+      margin-bottom: 2px;
+    }
+    
+    .info-row strong {
+      display: inline-block;
+      width: 100px;
+    }
+    
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 9px;
+    }
+    
+    .items-table th {
+      background-color: #d3d3d3;
+      border: 1px solid #000;
+      padding: 4px 3px;
+      text-align: left;
+      font-weight: bold;
+    }
+    
+    .items-table td {
+      border: 1px solid #000;
+      padding: 4px 3px;
+    }
+    
+    .items-table .text-right {
+      text-align: right;
+    }
+    
+    .items-table .text-center {
+      text-align: center;
+    }
+    
+    .section-heading {
+      margin: 10px 0 5px 0;
+      font-size: 11px;
+      border-bottom: 1px solid #000;
+      padding-bottom: 3px;
+      font-weight: bold;
+    }
+    
+    .totals-section {
+      margin-top: 10px;
+      border-top: 2px solid #000;
+      padding-top: 8px;
+    }
+    
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 3px;
+      font-size: 9px;
+    }
+    
+    .totals-row.grand-total {
+      font-weight: bold;
+      font-size: 10px;
+      margin-top: 5px;
+      padding-top: 5px;
+      border-top: 1px solid #000;
+    }
+    
+    .payment-section {
+      margin-top: 12px;
+      padding: 8px;
+      background-color: #f5f5f5;
+      border: 1px solid #999;
+    }
+    
+    .payment-table {
+      width: 100%;
+      font-size: 9px;
+      margin-top: 5px;
+    }
+    
+    .payment-table td {
+      padding: 2px 5px;
+    }
+    
+    .footer {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    
+    .signature-box {
+      text-align: center;
+    }
+    
+    .signature-line {
+      border-top: 1px solid #000;
+      width: 150px;
+      margin-top: 30px;
+      padding-top: 3px;
+      font-size: 9px;
+    }
+    
+    .terms {
+      font-size: 8px;
+      margin-top: 10px;
+      padding: 5px;
+      background-color: #f9f9f9;
+      border: 1px dashed #999;
+    }
+    
+    @media print {
+      body { 
+        padding: 0;
+        margin: 0;
+      }
+      
+      .invoice-container {
+        page-break-inside: avoid;
+        page-break-after: avoid;
+        height: auto;
+        max-height: 100vh;
+        padding: 10px;
+      }
+      
+      .no-print { 
+        display: none; 
+      }
+      
+      @page {
+        size: A4;
+        margin: 8mm;
+      }
+      
+      /* Reduce spacing for print */
+      .header {
+        padding-bottom: 5px;
+        margin-bottom: 8px;
+      }
+      
+      .info-section {
+        margin-bottom: 8px;
+      }
+      
+      .items-table {
+        margin: 8px 0;
+        font-size: 8px;
+      }
+      
+      .items-table th,
+      .items-table td {
+        padding: 3px 2px;
+      }
+      
+      .section-heading {
+        margin: 8px 0 4px 0;
+        font-size: 10px;
+      }
+      
+      .totals-section {
+        margin-top: 8px;
+        padding-top: 6px;
+      }
+      
+      .payment-section {
+        margin-top: 10px;
+        padding: 6px;
+      }
+      
+      .footer {
+        margin-top: 12px;
+      }
+      
+      .signature-line {
+        margin-top: 20px;
+      }
+      
+      .terms {
+        margin-top: 8px;
+        padding: 4px;
+      }
+      
+      /* Prevent page breaks inside important sections */
+      .header,
+      .info-section,
+      .items-table,
+      .totals-section,
+      .payment-section,
+      .footer,
+      .terms {
+        page-break-inside: avoid;
+      }
+      
+      /* Keep table rows together */
+      .items-table tr {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+`;
 
+// Build header section
+function buildInvoiceHeader(hotel: any, invoiceData: any) {
   return `
-  <html>
-    <head>
-      <title>Room Invoice</title>
-      <style>
-        body { font-family: Arial; padding:20px; }
-        .row { display:flex; justify-content:space-between; margin:6px 0; }
-      </style>
-    </head>
-
-    <body>
-      ${buildHeaderHtml(hotel, {
-        invoiceTitle: "Room Invoice",
-        invoiceNumber,
-        createdAt,
-        guestName: booking.guestName,
-        guestPhone: booking.guestPhone,
-        roomNumber: booking.room_id.number,
-      })}
-
-      <div class="row">
-        <div>Room Rate × Nights</div>
-        <div>₹${fmt(bill.roomPrice)} × ${bill.nights} = ₹${fmt(bill.roomStayTotal)}</div>
-      </div>
-
-      ${(booking.addedServices || [])
-        .map(
-          (s: any) =>
-            `<div class="row"><div>${s.name}</div><div>₹${fmt(s.price)}</div></div>`
-        )
-        .join("")}
-
-      <hr/>
-
-      <div class="row"><strong>Room Subtotal</strong><strong>₹${fmt(bill.roomBase)}</strong></div>
-      <div class="row"><div>CGST (2.5%)</div><div>₹${fmt(bill.roomCGST)}</div></div>
-      <div class="row"><div>SGST (2.5%)</div><div>₹${fmt(bill.roomSGST)}</div></div>
-
-      <div class="row"><strong>Discount (${booking.discount}%)</strong><strong>₹${fmt(bill.roomDiscountAmount)}</strong></div>
-
-      <div class="row"><strong>Room Total</strong><strong>₹${fmt(bill.roomNet)}</strong></div>
-
-      <div style="margin-top:40px;">
-        <div>Advance Paid: ₹${fmt(booking.advancePaid)}</div>
-        <div style="margin-top:8px; font-weight:700;">Balance: ₹${fmt(bill.balance)}</div>
-      </div>
-
-      <div style="margin-top:60px;">
-        <div>Authorised Signature</div>
-        <div style="margin-top:40px; border-top:1px solid #000; width:160px;"></div>
-      </div>
-    </body>
-  </html>
+    <div class="header">
+      <h1>${escapeHtml(hotel?.name || "HOTEL NAME")}</h1>
+      <div class="subtitle">${escapeHtml(hotel?.address || "")}</div>
+      <div class="subtitle">Mobile: ${escapeHtml(hotel?.phone || "")}</div>
+      ${hotel?.email ? `<div class="subtitle">Email: ${escapeHtml(hotel.email)}</div>` : ""}
+      <div class="gstin">GSTIN No.: ${escapeHtml(hotel?.gstNumber || "N/A")}</div>
+      <div style="margin-top: 8px; font-weight: bold;">TAX INVOICE</div>
+    </div>
+    
+    <div class="invoice-title">
+      ${invoiceData.reprint ? "Reprint Bill" : ""}
+    </div>
   `;
 }
 
+// Build guest information section
+function buildGuestInfo(booking: any, invoiceData: any) {
+  // Use current system date/time for checkout instead of booking.checkOut
+  const currentDateTime = new Date().toLocaleString("en-IN", { 
+    dateStyle: "short", 
+    timeStyle: "short" 
+  });
+  
+  return `
+    <div class="info-section">
+      <div class="info-left">
+        <div class="info-row"><strong>Name:</strong> ${escapeHtml(booking.guestName)}</div>
+        <div class="info-row"><strong>Address:</strong> ${escapeHtml(booking.guestAddress || "")}</div>
+        <div class="info-row"><strong>City:</strong> ${escapeHtml(booking.guestCity || "")}</div>
+        <div class="info-row"><strong>GSTIN No.:</strong> ${escapeHtml(booking.guestGSTIN || "")}</div>
+        <div class="info-row"><strong>Mobile No.:</strong> ${escapeHtml(booking.guestPhone)}</div>
+      </div>
+      
+      <div class="info-right">
+        <div class="info-row"><strong>Bill No. & Date:</strong> ${escapeHtml(invoiceData.invoiceNumber)} - ${escapeHtml(invoiceData.date)}</div>
+        <div class="info-row"><strong>GRC No.:</strong> ${escapeHtml(booking._id?.toString().slice(-4) || "")}</div>
+        <div class="info-row"><strong>Room No./Type:</strong> ${escapeHtml(booking.room_id?.number)} / ${escapeHtml(booking.room_id?.type)}</div>
+        <div class="info-row"><strong>PAX:</strong> Adult: ${booking.adults || 2}</div>
+        <div class="info-row"><strong>Check-In:</strong> ${new Date(booking.checkIn).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</div>
+        <div class="info-row"><strong>Check-Out:</strong> ${currentDateTime}</div>
+      </div>
+    </div>
+  `;
+}
+
+// -----------------------------------------------------
+// ROOM INVOICE
+// -----------------------------------------------------
+export function buildRoomInvoice(
+  booking: any, 
+  hotel: any, 
+  bill: any, 
+  finalPaymentReceived: boolean = false,
+  finalPaymentMode: string = "CASH"
+) {
+  const invoiceNumber = `ROOM-${booking._id?.toString().slice(-6)}`;
+  const date = new Date().toLocaleDateString("en-IN");
+  
+  const invoiceData = {
+    invoiceNumber,
+    date,
+    reprint: false
+  };
+  
+  // Calculate final balance
+  const finalBalance = finalPaymentReceived ? 0 : bill.balance;
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Room Invoice - ${invoiceNumber}</title>
+      ${invoiceStyles}
+    </head>
+    <body>
+      <div class="invoice-container">
+        ${buildInvoiceHeader(hotel, invoiceData)}
+        ${buildGuestInfo(booking, invoiceData)}
+        
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Particulars</th>
+              <th class="text-center">PAX</th>
+              <th class="text-right">Rate</th>
+              <th class="text-right">HSN/SAC</th>
+              <th class="text-right">CGST %</th>
+              <th class="text-right">CGST Amt</th>
+              <th class="text-right">SGST %</th>
+              <th class="text-right">SGST Amt</th>
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${date}</td>
+              <td>Room Rent ${booking.planCode ? booking.planCode.split("_")[0] : "EP"} (Room: ${booking.room_id?.number})<br/>
+                  ${bill.nights} Night(s) × ₹${fmt(bill.roomPrice)}</td>
+              <td class="text-center">${booking.adults || 2}</td>
+              <td class="text-right">₹${fmt(bill.roomStayTotal)}</td>
+              <td class="text-right">996311</td>
+              <td class="text-right">${booking.gstEnabled ? "2.50" : "0.00"}</td>
+              <td class="text-right">₹${fmt(bill.roomCGST)}</td>
+              <td class="text-right">${booking.gstEnabled ? "2.50" : "0.00"}</td>
+              <td class="text-right">₹${fmt(bill.roomSGST)}</td>
+              <td class="text-right">₹${fmt(bill.roomStayTotal)}</td>
+            </tr>
+            
+            ${(booking.addedServices || []).map((s: any) => `
+              <tr>
+                <td>${date}</td>
+                <td>${escapeHtml(s.name)}</td>
+                <td class="text-center">-</td>
+                <td class="text-right">₹${fmt(s.price)}</td>
+                <td class="text-right">996311</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">₹0.00</td>
+                <td class="text-right">0.00</td>
+                <td class="text-right">₹0.00</td>
+                <td class="text-right">₹${fmt(s.price)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+        
+        <div class="totals-section">
+          <div class="totals-row">
+            <span>SUB TOTAL:</span>
+            <span>₹${fmt(bill.roomBase)}</span>
+          </div>
+          <div class="totals-row">
+            <span>Tax Amount (CGST + SGST):</span>
+            <span>₹${fmt(bill.roomCGST + bill.roomSGST)}</span>
+          </div>
+          <div class="totals-row">
+            <span>Tax Before Amount:</span>
+            <span>₹${fmt(bill.roomBase + bill.roomCGST + bill.roomSGST)}</span>
+          </div>
+          <div class="totals-row">
+            <span>Discount (${booking.discount || 0}%):</span>
+            <span>-₹${fmt(bill.roomDiscountAmount)}</span>
+          </div>
+          <div class="totals-row grand-total">
+            <span>ROUND OFF NET AMOUNT:</span>
+            <span>₹${fmt(bill.roomNet)}</span>
+          </div>
+        </div>
+        
+        <div class="payment-section">
+          <strong>Payment Details:</strong>
+          <table class="payment-table">
+            <tr>
+              <td><strong>Rec. No.</strong></td>
+              <td><strong>Pay Type</strong></td>
+              <td><strong>Rec. Date</strong></td>
+              <td><strong>Rec. Amount</strong></td>
+            </tr>
+            <tr>
+              <td>${booking._id?.toString().slice(-4)}</td>
+              <td>${booking.advancePaymentMode || "CASH"}</td>
+              <td>${new Date(booking.checkIn).toLocaleDateString("en-IN")}</td>
+              <td>₹${fmt(booking.advancePaid)}</td>
+            </tr>
+            ${finalPaymentReceived ? `
+            <tr>
+              <td>${booking._id?.toString().slice(-4)}-F</td>
+              <td>${finalPaymentMode}</td>
+              <td>${new Date().toLocaleDateString("en-IN")}</td>
+              <td>₹${fmt(bill.balance)}</td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td colspan="3" style="text-align: right;"><strong>Total Net Amount:</strong></td>
+              <td><strong>₹${fmt(bill.roomNet)}</strong></td>
+            </tr>
+            <tr>
+              <td colspan="3" style="text-align: right;"><strong>BALANCE:</strong></td>
+              <td style="color: ${finalBalance === 0 ? 'green' : 'red'};"><strong>₹${fmt(finalBalance)}</strong></td>
+            </tr>
+          </table>
+        </div>
+        
+        <div class="terms">
+          I AGREE THAT I AM RESPONSIBLE FOR THE FULL PAYMENT OF THIS BILL IN THE EVENTS, IF IT IS NOT PAID (BY THE COMPANY/ORGANISATION OR PERSON INDICATED)
+        </div>
+        
+        <div class="footer">
+          <div class="signature-box">
+            <div class="signature-line">FRONT OFFICE MANAGER</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line">CASHIER</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line">Guest Sign.</div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; font-size: 9px;">
+          E. & O.E. | Prepared By: ${hotel?.name || "System"} on ${new Date().toLocaleString("en-IN")}
+        </div>
+      </div>
+      
+      <div class="no-print" style="text-align: center; margin: 20px;">
+        <button onclick="window.print()" style="padding: 10px 30px; font-size: 14px; cursor: pointer;">
+          Print Invoice
+        </button>
+      </div>
+    </body>
+    </html>
+  `;
+}
 
 // -----------------------------------------------------
 // FOOD INVOICE
 // -----------------------------------------------------
 export function buildFoodInvoice(
-  booking: any,
-  hotel: any,
-  bill: any,
-  roomOrders: any[]
+  booking: any, 
+  hotel: any, 
+  bill: any, 
+  roomOrders: any[],
+  finalPaymentReceived: boolean = false,
+  finalPaymentMode: string = "CASH"
 ) {
   const invoiceNumber = `FOOD-${booking._id?.toString().slice(-6)}`;
-  const createdAt = new Date().toLocaleString();
-
+  const date = new Date().toLocaleDateString("en-IN");
+  
+  const invoiceData = {
+    invoiceNumber,
+    date,
+    reprint: false
+  };
+  
+  // Calculate food portion of final balance
+  const foodBalance = finalPaymentReceived ? 0 : bill.foodTotal;
+  
   return `
-  <html>
+    <!DOCTYPE html>
+    <html>
     <head>
-      <title>Food Invoice</title>
-      <style>
-        body { font-family: Arial; padding:20px; }
-        .table { width:100%; border-collapse:collapse; margin-top:8px; }
-        .table th, .table td { border:1px solid #ddd; padding:8px; font-size:13px; }
-        .right { text-align:right; }
-      </style>
+      <meta charset="UTF-8">
+      <title>Food Invoice - ${invoiceNumber}</title>
+      ${invoiceStyles}
     </head>
-
     <body>
-      ${buildHeaderHtml(hotel, {
-        invoiceTitle: "Food Invoice",
-        invoiceNumber,
-        createdAt,
-        guestName: booking.guestName,
-        guestPhone: booking.guestPhone,
-        roomNumber: booking.room_id.number,
-      })}
-
-      <table class="table">
-        <thead>
-          <tr><th>Order</th><th>Items</th><th class="right">Amount</th></tr>
-        </thead>
-        <tbody>
-          ${roomOrders
-            .map(
-              (o: any) => `
+      <div class="invoice-container">
+        ${buildInvoiceHeader(hotel, invoiceData)}
+        ${buildGuestInfo(booking, invoiceData)}
+        
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Particulars</th>
+              <th class="text-right">Amount</th>
+              <th class="text-right">CGST %</th>
+              <th class="text-right">CGST Amt</th>
+              <th class="text-right">SGST %</th>
+              <th class="text-right">SGST Amt</th>
+              <th class="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${roomOrders.map((order: any) => `
               <tr>
+                <td>${new Date(order.createdAt).toLocaleDateString("en-IN")}</td>
                 <td>
-                  Order #${String(o._id).slice(-6)}
-                  <br/><small>${new Date(o.createdAt).toLocaleString()}</small>
+                  <strong>Order #${order._id?.toString().slice(-6)}</strong><br/>
+                  ${order.items.map((item: any) => 
+                    `${escapeHtml(item.name)} × ${item.qty}`
+                  ).join("<br/>")}
                 </td>
-
-                <td>
-                  ${o.items.map((i: any) => `${i.name} × ${i.qty}`).join("<br/>")}
-                </td>
-
-                <td class="right">₹${fmt(o.total)}</td>
+                <td class="text-right">₹${fmt(order.total - (order.gst || 0))}</td>
+                <td class="text-right">${booking.foodGSTEnabled ? "2.50" : "0.00"}</td>
+                <td class="text-right">₹${fmt((order.gst || 0) / 2)}</td>
+                <td class="text-right">${booking.foodGSTEnabled ? "2.50" : "0.00"}</td>
+                <td class="text-right">₹${fmt((order.gst || 0) / 2)}</td>
+                <td class="text-right">₹${fmt(order.total)}</td>
               </tr>
-            `
-            )
-            .join("")}
-        </tbody>
-      </table>
-
-      <div style="margin-top:12px; text-align:right;">
-        <div>Food Subtotal: ₹${fmt(bill.foodSubtotalRaw)}</div>
-        <div>Food Discount: ₹${fmt(bill.foodDiscountAmount)}</div>
-        <div>CGST: ₹${fmt(bill.foodCGST)}</div>
-        <div>SGST: ₹${fmt(bill.foodSGST)}</div>
-        <div style="font-weight:700; margin-top:8px;">Total: ₹${fmt(bill.foodTotal)}</div>
+            `).join("")}
+          </tbody>
+        </table>
+        
+        <div class="totals-section">
+          <div class="totals-row">
+            <span>SUB TOTAL:</span>
+            <span>₹${fmt(bill.foodSubtotalRaw)}</span>
+          </div>
+          <div class="totals-row">
+            <span>Tax Amount (CGST + SGST):</span>
+            <span>₹${fmt(bill.foodCGST + bill.foodSGST)}</span>
+          </div>
+          <div class="totals-row">
+            <span>Discount (${booking.foodDiscount || 0}%):</span>
+            <span>-₹${fmt(bill.foodDiscountAmount)}</span>
+          </div>
+          <div class="totals-row grand-total">
+            <span>ROUND OFF NET AMOUNT:</span>
+            <span>₹${fmt(bill.foodTotal)}</span>
+          </div>
+          ${finalPaymentReceived ? `
+          <div class="totals-row" style="margin-top: 10px;">
+            <span>Payment Received (${finalPaymentMode}):</span>
+            <span style="color: green;">₹${fmt(bill.foodTotal)}</span>
+          </div>
+          <div class="totals-row grand-total" style="color: green;">
+            <span>BALANCE DUE:</span>
+            <span>₹0.00</span>
+          </div>
+          ` : `
+          <div class="totals-row grand-total" style="color: red; margin-top: 10px;">
+            <span>BALANCE DUE:</span>
+            <span>₹${fmt(foodBalance)}</span>
+          </div>
+          `}
+        </div>
+        
+        <div class="footer">
+          <div class="signature-box">
+            <div class="signature-line">Authorized Signature</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line">Guest Sign.</div>
+          </div>
+        </div>
       </div>
-
-      <div style="margin-top:60px;">
-        <div>Authorised Signature</div>
-        <div style="margin-top:40px; border-top:1px solid #000; width:160px;"></div>
+      
+      <div class="no-print" style="text-align: center; margin: 20px;">
+        <button onclick="window.print()" style="padding: 10px 30px; font-size: 14px; cursor: pointer;">
+          Print Invoice
+        </button>
       </div>
     </body>
-  </html>
+    </html>
   `;
 }
 
-
 // -----------------------------------------------------
-// FINAL COMBINED INVOICE
+// COMBINED INVOICE
 // -----------------------------------------------------
 export function buildCombinedInvoice(
-  booking: any,
-  hotel: any,
-  bill: any,
-  roomOrders: any[]
+  booking: any, 
+  hotel: any, 
+  bill: any, 
+  roomOrders: any[],
+  finalPaymentReceived: boolean = false,
+  finalPaymentMode: string = "CASH"
 ) {
   const invoiceNumber = `FINAL-${booking._id?.toString().slice(-6)}`;
-  const createdAt = new Date().toLocaleString();
-
+  const date = new Date().toLocaleDateString("en-IN");
+  
+  const invoiceData = {
+    invoiceNumber,
+    date,
+    reprint: false
+  };
+  
+  // Calculate final balance
+  const finalBalance = finalPaymentReceived ? 0 : bill.balance;
+  
   return `
-  <html>
+    <!DOCTYPE html>
+    <html>
     <head>
-      <title>Combined Invoice</title>
-      <style>
-        body { font-family: Arial; padding:20px; }
-        .row { display:flex; justify-content:space-between; margin:6px 0; }
-        .items { font-size:12px; margin-left:12px; color:#444; }
-      </style>
+      <meta charset="UTF-8">
+      <title>Final Invoice - ${invoiceNumber}</title>
+      ${invoiceStyles}
     </head>
-
     <body>
-      ${buildHeaderHtml(hotel, {
-        invoiceTitle: "Final Invoice",
-        invoiceNumber,
-        createdAt,
-        guestName: booking.guestName,
-        guestPhone: booking.guestPhone,
-        roomNumber: booking.room_id.number,
-      })}
-
-      <h3>Stay Charges</h3>
-
-      <div class="row">
-        <div>Room (${bill.nights} nights × ₹${fmt(bill.roomPrice)})</div>
-        <div>₹${fmt(bill.roomStayTotal)}</div>
-      </div>
-
-      ${(booking.addedServices || [])
-        .map(
-          (s: any) =>
-            `<div class="row"><div>${s.name}</div><div>₹${fmt(s.price)}</div></div>`
-        )
-        .join("")}
-
-      <div class="row"><div>Room Subtotal</div><div>₹${fmt(bill.roomBase)}</div></div>
-      <div class="row"><div>CGST (2.5%)</div><div>₹${fmt(bill.roomCGST)}</div></div>
-      <div class="row"><div>SGST (2.5%)</div><div>₹${fmt(bill.roomSGST)}</div></div>
-
-      <div class="row"><div>Room Discount</div><div>₹${fmt(bill.roomDiscountAmount)}</div></div>
-
-      <h3>Food</h3>
-
-      ${roomOrders
-        .map(
-          (o: any) => `
-        <div class="row">
-          <div>
-            Order #${String(o._id).slice(-6)}
-            <br/>
-            <small>${new Date(o.createdAt).toLocaleString()}</small>
+      <div class="invoice-container">
+        ${buildInvoiceHeader(hotel, invoiceData)}
+        ${buildGuestInfo(booking, invoiceData)}
+        
+        <h3 class="section-heading">ROOM CHARGES</h3>
+        
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Particulars</th>
+              <th class="text-right">Amount</th>
+              <th class="text-right">CGST</th>
+              <th class="text-right">SGST</th>
+              <th class="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Room Rent (${bill.nights} nights × ₹${fmt(bill.roomPrice)})</td>
+              <td class="text-right">₹${fmt(bill.roomStayTotal)}</td>
+              <td class="text-right">₹${fmt(bill.roomCGST)}</td>
+              <td class="text-right">₹${fmt(bill.roomSGST)}</td>
+              <td class="text-right">₹${fmt(bill.roomStayTotal + bill.roomCGST + bill.roomSGST)}</td>
+            </tr>
+            ${(booking.addedServices || []).map((s: any) => `
+              <tr>
+                <td>${escapeHtml(s.name)}</td>
+                <td class="text-right">₹${fmt(s.price)}</td>
+                <td class="text-right">₹0.00</td>
+                <td class="text-right">₹0.00</td>
+                <td class="text-right">₹${fmt(s.price)}</td>
+              </tr>
+            `).join("")}
+            <tr style="background-color: #f0f0f0; font-weight: bold;">
+              <td>Room Subtotal</td>
+              <td class="text-right">₹${fmt(bill.roomBase)}</td>
+              <td class="text-right">₹${fmt(bill.roomCGST)}</td>
+              <td class="text-right">₹${fmt(bill.roomSGST)}</td>
+              <td class="text-right">₹${fmt(bill.roomGross)}</td>
+            </tr>
+            <tr>
+              <td colspan="4" style="text-align: right;">Room Discount (${booking.discount || 0}%):</td>
+              <td class="text-right" style="color: red;">-₹${fmt(bill.roomDiscountAmount)}</td>
+            </tr>
+            <tr style="font-weight: bold;">
+              <td colspan="4" style="text-align: right;">Room Net Total:</td>
+              <td class="text-right">₹${fmt(bill.roomNet)}</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        ${roomOrders.length > 0 ? `
+          <h3 class="section-heading">FOOD & BEVERAGES</h3>
+          
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Order Details</th>
+                <th class="text-right">Amount</th>
+                <th class="text-right">CGST</th>
+                <th class="text-right">SGST</th>
+                <th class="text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${roomOrders.map((order: any) => `
+                <tr>
+                  <td>
+                    <strong>Order #${order._id?.toString().slice(-6)}</strong> - 
+                    ${new Date(order.createdAt).toLocaleDateString("en-IN")}<br/>
+                    <small>${order.items.map((i: any) => `${i.name} × ${i.qty}`).join(", ")}</small>
+                  </td>
+                  <td class="text-right">₹${fmt(order.total - (order.gst || 0))}</td>
+                  <td class="text-right">₹${fmt((order.gst || 0) / 2)}</td>
+                  <td class="text-right">₹${fmt((order.gst || 0) / 2)}</td>
+                  <td class="text-right">₹${fmt(order.total)}</td>
+                </tr>
+              `).join("")}
+              <tr style="background-color: #f0f0f0; font-weight: bold;">
+                <td>Food Subtotal</td>
+                <td class="text-right">₹${fmt(bill.foodSubtotalRaw)}</td>
+                <td class="text-right">₹${fmt(bill.foodCGST)}</td>
+                <td class="text-right">₹${fmt(bill.foodSGST)}</td>
+                <td class="text-right">₹${fmt(bill.foodSubtotalRaw + bill.foodCGST + bill.foodSGST)}</td>
+              </tr>
+              <tr>
+                <td colspan="4" style="text-align: right;">Food Discount (${booking.foodDiscount || 0}%):</td>
+                <td class="text-right" style="color: red;">-₹${fmt(bill.foodDiscountAmount)}</td>
+              </tr>
+              <tr style="font-weight: bold;">
+                <td colspan="4" style="text-align: right;">Food Net Total:</td>
+                <td class="text-right">₹${fmt(bill.foodTotal)}</td>
+              </tr>
+            </tbody>
+          </table>
+        ` : ""}
+        
+        <div class="totals-section">
+          <div class="totals-row grand-total">
+            <span>GRAND TOTAL:</span>
+            <span>₹${fmt(bill.grandTotal)}</span>
           </div>
-          <div>₹${fmt(o.total)}</div>
+          <div class="totals-row">
+            <span>Advance Paid:</span>
+            <span style="color: green;">₹${fmt(booking.advancePaid)}</span>
+          </div>
+          ${finalPaymentReceived ? `
+          <div class="totals-row">
+            <span>Final Payment (${finalPaymentMode}):</span>
+            <span style="color: green;">₹${fmt(bill.balance)}</span>
+          </div>
+          <div class="totals-row grand-total" style="color: green;">
+            <span>BALANCE DUE:</span>
+            <span>₹0.00</span>
+          </div>
+          ` : `
+          <div class="totals-row grand-total" style="color: red;">
+            <span>BALANCE DUE:</span>
+            <span>₹${fmt(finalBalance)}</span>
+          </div>
+          `}
         </div>
-      `
-        )
-        .join("")}
-
-      <div class="row"><div>Food Subtotal</div><div>₹${fmt(bill.foodSubtotalRaw)}</div></div>
-      <div class="row"><div>Food Discount</div><div>₹${fmt(bill.foodDiscountAmount)}</div></div>
-      <div class="row"><div>CGST</div><div>₹${fmt(bill.foodCGST)}</div></div>
-      <div class="row"><div>SGST</div><div>₹${fmt(bill.foodSGST)}</div></div>
-
-      <hr/>
-
-      <div class="row"><strong>Grand Total</strong><strong>₹${fmt(bill.grandTotal)}</strong></div>
-      <div class="row"><div>Advance Paid</div><div>₹${fmt(booking.advancePaid)}</div></div>
-
-      <div class="row" style="font-weight:700;">
-        <div>Balance Due</div>
-        <div>₹${fmt(bill.balance)}</div>
+        
+        <div class="payment-section">
+          <strong>Payment History:</strong>
+          <table class="payment-table">
+            <tr>
+              <td><strong>Date</strong></td>
+              <td><strong>Payment Mode</strong></td>
+              <td><strong>Amount</strong></td>
+            </tr>
+            <tr>
+              <td>${new Date(booking.checkIn).toLocaleDateString("en-IN")}</td>
+              <td>${booking.advancePaymentMode || "CASH"}</td>
+              <td>₹${fmt(booking.advancePaid)}</td>
+            </tr>
+            ${finalPaymentReceived ? `
+            <tr>
+              <td>${new Date().toLocaleDateString("en-IN")}</td>
+              <td>${finalPaymentMode}</td>
+              <td>₹${fmt(bill.balance)}</td>
+            </tr>
+            <tr style="font-weight: bold; background-color: #e8f5e9;">
+              <td colspan="2">Total Paid</td>
+              <td>₹${fmt(bill.grandTotal)}</td>
+            </tr>
+            ` : ''}
+          </table>
+        </div>
+        
+        <div class="terms">
+          I AGREE THAT I AM RESPONSIBLE FOR THE FULL PAYMENT OF THIS BILL IN THE EVENTS, IF IT IS NOT PAID (BY THE COMPANY/ORGANISATION OR PERSON INDICATED)
+        </div>
+        
+        <div class="footer">
+          <div class="signature-box">
+            <div class="signature-line">FRONT OFFICE MANAGER</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line">CASHIER</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line">Guest Sign.</div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; font-size: 9px;">
+          E. & O.E. | Prepared By: ${hotel?.name || "System"} on ${new Date().toLocaleString("en-IN")}
+        </div>
       </div>
-
-      <div style="margin-top:60px;">
-        <div>Authorised Signature</div>
-        <div style="margin-top:40px; border-top:1px solid #000; width:160px;"></div>
+      
+      <div class="no-print" style="text-align: center; margin: 20px;">
+        <button onclick="window.print()" style="padding: 10px 30px; font-size: 14px; cursor: pointer;">
+          Print Invoice
+        </button>
       </div>
     </body>
-  </html>
+    </html>
   `;
 }

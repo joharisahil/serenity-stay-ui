@@ -537,10 +537,7 @@ export default function BookingDetails() {
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Room Total</span>
                   <span>₹{fmt(
-                    booking.taxable +
-                    booking.cgst +
-                    booking.sgst -
-                    booking.discountAmount
+                    billingData.roomNet
                   )}</span>
                 </div>
 
@@ -997,37 +994,75 @@ export default function BookingDetails() {
         </Dialog>
 
         {/* INVOICE DIALOG */}
-        <Dialog open={invoiceModal} onOpenChange={setInvoiceModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                Select Invoice Type
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 py-3">
-              <Button className="w-full" onClick={() =>
-                openPrintWindow(buildRoomInvoice(booking, hotel, billingData))
-              }>
-                Room Invoice Only
-              </Button>
-              <Button className="w-full" onClick={() =>
-                openPrintWindow(buildFoodInvoice(booking, hotel, billingData, roomOrders))
-              } disabled={roomOrders.length === 0}>
-                Food Invoice Only
-              </Button>
-              <Button className="w-full" onClick={() =>
-                openPrintWindow(buildCombinedInvoice(booking, hotel, billingData, roomOrders))
-              }>
-                Full Invoice (Room + Food)
-              </Button>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setInvoiceModal(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+<Dialog open={invoiceModal} onOpenChange={setInvoiceModal}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>
+        Select Invoice Type
+      </DialogTitle>
+    </DialogHeader>
+    <div className="space-y-3 py-3">
+      <Button 
+        className="w-full" 
+        onClick={() =>
+          openPrintWindow(
+            buildRoomInvoice(
+              booking, 
+              hotel, 
+              billingData, 
+              finalPaymentReceived, 
+              finalPaymentMode
+            )
+          )
+        }
+      >
+        Room Invoice Only
+      </Button>
+      
+      <Button 
+        className="w-full" 
+        onClick={() =>
+          openPrintWindow(
+            buildFoodInvoice(
+              booking, 
+              hotel, 
+              billingData, 
+              roomOrders,
+              finalPaymentReceived, 
+              finalPaymentMode
+            )
+          )
+        } 
+        disabled={roomOrders.length === 0}
+      >
+        Food Invoice Only
+      </Button>
+      
+      <Button 
+        className="w-full" 
+        onClick={() =>
+          openPrintWindow(
+            buildCombinedInvoice(
+              booking, 
+              hotel, 
+              billingData, 
+              roomOrders,
+              finalPaymentReceived, 
+              finalPaymentMode
+            )
+          )
+        }
+      >
+        Full Invoice (Room + Food)
+      </Button>
+    </div>
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setInvoiceModal(false)}>
+        Close
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
       </div>
     </Layout>
