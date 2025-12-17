@@ -136,26 +136,82 @@ export default function CreateRestaurantBill() {
     const grandTotal = taxable + cgstAmount + sgstAmount;
     // ---------------------------------------------------------------------
 
-    const printBill = (
-        billNo: string,
-        billDate: string,
-        billItems: any[],
-        totals: {
-            subtotal: number;
-            discount: number;
-            cgst: number;
-            sgst: number;
-            grandTotal: number;
-        }
-    ) => {
-        const w = window.open("", "_blank", "width=300,height=600");
+const printBill = (
+  billNo: string,
+  billDate: string,
+  billItems: any[],
+  totals: {
+    subtotal: number;
+    discount: number;
+    cgst: number;
+    sgst: number;
+    grandTotal: number;
+  }
+) => {
+  const w = window.open("", "_blank", "width=300,height=800");
 
-        if (!w) {
-            alert("Please enable pop-ups to print.");
-            return;
-        }
+  if (!w) {
+    alert("Please enable pop-ups to print.");
+    return;
+  }
 
-        const html = `
+  const renderCopy = (title: string) => `
+    <div class="center bold">${title}</div>
+    <hr/>
+
+    <div class="center bold">${hotel?.name || ""}</div>
+    ${hotel?.address ? `<div class="center">${hotel.address}</div>` : ""}
+    ${hotel?.phone ? `<div class="center">Ph: ${hotel.phone}</div>` : ""}
+    ${hotel?.gstNumber ? `<div class="center">GSTIN: ${hotel.gstNumber}</div>` : ""}
+
+    <hr/>
+
+    <div>Bill No: ${billNo}</div>
+    <div>Date: ${billDate}</div>
+
+    <hr/>
+    <div class="center bold">RESTAURANT BILL</div>
+    <hr/>
+
+    ${customerName ? `<div>Customer: ${customerName}</div>` : ""}
+    ${customerNumber ? `<div>Mobile: ${customerNumber}</div>` : ""}
+    ${tableNumber ? `<div>Table: ${tableNumber}</div>` : ""}
+    <div>Payment: ${paymentMethod.toUpperCase()}</div>
+
+    <hr/>
+    <b>Items</b>
+
+    ${billItems
+      .map(
+        (i) => `
+        <div class="row">
+          <span>${i.name} (${i.variant}) x ${i.qty}</span>
+          <span>₹${(i.qty * i.price).toFixed(2)}</span>
+        </div>
+      `
+      )
+      .join("")}
+
+    <hr/>
+    <div class="row"><span>Subtotal</span><span>₹${totals.subtotal.toFixed(2)}</span></div>
+    <div class="row"><span>Discount</span><span>-₹${totals.discount.toFixed(2)}</span></div>
+
+    ${gstEnabled ? `
+      <div class="row"><span>CGST 2.5%</span><span>₹${totals.cgst.toFixed(2)}</span></div>
+      <div class="row"><span>SGST 2.5%</span><span>₹${totals.sgst.toFixed(2)}</span></div>
+    ` : ""}
+
+    <hr/>
+    <div class="row bold">
+      <span>Grand Total</span>
+      <span>₹${totals.grandTotal.toFixed(2)}</span>
+    </div>
+
+    <hr/>
+    <div class="center">Thank You! Visit Again</div>
+  `;
+
+  const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -163,12 +219,12 @@ export default function CreateRestaurantBill() {
 
   <style>
     @page {
-      size: 58mm auto;     /* 🔥 FORCE PORTRAIT THERMAL */
+      size: 58mm auto;   /* 🔥 change to 80mm if needed */
       margin: 0;
     }
 
     html, body {
-      width: 48mm;
+      width: 58mm;
       margin: 0;
       padding: 0;
     }
@@ -192,61 +248,22 @@ export default function CreateRestaurantBill() {
       justify-content: space-between;
       width: 100%;
     }
+
+    .cut {
+      margin: 8px 0;
+      text-align: center;
+      font-size: 11px;
+    }
   </style>
 </head>
 
 <body>
 
-  <div class="center bold">${hotel?.name || ""}</div>
-  ${hotel?.address ? `<div class="center">${hotel.address}</div>` : ""}
-  ${hotel?.phone ? `<div class="center">Ph: ${hotel.phone}</div>` : ""}
-  ${hotel?.gstNumber ? `<div class="center">GSTIN: ${hotel.gstNumber}</div>` : ""}
+  ${renderCopy("HOTEL COPY")}
 
-  <hr/>
+  <div class="cut">------------------------------</div>
 
-  <div>Bill No: ${billNo}</div>
-  <div>Date: ${billDate}</div>
-
-  <hr/>
-  <div class="center bold">RESTAURANT BILL</div>
-  <hr/>
-
-  ${customerName ? `<div>Customer: ${customerName}</div>` : ""}
-  ${customerNumber ? `<div>Mobile: ${customerNumber}</div>` : ""}
-  ${tableNumber ? `<div>Table: ${tableNumber}</div>` : ""}
-  <div>Payment: ${paymentMethod.toUpperCase()}</div>
-
-  <hr/>
-  <b>Items</b>
-
-  ${billItems
-                .map(
-                    (i) => `
-      <div class="row">
-        <span>${i.name} (${i.variant}) x ${i.qty}</span>
-        <span>₹${(i.qty * i.price).toFixed(2)}</span>
-      </div>
-    `
-                )
-                .join("")}
-
-  <hr/>
-  <div class="row"><span>Subtotal</span><span>₹${totals.subtotal.toFixed(2)}</span></div>
-  <div class="row"><span>Discount</span><span>-₹${totals.discount.toFixed(2)}</span></div>
-
-  ${gstEnabled ? `
-    <div class="row"><span>CGST 2.5%</span><span>₹${totals.cgst.toFixed(2)}</span></div>
-    <div class="row"><span>SGST 2.5%</span><span>₹${totals.sgst.toFixed(2)}</span></div>
-  ` : ""}
-
-  <hr/>
-  <div class="row bold">
-    <span>Grand Total</span>
-    <span>₹${totals.grandTotal.toFixed(2)}</span>
-  </div>
-
-  <hr/>
-  <div class="center bold">Thank You! Visit Again</div>
+  ${renderCopy("CUSTOMER COPY")}
 
   <script>
     setTimeout(() => {
@@ -259,10 +276,11 @@ export default function CreateRestaurantBill() {
 </html>
 `;
 
-        w.document.open();
-        w.document.write(html);
-        w.document.close();
-    };
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+};
+
 
 
     const printKOT = () => {
