@@ -164,20 +164,20 @@ const printBill = (
 
 <style>
   @page {
-    size: 80mm auto;   /* Match printer roll */
+    size: 80mm auto;
     margin: 0;
   }
 
   html, body {
-    width: 72mm;      /* ✅ REAL printable width */
+    width: 80mm;
     margin: 0;
     padding: 0;
   }
 
   body {
     font-family: monospace;
-    font-size: 12px;
-    padding: 2mm;     /* Small inner padding */
+    font-size: 14px;
+    padding: 3mm;
     box-sizing: border-box;
   }
 
@@ -193,9 +193,14 @@ const printBill = (
     font-weight: bold;
   }
 
+  .large {
+    font-size: 16px;
+  }
+
   hr {
+    border: none;
     border-top: 1px dashed #000;
-    margin: 4px 0;
+    margin: 6px 0;
   }
 
   .row {
@@ -203,9 +208,34 @@ const printBill = (
     justify-content: space-between;
     gap: 4px;
     width: 100%;
+    margin: 3px 0;
+  }
+
+  .row span:first-child {
+    flex: 1;
+    text-align: left;
   }
 
   .row span:last-child {
+    text-align: right;
+    white-space: nowrap;
+    min-width: 80px;
+  }
+
+  .item-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin: 4px 0;
+  }
+
+  .item-row span:first-child {
+    flex: 1;
+    text-align: left;
+    padding-right: 8px;
+  }
+
+  .item-row span:last-child {
     text-align: right;
     white-space: nowrap;
   }
@@ -215,10 +245,10 @@ const printBill = (
 
 <body>
 
-  <div class="center bold">${copyType} COPY</div>
+  <div class="center bold large">${copyType} COPY</div>
   <hr/>
 
-  <div class="center bold">${hotel?.name || ""}</div>
+  <div class="center bold large">${hotel?.name || ""}</div>
   ${hotel?.address ? `<div class="center">${hotel.address}</div>` : ""}
   ${hotel?.phone ? `<div class="center">Ph: ${hotel.phone}</div>` : ""}
   ${hotel?.gstNumber ? `<div class="center">GSTIN: ${hotel.gstNumber}</div>` : ""}
@@ -229,7 +259,7 @@ const printBill = (
   <div>Date: ${billDate}</div>
 
   <hr/>
-  <div class="center bold">RESTAURANT BILL</div>
+  <div class="center bold large">RESTAURANT BILL</div>
   <hr/>
 
   ${customerName ? `<div>Customer: ${customerName}</div>` : ""}
@@ -239,10 +269,12 @@ const printBill = (
 
   <hr/>
 
+  <div class="bold">Items</div>
+
   ${billItems
     .map(
       (i) => `
-      <div class="row">
+      <div class="item-row">
         <span>${i.name} (${i.variant}) x ${i.qty}</span>
         <span>₹${(i.qty * i.price).toFixed(2)}</span>
       </div>
@@ -260,7 +292,7 @@ const printBill = (
   ` : ""}
 
   <hr/>
-  <div class="row bold">
+  <div class="row bold large">
     <span>Grand Total</span>
     <span>₹${totals.grandTotal.toFixed(2)}</span>
   </div>
@@ -283,8 +315,6 @@ const printBill = (
   w.document.write(html);
   w.document.close();
 };
-
-
     const printKOT = () => {
         if (billItems.length === 0) {
             toast.error("No items to print KOT");
