@@ -136,103 +136,134 @@ export default function CreateRestaurantBill() {
     const grandTotal = taxable + cgstAmount + sgstAmount;
     // ---------------------------------------------------------------------
 
-    const printBill = () => {
-        const w = window.open("", "_blank", "width=280,height=600");
+    const printBill = (
+  billNo: string,
+  billDate: string,
+  billItems: any[],
+  totals: {
+    subtotal: number;
+    discount: number;
+    cgst: number;
+    sgst: number;
+    grandTotal: number;
+  }
+) => {
+  const w = window.open("", "_blank", "width=300,height=600");
 
-        if (!w) {
-            alert("Please enable pop-ups to print.");
-            return;
-        }
+  if (!w) {
+    alert("Please enable pop-ups to print.");
+    return;
+  }
 
-        const kotHtml = `
-        <html>
-        <head>
-            <title>Bill</title>
-            <style>
-                @page { margin: 0; size: auto; }
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Restaurant Bill</title>
 
-                body {
-                    font-family: monospace;
-                    font-size: 12px;
-                    margin: 0;
-                    padding: 4px;
-                    width: 48mm;
-                }
+  <style>
+    @page {
+      size: 48mm auto;     /* 🔥 FORCE PORTRAIT THERMAL */
+      margin: 0;
+    }
 
-                .center { text-align: center; }
-                .bold { font-weight: bold; }
-                hr { border-top: 1px dashed #000; margin: 4px 0; }
-                .row { display: flex; justify-content: space-between; }
-            </style>
-        </head>
+    html, body {
+      width: 48mm;
+      margin: 0;
+      padding: 0;
+    }
 
-        <body>
-            <div class="center bold">${hotel?.name || ""}</div>
-            <div class="center">${hotel?.address || ""}</div>
-            ${hotel?.phone ? `<div class="center">Ph: ${hotel.phone}</div>` : ""}
-            ${hotel?.gstNumber ? `<div class="center">GSTIN: ${hotel.gstNumber}</div>` : ""}
-            <hr/>
+    body {
+      font-family: monospace;
+      font-size: 12px;
+      padding: 4px;
+    }
 
-            <div>Bill No: ${printedBillNumber}</div>
-            <div>Date: ${printedBillDate}</div>
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
 
-            <hr/>
-            <div class="center bold">RESTAURANT BILL</div>
-            <hr/>
+    hr {
+      border-top: 1px dashed #000;
+      margin: 4px 0;
+    }
 
-            <div>Customer: ${customerName}</div>
-            <div>Mobile: ${customerNumber}</div>
-            <div>Table: ${tableNumber}</div>
-            <div>Payment: ${paymentMethod.toUpperCase()}</div>
+    .row {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+    }
+  </style>
+</head>
 
-            <hr/>
-            <b>Items</b><br/>
+<body>
 
-            ${billItems
-                .map(
-                    (i) => `
-                <div class="row">
-                    <span>${i.name} (${i.variant}) x ${i.qty}</span>
-                    <span>₹${(i.qty * i.price).toFixed(2)}</span>
-                </div>
-            `
-                )
-                .join("")}
+  <div class="center bold">${hotel?.name || ""}</div>
+  ${hotel?.address ? `<div class="center">${hotel.address}</div>` : ""}
+  ${hotel?.phone ? `<div class="center">Ph: ${hotel.phone}</div>` : ""}
+  ${hotel?.gstNumber ? `<div class="center">GSTIN: ${hotel.gstNumber}</div>` : ""}
 
-            <hr/>
-            <div class="row"><span>Subtotal</span><span>₹${subtotal.toFixed(2)}</span></div>
-            <div class="row"><span>Discount</span><span>₹${discountAmount.toFixed(2)}</span></div>
+  <hr/>
 
-            ${gstEnabled
-                ? `
-                <div class="row"><span>CGST 2.5%</span><span>₹${cgstAmount.toFixed(2)}</span></div>
-                <div class="row"><span>SGST 2.5%</span><span>₹${sgstAmount.toFixed(2)}</span></div>
-            `
-                : ""
-            }
+  <div>Bill No: ${billNo}</div>
+  <div>Date: ${billDate}</div>
 
-            <hr/>
-            <div class="row bold"><span>Grand Total</span><span>₹${grandTotal.toFixed(
-                2
-            )}</span></div>
+  <hr/>
+  <div class="center bold">RESTAURANT BILL</div>
+  <hr/>
 
-            <hr/>
-            <div class="center bold">Thank You! Visit Again</div>
+  ${customerName ? `<div>Customer: ${customerName}</div>` : ""}
+  ${customerNumber ? `<div>Mobile: ${customerNumber}</div>` : ""}
+  ${tableNumber ? `<div>Table: ${tableNumber}</div>` : ""}
+  <div>Payment: ${paymentMethod.toUpperCase()}</div>
 
-            <script>
-                setTimeout(() => {
-                    window.print();
-                    window.close();
-                }, 200);
-            </script>
-        </body>
-        </html>
-    `;
+  <hr/>
+  <b>Items</b>
 
-        w.document.open();
-        w.document.write(kotHtml);
-        w.document.close();
-    };
+  ${billItems
+    .map(
+      (i) => `
+      <div class="row">
+        <span>${i.name} (${i.variant}) x ${i.qty}</span>
+        <span>₹${(i.qty * i.price).toFixed(2)}</span>
+      </div>
+    `
+    )
+    .join("")}
+
+  <hr/>
+  <div class="row"><span>Subtotal</span><span>₹${totals.subtotal.toFixed(2)}</span></div>
+  <div class="row"><span>Discount</span><span>-₹${totals.discount.toFixed(2)}</span></div>
+
+  ${gstEnabled ? `
+    <div class="row"><span>CGST 2.5%</span><span>₹${totals.cgst.toFixed(2)}</span></div>
+    <div class="row"><span>SGST 2.5%</span><span>₹${totals.sgst.toFixed(2)}</span></div>
+  ` : ""}
+
+  <hr/>
+  <div class="row bold">
+    <span>Grand Total</span>
+    <span>₹${totals.grandTotal.toFixed(2)}</span>
+  </div>
+
+  <hr/>
+  <div class="center bold">Thank You! Visit Again</div>
+
+  <script>
+    setTimeout(() => {
+      window.print();
+      window.close();
+    }, 300);
+  </script>
+
+</body>
+</html>
+`;
+
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+};
+
 
     const printKOT = () => {
     if (billItems.length === 0) {
@@ -704,35 +735,62 @@ export default function CreateRestaurantBill() {
 </Button>
 
                             <Button
-                                className="w-full"
-                                onClick={async () => {
-                                    setPrinting(true); // start spinner
+  className="w-full"
+  onClick={async () => {
+    try {
+      setPrinting(true);
 
-                                    const ok = await saveBillToDB();
+      const payload = {
+        customerName,
+        customerPhone: customerNumber,
+        tableNumber,
+        items: billItems.map((i) => ({
+          name: i.name,
+          variant: i.variant,
+          qty: i.qty,
+          price: i.price,
+          total: i.qty * i.price
+        })),
+        subtotal,
+        discount: discountAmount,
+        gst: cgstAmount + sgstAmount,
+        finalAmount: grandTotal,
+        paymentMethod
+      };
 
-                                    if (ok) {
-                                        setTimeout(() => {
-                                            printBill();
-                                            setPrinting(false); // stop spinner
-                                        }, 300);
-                                    } else {
-                                        setPrinting(false);
-                                    }
-                                }}
+      const res = await createManualRestaurantBillApi(payload);
 
-                            >
+      if (!res.success) {
+        toast.error("Failed to save bill");
+        setPrinting(false);
+        return;
+      }
 
-                                {printing ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        Printing...
-                                    </div>
-                                ) : (
-                                    <>
-                                        <Printer className="mr-2" /> Print Bill
-                                    </>
-                                )}
-                            </Button>
+      const billNo = res.bill.billNumber;
+      const billDate = new Date(res.bill.createdAt).toLocaleString();
+
+      printBill(billNo, billDate, billItems, {
+        subtotal,
+        discount: discountAmount,
+        cgst: cgstAmount,
+        sgst: sgstAmount,
+        grandTotal
+      });
+
+      toast.success(`Bill Printed #${billNo}`);
+
+      resetForm(); // ✅ AFTER PRINT
+      setPrinting(false);
+
+    } catch (err) {
+      toast.error("Printing failed");
+      setPrinting(false);
+    }
+  }}
+>
+  {printing ? "Printing..." : "🖨️ Print Bill"}
+</Button>
+
                         </CardContent>
                     </Card>
                 </div>
