@@ -162,38 +162,55 @@ const printBill = (
 <head>
   <title>${copyType} COPY</title>
 
-  <style>
-    @page {
-      size: 58mm auto; /* change to 80mm if needed */
-      margin: 0;
-    }
+<style>
+  @page {
+    size: 80mm auto;   /* Match printer roll */
+    margin: 0;
+  }
 
-    html, body {
-      width: 58mm;
-      margin: 0;
-      padding: 0;
-    }
+  html, body {
+    width: 72mm;      /* ✅ REAL printable width */
+    margin: 0;
+    padding: 0;
+  }
 
-    body {
-      font-family: monospace;
-      font-size: 12px;
-      padding: 4px;
-    }
+  body {
+    font-family: monospace;
+    font-size: 12px;
+    padding: 2mm;     /* Small inner padding */
+    box-sizing: border-box;
+  }
 
-    .center { text-align: center; }
-    .bold { font-weight: bold; }
+  * {
+    box-sizing: border-box;
+  }
 
-    hr {
-      border-top: 1px dashed #000;
-      margin: 4px 0;
-    }
+  .center {
+    text-align: center;
+  }
 
-    .row {
-      display: flex;
-      justify-content: space-between;
-      width: 100%;
-    }
-  </style>
+  .bold {
+    font-weight: bold;
+  }
+
+  hr {
+    border-top: 1px dashed #000;
+    margin: 4px 0;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .row span:last-child {
+    text-align: right;
+    white-space: nowrap;
+  }
+</style>
+
 </head>
 
 <body>
