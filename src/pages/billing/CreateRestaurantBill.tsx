@@ -136,27 +136,28 @@ export default function CreateRestaurantBill() {
     const grandTotal = taxable + cgstAmount + sgstAmount;
     // ---------------------------------------------------------------------
 
-    const printBill = (
-        billNo: string,
-        billDate: string,
-        billItems: any[],
-        totals: {
-            subtotal: number;
-            discount: number;
-            cgst: number;
-            sgst: number;
-            grandTotal: number;
-        }
-    ) => {
-        const w = window.open("", "_blank", "width=300,height=1200");
+const printBill = (
+  billNo: string,
+  billDate: string,
+  billItems: any[],
+  totals: {
+    subtotal: number;
+    discount: number;
+    cgst: number;
+    sgst: number;
+    grandTotal: number;
+  }
+) => {
+  const w = window.open("", "_blank", "width=300,height=800");
 
-        if (!w) {
-            alert("Please enable pop-ups to print.");
-            return;
-        }
+  if (!w) {
+    alert("Please enable pop-ups to print.");
+    return;
+  }
 
-        const renderCopy = (title: string) => `
-    <div class="center bold copy-title">${title}</div>
+  const renderCopy = (title: string) => `
+    <div class="center bold">${title}</div>
+    <hr/>
 
     <div class="center bold">${hotel?.name || ""}</div>
     ${hotel?.address ? `<div class="center">${hotel.address}</div>` : ""}
@@ -178,17 +179,18 @@ export default function CreateRestaurantBill() {
     <div>Payment: ${paymentMethod.toUpperCase()}</div>
 
     <hr/>
+    <b>Items</b>
 
     ${billItems
-                .map(
-                    (i) => `
+      .map(
+        (i) => `
         <div class="row">
           <span>${i.name} (${i.variant}) x ${i.qty}</span>
           <span>₹${(i.qty * i.price).toFixed(2)}</span>
         </div>
       `
-                )
-                .join("")}
+      )
+      .join("")}
 
     <hr/>
     <div class="row"><span>Subtotal</span><span>₹${totals.subtotal.toFixed(2)}</span></div>
@@ -209,7 +211,7 @@ export default function CreateRestaurantBill() {
     <div class="center">Thank You! Visit Again</div>
   `;
 
-        const html = `
+  const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -217,7 +219,7 @@ export default function CreateRestaurantBill() {
 
   <style>
     @page {
-      size: 80mm auto; /* change to 58mm if needed */
+      size: 80mm auto;   /* change to 80mm if needed */
       margin: 0;
     }
 
@@ -247,26 +249,21 @@ export default function CreateRestaurantBill() {
       width: 100%;
     }
 
-    .copy-title {
-      margin-bottom: 4px;
-    }
-
-    /* 🔥 MOST IMPORTANT PART */
-    .customer-copy {
-      page-break-before: always; /* FORCES CUT BEFORE CUSTOMER COPY */
+    .cut {
+      margin: 8px 0;
+      text-align: center;
+      font-size: 11px;
     }
   </style>
 </head>
 
 <body>
 
-  <!-- RESTAURANT COPY -->
-  ${renderCopy("RESTAURANT COPY")}
+  ${renderCopy("HOTEL COPY")}
 
-  <!-- CUSTOMER COPY (NEW PAGE → AUTO CUT) -->
-  <div class="customer-copy">
-    ${renderCopy("CUSTOMER COPY")}
-  </div>
+  <div class="cut">------------------------------</div>
+
+  ${renderCopy("CUSTOMER COPY")}
 
   <script>
     setTimeout(() => {
@@ -279,10 +276,10 @@ export default function CreateRestaurantBill() {
 </html>
 `;
 
-        w.document.open();
-        w.document.write(html);
-        w.document.close();
-    };
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+};
 
 
 
