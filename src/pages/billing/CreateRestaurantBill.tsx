@@ -146,7 +146,8 @@ const printBill = (
     cgst: number;
     sgst: number;
     grandTotal: number;
-  }
+  },
+  copyType: "RESTAURANT" | "CUSTOMER"
 ) => {
   const w = window.open("", "_blank", "width=300,height=800");
 
@@ -155,76 +156,20 @@ const printBill = (
     return;
   }
 
-  const renderCopy = (title: string) => `
-    <div class="center bold">${title}</div>
-    <hr/>
-
-    <div class="center bold">${hotel?.name || ""}</div>
-    ${hotel?.address ? `<div class="center">${hotel.address}</div>` : ""}
-    ${hotel?.phone ? `<div class="center">Ph: ${hotel.phone}</div>` : ""}
-    ${hotel?.gstNumber ? `<div class="center">GSTIN: ${hotel.gstNumber}</div>` : ""}
-
-    <hr/>
-
-    <div>Bill No: ${billNo}</div>
-    <div>Date: ${billDate}</div>
-
-    <hr/>
-    <div class="center bold">RESTAURANT BILL</div>
-    <hr/>
-
-    ${customerName ? `<div>Customer: ${customerName}</div>` : ""}
-    ${customerNumber ? `<div>Mobile: ${customerNumber}</div>` : ""}
-    ${tableNumber ? `<div>Table: ${tableNumber}</div>` : ""}
-    <div>Payment: ${paymentMethod.toUpperCase()}</div>
-
-    <hr/>
-    <b>Items</b>
-
-    ${billItems
-      .map(
-        (i) => `
-        <div class="row">
-          <span>${i.name} (${i.variant}) x ${i.qty}</span>
-          <span>₹${(i.qty * i.price).toFixed(2)}</span>
-        </div>
-      `
-      )
-      .join("")}
-
-    <hr/>
-    <div class="row"><span>Subtotal</span><span>₹${totals.subtotal.toFixed(2)}</span></div>
-    <div class="row"><span>Discount</span><span>-₹${totals.discount.toFixed(2)}</span></div>
-
-    ${gstEnabled ? `
-      <div class="row"><span>CGST 2.5%</span><span>₹${totals.cgst.toFixed(2)}</span></div>
-      <div class="row"><span>SGST 2.5%</span><span>₹${totals.sgst.toFixed(2)}</span></div>
-    ` : ""}
-
-    <hr/>
-    <div class="row bold">
-      <span>Grand Total</span>
-      <span>₹${totals.grandTotal.toFixed(2)}</span>
-    </div>
-
-    <hr/>
-    <div class="center">Thank You! Visit Again</div>
-  `;
-
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Restaurant Bill</title>
+  <title>${copyType} COPY</title>
 
   <style>
     @page {
-      size: 80mm auto;   /* change to 80mm if needed */
+      size: 58mm auto; /* change to 80mm if needed */
       margin: 0;
     }
 
     html, body {
-      width: 80mm;
+      width: 58mm;
       margin: 0;
       padding: 0;
     }
@@ -248,22 +193,63 @@ const printBill = (
       justify-content: space-between;
       width: 100%;
     }
-
-    .cut {
-      margin: 8px 0;
-      text-align: center;
-      font-size: 11px;
-    }
   </style>
 </head>
 
 <body>
 
-  ${renderCopy("HOTEL COPY")}
+  <div class="center bold">${copyType} COPY</div>
+  <hr/>
 
-  <div class="cut">------------------------------</div>
+  <div class="center bold">${hotel?.name || ""}</div>
+  ${hotel?.address ? `<div class="center">${hotel.address}</div>` : ""}
+  ${hotel?.phone ? `<div class="center">Ph: ${hotel.phone}</div>` : ""}
+  ${hotel?.gstNumber ? `<div class="center">GSTIN: ${hotel.gstNumber}</div>` : ""}
 
-  ${renderCopy("CUSTOMER COPY")}
+  <hr/>
+
+  <div>Bill No: ${billNo}</div>
+  <div>Date: ${billDate}</div>
+
+  <hr/>
+  <div class="center bold">RESTAURANT BILL</div>
+  <hr/>
+
+  ${customerName ? `<div>Customer: ${customerName}</div>` : ""}
+  ${customerNumber ? `<div>Mobile: ${customerNumber}</div>` : ""}
+  ${tableNumber ? `<div>Table: ${tableNumber}</div>` : ""}
+  <div>Payment: ${paymentMethod.toUpperCase()}</div>
+
+  <hr/>
+
+  ${billItems
+    .map(
+      (i) => `
+      <div class="row">
+        <span>${i.name} (${i.variant}) x ${i.qty}</span>
+        <span>₹${(i.qty * i.price).toFixed(2)}</span>
+      </div>
+    `
+    )
+    .join("")}
+
+  <hr/>
+  <div class="row"><span>Subtotal</span><span>₹${totals.subtotal.toFixed(2)}</span></div>
+  <div class="row"><span>Discount</span><span>-₹${totals.discount.toFixed(2)}</span></div>
+
+  ${gstEnabled ? `
+    <div class="row"><span>CGST 2.5%</span><span>₹${totals.cgst.toFixed(2)}</span></div>
+    <div class="row"><span>SGST 2.5%</span><span>₹${totals.sgst.toFixed(2)}</span></div>
+  ` : ""}
+
+  <hr/>
+  <div class="row bold">
+    <span>Grand Total</span>
+    <span>₹${totals.grandTotal.toFixed(2)}</span>
+  </div>
+
+  <hr/>
+  <div class="center">Thank You! Visit Again</div>
 
   <script>
     setTimeout(() => {
@@ -280,7 +266,6 @@ const printBill = (
   w.document.write(html);
   w.document.close();
 };
-
 
 
     const printKOT = () => {
@@ -753,61 +738,73 @@ const printBill = (
                             </Button>
 
                             <Button
-                                className="w-full"
-                                onClick={async () => {
-                                    try {
-                                        setPrinting(true);
+  className="w-full bg-green-600 hover:bg-green-700"
+  onClick={async () => {
+    setPrinting(true);
 
-                                        const payload = {
-                                            customerName,
-                                            customerPhone: customerNumber,
-                                            tableNumber,
-                                            items: billItems.map((i) => ({
-                                                name: i.name,
-                                                variant: i.variant,
-                                                qty: i.qty,
-                                                price: i.price,
-                                                total: i.qty * i.price
-                                            })),
-                                            subtotal,
-                                            discount: discountAmount,
-                                            gst: cgstAmount + sgstAmount,
-                                            finalAmount: grandTotal,
-                                            paymentMethod
-                                        };
+    const res = await createManualRestaurantBillApi({
+      customerName,
+      customerPhone: customerNumber,
+      tableNumber,
+      items: billItems.map(i => ({
+        name: i.name,
+        variant: i.variant,
+        qty: i.qty,
+        price: i.price,
+        total: i.qty * i.price
+      })),
+      subtotal,
+      discount: discountAmount,
+      gst: cgstAmount + sgstAmount,
+      finalAmount: grandTotal,
+      paymentMethod
+    });
 
-                                        const res = await createManualRestaurantBillApi(payload);
+    if (!res.success) {
+      toast.error("Failed to save bill");
+      setPrinting(false);
+      return;
+    }
 
-                                        if (!res.success) {
-                                            toast.error("Failed to save bill");
-                                            setPrinting(false);
-                                            return;
-                                        }
+    const billNo = res.bill.billNumber;
+    const billDate = new Date(res.bill.createdAt).toLocaleString();
 
-                                        const billNo = res.bill.billNumber;
-                                        const billDate = new Date(res.bill.createdAt).toLocaleString();
+    printBill(billNo, billDate, billItems, {
+      subtotal,
+      discount: discountAmount,
+      cgst: cgstAmount,
+      sgst: sgstAmount,
+      grandTotal
+    }, "RESTAURANT");
 
-                                        printBill(billNo, billDate, billItems, {
-                                            subtotal,
-                                            discount: discountAmount,
-                                            cgst: cgstAmount,
-                                            sgst: sgstAmount,
-                                            grandTotal
-                                        });
+    toast.success("Restaurant copy printed");
+    setPrinting(false);
+  }}
+>
+  🧾 Print Restaurant Copy
+</Button>
 
-                                        toast.success(`Bill Printed #${billNo}`);
+<Button
+  className="w-full bg-blue-600 hover:bg-blue-700"
+  onClick={() => {
+    printBill(
+      printedBillNumber,
+      printedBillDate,
+      billItems,
+      {
+        subtotal,
+        discount: discountAmount,
+        cgst: cgstAmount,
+        sgst: sgstAmount,
+        grandTotal
+      },
+      "CUSTOMER"
+    );
+  }}
+>
+  🧾 Print Customer Copy
+</Button>
 
-                                        resetForm(); // ✅ AFTER PRINT
-                                        setPrinting(false);
-
-                                    } catch (err) {
-                                        toast.error("Printing failed");
-                                        setPrinting(false);
-                                    }
-                                }}
-                            >
-                                {printing ? "Printing..." : "🖨️ Print Bill"}
-                            </Button>
 
                         </CardContent>
                     </Card>
