@@ -137,25 +137,25 @@ export default function CreateRestaurantBill() {
     // ---------------------------------------------------------------------
 
     const printBill = (
-  billNo: string,
-  billDate: string,
-  billItems: any[],
-  totals: {
-    subtotal: number;
-    discount: number;
-    cgst: number;
-    sgst: number;
-    grandTotal: number;
-  }
-) => {
-  const w = window.open("", "_blank", "width=300,height=600");
+        billNo: string,
+        billDate: string,
+        billItems: any[],
+        totals: {
+            subtotal: number;
+            discount: number;
+            cgst: number;
+            sgst: number;
+            grandTotal: number;
+        }
+    ) => {
+        const w = window.open("", "_blank", "width=300,height=600");
 
-  if (!w) {
-    alert("Please enable pop-ups to print.");
-    return;
-  }
+        if (!w) {
+            alert("Please enable pop-ups to print.");
+            return;
+        }
 
-  const html = `
+        const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -163,7 +163,7 @@ export default function CreateRestaurantBill() {
 
   <style>
     @page {
-      size: 48mm auto;     /* 🔥 FORCE PORTRAIT THERMAL */
+      size: 58mm auto;     /* 🔥 FORCE PORTRAIT THERMAL */
       margin: 0;
     }
 
@@ -220,15 +220,15 @@ export default function CreateRestaurantBill() {
   <b>Items</b>
 
   ${billItems
-    .map(
-      (i) => `
+                .map(
+                    (i) => `
       <div class="row">
         <span>${i.name} (${i.variant}) x ${i.qty}</span>
         <span>₹${(i.qty * i.price).toFixed(2)}</span>
       </div>
     `
-    )
-    .join("")}
+                )
+                .join("")}
 
   <hr/>
   <div class="row"><span>Subtotal</span><span>₹${totals.subtotal.toFixed(2)}</span></div>
@@ -259,26 +259,26 @@ export default function CreateRestaurantBill() {
 </html>
 `;
 
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-};
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+    };
 
 
     const printKOT = () => {
-    if (billItems.length === 0) {
-        toast.error("No items to print KOT");
-        return;
-    }
+        if (billItems.length === 0) {
+            toast.error("No items to print KOT");
+            return;
+        }
 
-    const w = window.open("", "_blank", "width=280,height=500");
+        const w = window.open("", "_blank", "width=280,height=500");
 
-    if (!w) {
-        alert("Please enable pop-ups for printing KOT.");
-        return;
-    }
+        if (!w) {
+            alert("Please enable pop-ups for printing KOT.");
+            return;
+        }
 
-    const kotHtml = `
+        const kotHtml = `
     <html>
     <head>
         <title>KOT</title>
@@ -310,14 +310,14 @@ export default function CreateRestaurantBill() {
         <hr/>
 
         ${billItems
-            .map(
-                (i) => `
+                .map(
+                    (i) => `
                 <div class="item">
                     ${i.qty} x ${i.name} (${i.variant.toUpperCase()})
                 </div>
             `
-            )
-            .join("")}
+                )
+                .join("")}
 
         <hr/>
         <div class="center">--- END ---</div>
@@ -332,10 +332,10 @@ export default function CreateRestaurantBill() {
     </html>
     `;
 
-    w.document.open();
-    w.document.write(kotHtml);
-    w.document.close();
-};
+        w.document.open();
+        w.document.write(kotHtml);
+        w.document.close();
+    };
 
 
     const resetForm = () => {
@@ -728,68 +728,68 @@ export default function CreateRestaurantBill() {
                                 Transfer to Room Bill
                             </Button>
                             <Button
-    className="w-full bg-blue-600 hover:bg-blue-700"
-    onClick={printKOT}
->
-    🧾 Print KOT
-</Button>
+                                className="w-full bg-blue-600 hover:bg-blue-700"
+                                onClick={printKOT}
+                            >
+                                🧾 Print KOT
+                            </Button>
 
                             <Button
-  className="w-full"
-  onClick={async () => {
-    try {
-      setPrinting(true);
+                                className="w-full"
+                                onClick={async () => {
+                                    try {
+                                        setPrinting(true);
 
-      const payload = {
-        customerName,
-        customerPhone: customerNumber,
-        tableNumber,
-        items: billItems.map((i) => ({
-          name: i.name,
-          variant: i.variant,
-          qty: i.qty,
-          price: i.price,
-          total: i.qty * i.price
-        })),
-        subtotal,
-        discount: discountAmount,
-        gst: cgstAmount + sgstAmount,
-        finalAmount: grandTotal,
-        paymentMethod
-      };
+                                        const payload = {
+                                            customerName,
+                                            customerPhone: customerNumber,
+                                            tableNumber,
+                                            items: billItems.map((i) => ({
+                                                name: i.name,
+                                                variant: i.variant,
+                                                qty: i.qty,
+                                                price: i.price,
+                                                total: i.qty * i.price
+                                            })),
+                                            subtotal,
+                                            discount: discountAmount,
+                                            gst: cgstAmount + sgstAmount,
+                                            finalAmount: grandTotal,
+                                            paymentMethod
+                                        };
 
-      const res = await createManualRestaurantBillApi(payload);
+                                        const res = await createManualRestaurantBillApi(payload);
 
-      if (!res.success) {
-        toast.error("Failed to save bill");
-        setPrinting(false);
-        return;
-      }
+                                        if (!res.success) {
+                                            toast.error("Failed to save bill");
+                                            setPrinting(false);
+                                            return;
+                                        }
 
-      const billNo = res.bill.billNumber;
-      const billDate = new Date(res.bill.createdAt).toLocaleString();
+                                        const billNo = res.bill.billNumber;
+                                        const billDate = new Date(res.bill.createdAt).toLocaleString();
 
-      printBill(billNo, billDate, billItems, {
-        subtotal,
-        discount: discountAmount,
-        cgst: cgstAmount,
-        sgst: sgstAmount,
-        grandTotal
-      });
+                                        printBill(billNo, billDate, billItems, {
+                                            subtotal,
+                                            discount: discountAmount,
+                                            cgst: cgstAmount,
+                                            sgst: sgstAmount,
+                                            grandTotal
+                                        });
 
-      toast.success(`Bill Printed #${billNo}`);
+                                        toast.success(`Bill Printed #${billNo}`);
 
-      resetForm(); // ✅ AFTER PRINT
-      setPrinting(false);
+                                        resetForm(); // ✅ AFTER PRINT
+                                        setPrinting(false);
 
-    } catch (err) {
-      toast.error("Printing failed");
-      setPrinting(false);
-    }
-  }}
->
-  {printing ? "Printing..." : "🖨️ Print Bill"}
-</Button>
+                                    } catch (err) {
+                                        toast.error("Printing failed");
+                                        setPrinting(false);
+                                    }
+                                }}
+                            >
+                                {printing ? "Printing..." : "🖨️ Print Bill"}
+                            </Button>
 
                         </CardContent>
                     </Card>
