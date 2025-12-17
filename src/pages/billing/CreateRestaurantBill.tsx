@@ -148,7 +148,7 @@ const printBill = (
     grandTotal: number;
   }
 ) => {
-  const w = window.open("", "_blank", "width=300,height=800");
+  const w = window.open("", "_blank", "width=300,height=1000");
 
   if (!w) {
     alert("Please enable pop-ups to print.");
@@ -156,8 +156,7 @@ const printBill = (
   }
 
   const renderCopy = (title: string) => `
-    <div class="center bold">${title}</div>
-    <hr/>
+    <div class="center bold copy-title">${title}</div>
 
     <div class="center bold">${hotel?.name || ""}</div>
     ${hotel?.address ? `<div class="center">${hotel.address}</div>` : ""}
@@ -179,7 +178,6 @@ const printBill = (
     <div>Payment: ${paymentMethod.toUpperCase()}</div>
 
     <hr/>
-    <b>Items</b>
 
     ${billItems
       .map(
@@ -219,12 +217,12 @@ const printBill = (
 
   <style>
     @page {
-      size: 58mm auto;   /* 🔥 change to 80mm if needed */
+      size: 80mm auto;   /* 🔥 Change to 58mm if needed */
       margin: 0;
     }
 
     html, body {
-      width: 58mm;
+      width: 80mm;
       margin: 0;
       padding: 0;
     }
@@ -249,19 +247,22 @@ const printBill = (
       width: 100%;
     }
 
-    .cut {
-      margin: 8px 0;
-      text-align: center;
-      font-size: 11px;
+    .copy-title {
+      margin-bottom: 4px;
+    }
+
+    /* 🔥 THIS IS THE MAGIC */
+    .page-break {
+      page-break-after: always;   /* AUTO CUT AFTER HOTEL COPY */
     }
   </style>
 </head>
 
 <body>
 
-  ${renderCopy("HOTEL COPY")}
-
-  <div class="cut">------------------------------</div>
+  <div class="page-break">
+    ${renderCopy("HOTEL COPY")}
+  </div>
 
   ${renderCopy("CUSTOMER COPY")}
 
@@ -280,7 +281,6 @@ const printBill = (
   w.document.write(html);
   w.document.close();
 };
-
 
 
     const printKOT = () => {
