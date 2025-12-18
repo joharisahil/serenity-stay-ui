@@ -198,18 +198,24 @@ useEffect(() => {
   const placeOrder = async () => {
     try {
       setPlacingOrder(true);
-      const body = {
-        hotel_id: hotelId,
-        source: source.toLowerCase(),
-        table_id: source === "table" ? id : undefined,
-        room_id: source === "room" ? id : undefined,
-        sessionToken, 
-        items: selectedItems.map((i) => ({
-          item_id: i.item_id,
-          size: i.size,
-          qty: i.qty,
-        }))
-      };
+      const orderSource =
+  source === "table" || source === "room"
+    ? "QR"
+    : "QR"; // future-proof
+
+const body = {
+  hotel_id: hotelId,
+  source: orderSource, // ✅ ALWAYS "QR" for QR menu
+  table_id: source === "table" ? id : undefined,
+  room_id: source === "room" ? id : undefined,
+  sessionToken,
+  items: selectedItems.map((i) => ({
+    item_id: i.item_id,
+    size: i.size,
+    qty: i.qty,
+  })),
+};
+
 
       const data = await createPublicOrderApi(body);
       if (!data.success) {
