@@ -18,54 +18,50 @@ export default function OrderTracking({ orderId, hotelId, placeName, source }: P
   // ------------------------------------
   // PERSIST PAGE + BLOCK BACK NAVIGATION
   // ------------------------------------
-  useEffect(() => {
-    // Save order tracking so page refresh still shows this screen
-    localStorage.setItem("activeOrderId", orderId);
-    localStorage.setItem("activeOrderHotelId", hotelId);
+useEffect(() => {
+  const activeKey = `activeOrderId:${source}:${placeName}:${hotelId}`;
+  localStorage.setItem(activeKey, orderId);
 
-    // Block back button
+  window.history.pushState(null, "", window.location.href);
+
+  const blockBack = () => {
     window.history.pushState(null, "", window.location.href);
+  };
 
-    const blockBack = () => {
-      window.history.pushState(null, "", window.location.href);
-    };
+  window.addEventListener("popstate", blockBack);
 
-    window.addEventListener("popstate", blockBack);
+  return () => {
+    window.removeEventListener("popstate", blockBack);
+  };
+}, [orderId, hotelId, source, placeName]);
 
-    return () => {
-      window.removeEventListener("popstate", blockBack);
-    };
-  }, [orderId, hotelId]);
+useEffect(() => {
+  joinHotelRoom(hotelId);
 
-  // ------------------------------------
-  // SOCKET: LISTEN FOR STATUS UPDATES
-  // ------------------------------------
-  useEffect(() => {
-    joinHotelRoom(hotelId);
+  const handler = (order: any) => {
+    if (order._id === orderId) {
+      setStatus(order.status);
 
-    const handler = (order: any) => {
-      if (order._id === orderId) {
-        setStatus(order.status);
+      if (order.status === "DELIVERED") {
+        playSound("/sounds/status-update.mp3");
 
-        // Clear saved tracking once delivered
-        if (order.status === "DELIVERED") {
-          playSound("/sounds/status-update.mp3");
-          localStorage.removeItem("activeOrderId");
-          localStorage.removeItem("activeOrderHotelId");
-          localStorage.removeItem("orderReturnUrl");
+        const activeKey = `activeOrderId:${source}:${placeName}:${hotelId}`;
+        const qrKey = `qrSessionToken:${source}:${placeName}:${hotelId}`;
 
-          localStorage.removeItem("qrSessionToken");
-           setStatus("DELIVERED");
-        }
+        localStorage.removeItem(activeKey);
+        localStorage.removeItem(qrKey);
+        localStorage.removeItem("orderReturnUrl");
       }
-    };
+    }
+  };
 
-    socket.on("order:status_update", handler);
+  socket.on("order:status_update", handler);
+ return () => {
+  socket.off("order:status_update", handler);
+};
 
-    return () => {
-      socket.off("order:status_update", handler); // correct cleanup
-    };
-  }, [orderId, hotelId]);
+}, [orderId, hotelId, source, placeName]);
+
 
   // ------------------------------------
   // ORDER STEPS
@@ -83,8 +79,13 @@ export default function OrderTracking({ orderId, hotelId, placeName, source }: P
   // ORDER MORE FUNCTION
   // ------------------------------------
 const orderMore = () => {
-  localStorage.removeItem("activeOrderId");
-  localStorage.removeItem("activeOrderHotelId");
+  const activeKey = `activeOrderId:${source}:${placeName}:${hotelId}`;
+
+localStorage.removeItem(activeKey);
+localStorage.removeItem("orderReturnUrl");
+
+window.location.reload(); // reload menu safely
+
 
   const url = localStorage.getItem("orderReturnUrl");
 

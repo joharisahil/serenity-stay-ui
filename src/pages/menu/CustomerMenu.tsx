@@ -71,19 +71,17 @@ export default function CustomerMenu() {
   const [filterType, setFilterType] = useState<"all" | "veg" | "nonveg">("all");
 
   // Load existing order (persisted)
-  useEffect(() => {
-    // If user clicked "Order More", orderReturnUrl will exist but activeOrderId should be removed
-    const activeId = localStorage.getItem("activeOrderId");
+useEffect(() => {
+  const activeKey = `activeOrderId:${source}:${id}:${hotelId}`;
+  const activeId = localStorage.getItem(activeKey);
 
-    if (activeId ) {
-      setOrderId(activeId);
-      setStep("order-placed");
-    } else {
-      // 👇 IMPORTANT FIX: Go back to menu
-      setStep("menu");
-    }
-  }, []);
-
+  if (activeId) {
+    setOrderId(activeId);
+    setStep("order-placed");
+  } else {
+    setStep("menu");
+  }
+}, [source, id, hotelId]);
 
 // ---------------------------------------------
 // Load Menu + Session Handling (PATCHED)
@@ -135,7 +133,12 @@ useEffect(() => {
   };
 
   // If order already placed → show tracking
-  if (localStorage.getItem("activeOrderId")) return;
+  const activeKey = `activeOrderId:${source}:${id}:${hotelId}`;
+  if (localStorage.getItem(activeKey)) {
+  setLoading(false);
+  return;
+  }
+
 
   init();
 }, [source, id, hotelId]);
@@ -217,6 +220,9 @@ useEffect(() => {
     }
     throw new Error();
   }
+  const activeKey = `activeOrderId:${source}:${id}:${hotelId}`;
+localStorage.setItem(activeKey, data.order._id);
+
 
       confetti({ particleCount: 100, spread: 60 });
 
