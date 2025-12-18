@@ -9,12 +9,17 @@ export const getPendingRestaurantTablesApi = async () => {
   return res.data; // { success, tables }
 };
 
+export const getTablesOverviewApi = async () => {
+  const res = await api.get("/tables/overview");
+  return res.data;
+};
+
 // ---------------------------------------------
 // Get bill for a specific table
 // GET /billing/restaurant/table/:tableId
 // ---------------------------------------------
 export const getRestaurantTableBillApi = async (tableId: string) => {
-  const res = await api.get(`/billing-restaurant/table/${tableId}`);
+  const res = await api.get(`/billing/tables/${tableId}/checkout`);
   return res.data; // { success, orders, summary }
 };
 

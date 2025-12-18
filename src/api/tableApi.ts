@@ -25,4 +25,12 @@ export const deleteTableApi = async (tableId: string) => {
   return res.data;
 };
 
+export const getTablesOverviewApi = async () => {
+  const res = await api.get("/tables/overview");
+  return res.data;
+};
 
+export const startTableSessionApi = async (tableId: string) => {
+  const res = await api.post(`/tables/${tableId}/start-session`);
+  return res.data;
+};

@@ -15,3 +15,7 @@ export const getLiveOrdersApi = (hotelId: string) =>
 export const updateOrderStatusApi = (orderId: string, status: string) =>
   api.post(`/orders/${orderId}/status`, { status }).then(res => res.data);
 
+export const createManualOrderApi = async (payload: any) => {
+  const res = await api.post("orders/manual", payload);
+  return res.data;
+};
