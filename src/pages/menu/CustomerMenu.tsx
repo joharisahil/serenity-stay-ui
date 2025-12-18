@@ -200,7 +200,7 @@ useEffect(() => {
       setPlacingOrder(true);
       const body = {
         hotel_id: hotelId,
-        source: source.toUpperCase(),
+        source: source.toLowerCase(),
         table_id: source === "table" ? id : undefined,
         room_id: source === "room" ? id : undefined,
         sessionToken, 
