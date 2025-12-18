@@ -74,9 +74,8 @@ export default function CustomerMenu() {
   useEffect(() => {
     // If user clicked "Order More", orderReturnUrl will exist but activeOrderId should be removed
     const activeId = localStorage.getItem("activeOrderId");
-    const activeHotel = localStorage.getItem("activeOrderHotelId");
 
-    if (activeId && activeHotel) {
+    if (activeId ) {
       setOrderId(activeId);
       setStep("order-placed");
     } else {
@@ -90,87 +89,57 @@ export default function CustomerMenu() {
 // Load Menu + Session Handling (PATCHED)
 // ---------------------------------------------
 useEffect(() => {
-  const init = async () => {
-    try {
-      const localToken = localStorage.getItem("qrSessionToken");
+  const qrKey = `qrSessionToken:${source}:${id}:${hotelId}`;
 
-      // ❌ If QR session was cleared after delivery → block reorder
-      if (!localToken) {
-        toast.error("QR expired! Please scan again.");
-        setLoading(false);
-        return;
-      }
+  const loadMenu = async (token: string) => {
+    setSessionToken(token);
 
-      // Use existing token (do NOT create new session)
-      setSessionToken(localToken);
+    const data = await getPublicMenuApi(source!, id!, hotelId!);
 
-      // Load menu normally
-      const data = await getPublicMenuApi(source!, id!, hotelId!);
-
-      if (!data.success) {
-        toast.error("Invalid QR. Please rescan.");
-        return;
-      }
-
-      setCategories(data.menu.categories);
-      setItems(data.menu.items);
-
-      if (data.meta) {
-        setPlaceName(data.meta.name || data.meta.number || id);
-      }
-
-    } catch (err) {
-      toast.error("Failed to load menu");
-    } finally {
+    if (!data.success) {
+      localStorage.removeItem(qrKey);
+      toast.error("QR expired! Please rescan.");
       setLoading(false);
+      return;
     }
+
+    setCategories(data.menu.categories);
+    setItems(data.menu.items);
+
+    if (data.meta) {
+      setPlaceName(data.meta.name || data.meta.number || id);
+    }
+
+    setLoading(false);
   };
 
-  const startFirstSession = async () => {
+  const startSessionAndLoad = async () => {
     try {
-      // 1️⃣ Create first session ONLY when qrSessionToken does NOT exist
       const session = await startQrSessionApi(source!, id!, hotelId!);
-
-      const token = session.sessionToken;
-      localStorage.setItem("qrSessionToken", token);
-      setSessionToken(token);
-
-      // 2️⃣ Load menu
-      const data = await getPublicMenuApi(source!, id!, hotelId!);
-
-      if (!data.success) {
-        toast.error("Invalid QR. Please rescan.");
-        return;
-      }
-
-      setCategories(data.menu.categories);
-      setItems(data.menu.items);
-
-      if (data.meta) {
-        setPlaceName(data.meta.name || data.meta.number || id);
-      }
-
-    } catch (err) {
-      toast.error("Failed to load menu");
-    } finally {
+      localStorage.setItem(qrKey, session.sessionToken);
+      await loadMenu(session.sessionToken);
+    } catch {
+      toast.error("Failed to start QR session");
       setLoading(false);
     }
   };
 
-  // If already placed order → show tracking screen
+  const init = async () => {
+    const existingToken = localStorage.getItem(qrKey);
+
+    if (!existingToken) {
+      await startSessionAndLoad();
+    } else {
+      await loadMenu(existingToken);
+    }
+  };
+
+  // If order already placed → show tracking
   if (localStorage.getItem("activeOrderId")) return;
 
-  // ⭐ Decide whether session should be created or reused
-  const localToken = localStorage.getItem("qrSessionToken");
+  init();
+}, [source, id, hotelId]);
 
-  if (!localToken) {
-    // 🟢 First scan → start new session
-    startFirstSession();
-  } else {
-    // 🔵 Page refresh → DO NOT create new session
-    init();
-  }
-}, []);
 
 
   // ---------------------------------------------
