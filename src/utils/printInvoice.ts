@@ -294,12 +294,16 @@ function buildInvoiceHeader(hotel: any, invoiceData: any) {
 
 // Build guest information section
 function buildGuestInfo(booking: any, invoiceData: any) {
-  // Use current system date/time for checkout instead of booking.checkOut
-  const currentDateTime = new Date().toLocaleString("en-IN", { 
-    dateStyle: "short", 
-    timeStyle: "short" 
-  });
-  
+  const checkoutDateTime = booking.actualCheckoutTime
+    ? new Date(booking.actualCheckoutTime).toLocaleString("en-IN", {
+        dateStyle: "short",
+        timeStyle: "short",
+      })
+    : new Date().toLocaleString("en-IN", {
+        dateStyle: "short",
+        timeStyle: "short",
+      });
+
   return `
     <div class="info-section">
       <div class="info-left">
@@ -309,14 +313,28 @@ function buildGuestInfo(booking: any, invoiceData: any) {
         <div class="info-row"><strong>GSTIN No.:</strong> ${escapeHtml(booking.guestGSTIN || "")}</div>
         <div class="info-row"><strong>Mobile No.:</strong> ${escapeHtml(booking.guestPhone)}</div>
       </div>
-      
+
       <div class="info-right">
-        <div class="info-row"><strong>Bill No. & Date:</strong> ${escapeHtml(invoiceData.invoiceNumber)} - ${escapeHtml(invoiceData.date)}</div>
+        <div class="info-row">
+          <strong>Bill No. & Date:</strong>
+          ${escapeHtml(invoiceData.invoiceNumber)} - ${escapeHtml(invoiceData.date)}
+        </div>
         <div class="info-row"><strong>GRC No.:</strong> ${escapeHtml(booking._id?.toString().slice(-4) || "")}</div>
-        <div class="info-row"><strong>Room No./Type:</strong> ${escapeHtml(booking.room_id?.number)} / ${escapeHtml(booking.room_id?.type)}</div>
+        <div class="info-row">
+          <strong>Room No./Type:</strong>
+          ${escapeHtml(booking.room_id?.number)} / ${escapeHtml(booking.room_id?.type)}
+        </div>
         <div class="info-row"><strong>PAX:</strong> Adult: ${booking.adults || 2}</div>
-        <div class="info-row"><strong>Check-In:</strong> ${new Date(booking.checkIn).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}</div>
-        <div class="info-row"><strong>Check-Out:</strong> ${currentDateTime}</div>
+        <div class="info-row">
+          <strong>Check-In:</strong>
+          ${new Date(booking.checkIn).toLocaleString("en-IN", {
+            dateStyle: "short",
+            timeStyle: "short",
+          })}
+        </div>
+        <div class="info-row">
+          <strong>Check-Out:</strong> ${checkoutDateTime}
+        </div>
       </div>
     </div>
   `;
