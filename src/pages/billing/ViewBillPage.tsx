@@ -169,7 +169,6 @@ const buildRestaurantThermalBill = (bill: any, hotel?: any) => {
 `;
 };
 
-
 export default function ViewBillPage() {
   const { billId, type } = useParams<{ billId: string; type?: string }>();
   const navigate = useNavigate();
