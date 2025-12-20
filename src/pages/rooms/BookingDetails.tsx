@@ -247,7 +247,6 @@ export default function BookingDetails() {
     );
 
   // ---------------- Billing Logic -----------------
-  // ---------------- Billing Logic -----------------
   const nights = Math.max(
     1,
     Math.ceil(
@@ -427,13 +426,27 @@ export default function BookingDetails() {
           <CardHeader>
             <CardTitle>Guest Information</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
             <p><strong>Name:</strong> {booking.guestName}</p>
             <p><strong>Phone:</strong> {booking.guestPhone}</p>
-            <p><strong>Advance Payment Mode:</strong> {booking.advancePaymentMode || "N/A"}</p>
+
+            <p><strong>City:</strong> {booking.guestCity || "—"}</p>
+            <p><strong>Nationality:</strong> {booking.guestNationality || "—"}</p>
+
+            <div className="md:col-span-2">
+              <p><strong>Address:</strong> {booking.guestAddress || "—"}</p>
+            </div>
+
+            <p><strong>Adults:</strong> {booking.adults}</p>
+            <p><strong>Children:</strong> {booking.children}</p>
+
             <p><strong>Plan:</strong> {readablePlan(booking.planCode)}</p>
+            <p><strong>Advance Mode:</strong> {booking.advancePaymentMode || "N/A"}</p>
+
           </CardContent>
         </Card>
+
         {/* Guest ID Proofs */}
         {booking.guestIds && booking.guestIds.length > 0 && (
           <Card>
@@ -452,6 +465,21 @@ export default function BookingDetails() {
                   <p><strong>Name on ID:</strong> {id.nameOnId}</p>
                 </div>
               ))}
+
+            </CardContent>
+          </Card>
+        )}
+
+        {(booking.companyName || booking.companyGSTIN) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Company / GST Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+
+              <p><strong>Company Name:</strong> {booking.companyName || "—"}</p>
+              <p><strong>GSTIN:</strong> {booking.companyGSTIN || "—"}</p>
+              <p><strong>Company Address:</strong> {booking.companyAddress || "—"}</p>
 
             </CardContent>
           </Card>
@@ -483,6 +511,26 @@ export default function BookingDetails() {
             <p><strong>Nights:</strong> {nights}</p>
           </CardContent>
         </Card>
+        {booking.addedServices?.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Extra Services</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+
+              {booking.addedServices.map((s: any, i: number) => (
+                <div key={i} className="flex justify-between">
+                  <span>
+                    {s.name}
+                    {s.days?.length ? ` (Days: ${s.days.join(", ")})` : ""}
+                  </span>
+                  <span>₹{fmt(s.price)}</span>
+                </div>
+              ))}
+
+            </CardContent>
+          </Card>
+        )}
 
         {/* Billing */}
         {/* BILLING SECTION */}
@@ -772,7 +820,7 @@ export default function BookingDetails() {
               </div>
 
               <div className="flex justify-between text-success">
-                <span>Advance Paid</span>
+                <span>Advance Paid ( Room )</span>
                 <span>₹{fmt(booking.advancePaid)}</span>
               </div>
 
@@ -994,75 +1042,75 @@ export default function BookingDetails() {
         </Dialog>
 
         {/* INVOICE DIALOG */}
-<Dialog open={invoiceModal} onOpenChange={setInvoiceModal}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>
-        Select Invoice Type
-      </DialogTitle>
-    </DialogHeader>
-    <div className="space-y-3 py-3">
-      <Button 
-        className="w-full" 
-        onClick={() =>
-          openPrintWindow(
-            buildRoomInvoice(
-              booking, 
-              hotel, 
-              billingData, 
-              finalPaymentReceived, 
-              finalPaymentMode
-            )
-          )
-        }
-      >
-        Room Invoice Only
-      </Button>
-      
-      <Button 
-        className="w-full" 
-        onClick={() =>
-          openPrintWindow(
-            buildFoodInvoice(
-              booking, 
-              hotel, 
-              billingData, 
-              roomOrders,
-              finalPaymentReceived, 
-              finalPaymentMode
-            )
-          )
-        } 
-        disabled={roomOrders.length === 0}
-      >
-        Food Invoice Only
-      </Button>
-      
-      <Button 
-        className="w-full" 
-        onClick={() =>
-          openPrintWindow(
-            buildCombinedInvoice(
-              booking, 
-              hotel, 
-              billingData, 
-              roomOrders,
-              finalPaymentReceived, 
-              finalPaymentMode
-            )
-          )
-        }
-      >
-        Full Invoice (Room + Food)
-      </Button>
-    </div>
-    <DialogFooter>
-      <Button variant="outline" onClick={() => setInvoiceModal(false)}>
-        Close
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+        <Dialog open={invoiceModal} onOpenChange={setInvoiceModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Select Invoice Type
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-3">
+              <Button
+                className="w-full"
+                onClick={() =>
+                  openPrintWindow(
+                    buildRoomInvoice(
+                      booking,
+                      hotel,
+                      billingData,
+                      finalPaymentReceived,
+                      finalPaymentMode
+                    )
+                  )
+                }
+              >
+                Room Invoice Only
+              </Button>
+
+              <Button
+                className="w-full"
+                onClick={() =>
+                  openPrintWindow(
+                    buildFoodInvoice(
+                      booking,
+                      hotel,
+                      billingData,
+                      roomOrders,
+                      finalPaymentReceived,
+                      finalPaymentMode
+                    )
+                  )
+                }
+                disabled={roomOrders.length === 0}
+              >
+                Food Invoice Only
+              </Button>
+
+              <Button
+                className="w-full"
+                onClick={() =>
+                  openPrintWindow(
+                    buildCombinedInvoice(
+                      booking,
+                      hotel,
+                      billingData,
+                      roomOrders,
+                      finalPaymentReceived,
+                      finalPaymentMode
+                    )
+                  )
+                }
+              >
+                Full Invoice (Room + Food)
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setInvoiceModal(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       </div>
     </Layout>
