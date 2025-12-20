@@ -1,15 +1,14 @@
 import api from "@/api/authApi";
 
 // restaurant + banquet bills
-export const getBillsApi = async (source?: string) => {
-  const params = source ? { source } : {};
+export const getBillsApi = async (params: any) => {
   const res = await api.get("/billing", { params });
   return res.data;
 };
 
 // room invoices only
-export const getRoomBillsApi = async () => {
-  const res = await api.get("/billing/room");
+export const getRoomBillsApi = async (params: any) => {
+  const res = await api.get("/billing/room", { params });
   return res.data;
 };
 
