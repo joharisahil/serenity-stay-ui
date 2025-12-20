@@ -1,3 +1,4 @@
+// src/pages/ViewBillPage.tsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
@@ -35,11 +36,11 @@ const openPrintWindow = (html: string) => {
     try {
       win.focus();
       win.print();
-    } catch { }
+    } catch {}
   }, 300);
 };
 
-/* ---------------- THERMAL BILL BUILDER ---------------- */
+/* ---------------- THERMAL RESTAURANT BILL ---------------- */
 const buildRestaurantThermalBill = (bill: any) => {
   const items = bill.orders?.flatMap((o: any) => o.items) || [];
 
@@ -48,14 +49,8 @@ const buildRestaurantThermalBill = (bill: any) => {
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Restaurant Bill</title>
   <style>
-    body {
-      font-family: monospace;
-      width: 58mm;
-      padding: 8px;
-      font-size: 12px;
-    }
+    body { font-family: monospace; width: 58mm; padding: 8px; font-size: 12px; }
     .center { text-align: center; }
     .bold { font-weight: bold; }
     .line { border-top: 1px dashed #000; margin: 6px 0; }
@@ -63,7 +58,6 @@ const buildRestaurantThermalBill = (bill: any) => {
   </style>
 </head>
 <body>
-
   <div class="center bold">RESTAURANT BILL</div>
   <div class="center">Bill No: ${bill.billNumber}</div>
   <div class="center">${new Date(bill.createdAt).toLocaleString()}</div>
@@ -71,45 +65,27 @@ const buildRestaurantThermalBill = (bill: any) => {
   <div class="line"></div>
 
   ${items
-      .map(
-        (it: any) => `
-    <div class="row">
-      <span>${it.name} × ${it.qty}</span>
-      <span>₹${it.total}</span>
-    </div>
-  `
-      )
-      .join("")}
+    .map(
+      (it: any) => `
+      <div class="row">
+        <span>${it.name} × ${it.qty}</span>
+        <span>₹${it.total}</span>
+      </div>`
+    )
+    .join("")}
 
   <div class="line"></div>
 
-  <div class="row">
-  <span>Subtotal</span>
-  <span>₹${bill.subtotal}</span>
-</div>
+  <div class="row"><span>Subtotal</span><span>₹${bill.subtotal}</span></div>
+  <div class="row"><span>CGST (2.5%)</span><span>₹${(bill.gst / 2).toFixed(2)}</span></div>
+  <div class="row"><span>SGST (2.5%)</span><span>₹${(bill.gst / 2).toFixed(2)}</span></div>
 
-<div class="row">
-  <span>CGST (2.5%)</span>
-  <span>₹${(bill.gst / 2).toFixed(2)}</span>
-</div>
-
-<div class="row">
-  <span>SGST (2.5%)</span>
-  <span>₹${(bill.gst / 2).toFixed(2)}</span>
-</div>
-
-<div class="row bold">
-  <span>TOTAL</span>
-  <span>₹${bill.finalAmount}</span>
-</div>
+  <div class="row bold"><span>TOTAL</span><span>₹${bill.finalAmount}</span></div>
 
   <div class="line"></div>
-
   <div class="center">Thank You 🙏</div>
-
 </body>
-</html>
-`;
+</html>`;
 };
 
 export default function ViewBillPage() {
@@ -120,37 +96,29 @@ export default function ViewBillPage() {
   const [loading, setLoading] = useState(true);
   const [invoiceModal, setInvoiceModal] = useState(false);
 
-  /* ---------------- LOAD BILL ---------------- */
-  const loadBill = async () => {
-    try {
-      const res =
-        type?.toLowerCase() === "room"
-          ? await getRoomBillByIdApi(billId!)
-          : await getBillByIdApi(billId!);
-
-      if (!res?.success) {
-        toast.error("Bill not found");
-        navigate("/old-bills");
-        return;
-      }
-
-      setBill(res.bill);
-    } catch {
-      toast.error("Failed to load bill");
-      navigate("/old-bills");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadBill();
+    (async () => {
+      try {
+        const res =
+          type?.toLowerCase() === "room"
+            ? await getRoomBillByIdApi(billId!)
+            : await getBillByIdApi(billId!);
+
+        if (!res?.success) throw new Error();
+        setBill(res.bill);
+      } catch {
+        toast.error("Failed to load bill");
+        navigate("/old-bills");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [billId]);
 
   if (loading)
     return (
       <Layout>
-        <p className="p-10 text-center text-muted-foreground">Loading bill...</p>
+        <p className="p-10 text-center text-muted-foreground">Loading bill…</p>
       </Layout>
     );
 
@@ -182,20 +150,16 @@ export default function ViewBillPage() {
             </div>
           </div>
 
-          {/* RESTAURANT THERMAL PRINT */}
           {!isRoom && (
             <Button
               variant="outline"
-              onClick={() =>
-                openPrintWindow(buildRestaurantThermalBill(bill))
-              }
+              onClick={() => openPrintWindow(buildRestaurantThermalBill(bill))}
             >
               <Printer className="mr-2 h-4 w-4" />
               Print Bill
             </Button>
           )}
 
-          {/* ROOM INVOICE */}
           {isRoom && (
             <Button variant="outline" onClick={() => setInvoiceModal(true)}>
               <Download className="mr-2 h-4 w-4" />
@@ -207,14 +171,11 @@ export default function ViewBillPage() {
         {/* RESTAURANT BILL */}
         {!isRoom && (
           <Card>
-            <CardHeader>
-              <CardTitle>Restaurant Bill</CardTitle>
-            </CardHeader>
-
+            <CardHeader><CardTitle>Restaurant Bill</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <p><b>Customer:</b> {bill.customerName || "N/A"}</p>
 
-              <div className="border rounded-lg p-4 space-y-2">
+              <div className="border rounded p-3 space-y-1">
                 {bill.orders?.flatMap((o: any) =>
                   o.items.map((it: any, i: number) => (
                     <div key={i} className="flex justify-between text-sm">
@@ -225,25 +186,11 @@ export default function ViewBillPage() {
                 )}
               </div>
 
-              <div className="border-t pt-4 space-y-2">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>₹{bill.subtotal}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>CGST (2.5%)</span>
-                  <span>₹{(bill.gst / 2).toFixed(2)}</span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span>SGST (2.5%)</span>
-                  <span>₹{(bill.gst / 2).toFixed(2)}</span>
-                </div>
-
-                <div className="flex justify-between font-bold">
-                  <span>Total</span>
-                  <span>₹{bill.finalAmount}</span>
-                </div>
+              <div className="border-t pt-3 space-y-1">
+                <div className="flex justify-between"><span>Subtotal</span><span>₹{bill.subtotal}</span></div>
+                <div className="flex justify-between"><span>CGST (2.5%)</span><span>₹{(bill.gst / 2).toFixed(2)}</span></div>
+                <div className="flex justify-between"><span>SGST (2.5%)</span><span>₹{(bill.gst / 2).toFixed(2)}</span></div>
+                <div className="flex justify-between font-bold"><span>Total</span><span>₹{bill.finalAmount}</span></div>
               </div>
             </CardContent>
           </Card>
@@ -252,14 +199,14 @@ export default function ViewBillPage() {
         {/* ROOM BILL SUMMARY */}
         {isRoom && full && (
           <Card>
-            <CardHeader>
-              <CardTitle>Room Invoice Summary</CardTitle>
-            </CardHeader>
-
+            <CardHeader><CardTitle>Room Invoice Summary</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               <p><b>Guest:</b> {full.guestName}</p>
               <p><b>Room:</b> {full.roomNumber} ({full.roomType})</p>
+              <p><b>Check-in:</b> {new Date(full.checkIn).toLocaleString()}</p>
               <p><b>Check-out:</b> {new Date(full.actualCheckoutTime).toLocaleString()}</p>
+              <p><b>Room Charges:</b> ₹{full.stayAmount}</p>
+              <p><b>Food Charges:</b> ₹{full.foodTotal}</p>
               <p className="font-bold">Total: ₹{full.totalAmount}</p>
             </CardContent>
           </Card>
@@ -274,44 +221,41 @@ export default function ViewBillPage() {
               <DialogTitle>Select Invoice Type</DialogTitle>
             </DialogHeader>
 
-            <Button
-              onClick={() =>
-                openPrintWindow(
-                  buildCombinedInvoice(
-                    {
-                      ...full,
-                      room_id: {
-                        number: full.roomNumber,
-                        type: full.roomType,
-                      },
-                    },
-                    full.hotel,
-                    {
-                      nights: full.stayNights,
-                      roomPrice: full.roomRate,
-                      roomStayTotal: full.stayAmount,
-                      roomBase: full.stayAmount,
-                      roomCGST: full.stayCGST,
-                      roomSGST: full.staySGST,
-                      roomGross: full.stayAmount + full.stayGST,
-                      roomDiscountAmount: full.discountAmount,
-                      roomNet: full.totalAmount - full.foodTotal,
-                      foodSubtotalRaw: full.foodSubtotal,
-                      foodCGST: full.foodGST / 2,
-                      foodSGST: full.foodGST / 2,
-                      foodTotal: full.foodTotal,
-                      grandTotal: full.totalAmount,
-                      balance: full.balanceDue,
-                    },
-                    full.foodOrders,
-                    true,
-                    full.advancePaymentMode || "CASH"
+            <div className="space-y-2">
+              <Button
+                className="w-full"
+                onClick={() =>
+                  openPrintWindow(
+                    buildRoomInvoice(full, full.hotel, full, true, full.advancePaymentMode)
                   )
-                )
-              }
-            >
-              Full Invoice (Room + Food)
-            </Button>
+                }
+              >
+                Room Invoice Only
+              </Button>
+
+              <Button
+                className="w-full"
+                disabled={!full.foodOrders?.length}
+                onClick={() =>
+                  openPrintWindow(
+                    buildFoodInvoice(full, full.hotel, full, full.foodOrders, true, full.advancePaymentMode)
+                  )
+                }
+              >
+                Food Invoice Only
+              </Button>
+
+              <Button
+                className="w-full"
+                onClick={() =>
+                  openPrintWindow(
+                    buildCombinedInvoice(full, full.hotel, full, full.foodOrders, true, full.advancePaymentMode)
+                  )
+                }
+              >
+                Full Invoice (Room + Food)
+              </Button>
+            </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setInvoiceModal(false)}>

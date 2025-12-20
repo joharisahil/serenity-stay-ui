@@ -19,6 +19,8 @@ import api from "@/api/authApi";
 /* ---------------- TYPES ---------------- */
 
 type OrderItem = {
+  item_id: string;
+  order_id: string;
   name: string;
   size: string;
   qty: number;
@@ -27,6 +29,7 @@ type OrderItem = {
 };
 
 type Order = {
+  table_id: any;
   _id: string;
   items: OrderItem[];
   subtotal: number;
@@ -149,83 +152,82 @@ export default function GenerateBill() {
   }, [cashAmount, finalAmount]);
 
   useEffect(() => {
-  const loadRooms = async () => {
-    try {
-      const res = await api.get("/room-bookings/active-today");
-      if (res.data.success) setActiveRooms(res.data.rooms);
-    } catch {}
-  };
-  loadRooms();
+    const loadRooms = async () => {
+      try {
+        const res = await api.get("/room-bookings/active-today");
+        if (res.data.success) setActiveRooms(res.data.rooms);
+      } catch { }
+    };
+    loadRooms();
   }, []);
 
   const transferToRoom = async () => {
-  if (!transferBookingId) {
-    toast.error("Select a room to transfer");
-    return;
-  }
-
-  setTransferring(true);
-  try {
-    const res = await api.post("/billing/restaurant/transfer", {
-      bookingId: transferBookingId,
-      tableId,
-      items: buildFinalItems(),
-      subtotal,
-      discount: discountAmount,
-      gst,
-      finalAmount
-    });
-
-    if (!res.data.success) {
-      toast.error(res.data.message);
+    if (!transferBookingId) {
+      toast.error("Select a room to transfer");
       return;
     }
 
-    toast.success("Food bill transferred to room");
-    navigate("/billing");
-  } catch (e) {
-    toast.error("Transfer failed");
-  } finally {
-    setTransferring(false);
-  }
-};
+    setTransferring(true);
+    try {
+      const res = await api.post("/billing/restaurant/transfer", {
+        bookingId: transferBookingId,
+        tableId,
+        items: buildFinalItems(),
+        subtotal,
+        discount: discountAmount,
+        gst,
+        finalAmount
+      });
+
+      if (!res.data.success) {
+        toast.error(res.data.message);
+        return;
+      }
+
+      toast.success("Food bill transferred to room");
+      navigate("/billing");
+    } catch (e) {
+      toast.error("Transfer failed");
+    } finally {
+      setTransferring(false);
+    }
+  };
 
   /* ---------------- PRINT ---------------- */
 
-  const printInvoice = (bill: any, hotel: any) => {
-    const w = window.open("", "_blank", "width=300,height=800");
-    if (!w) return;
+  /* ---------------- PRINT (THERMAL) ---------------- */
 
-    w.document.write(`
+  const printInvoice = (bill: any, hotel: any) => {
+    const tableName = orders[0]?.table_id?.name || "N/A";
+
+    const buildHtml = (copyType: "CAPTAIN COPY" | "CUSTOMER COPY") => `
 <!doctype html>
 <html>
-<body style="font-family:monospace;font-size:12px;padding:6px">
+<body style="font-family:monospace;font-size:12px;padding:6px;width:58mm">
 
-<div style="text-align:center;font-weight:bold">${hotel?.name || ""}</div>
+<div style="text-align:center;font-weight:bold">
+  ${hotel?.name || ""}
+</div>
+
 ${hotel?.address ? `<div style="text-align:center">${hotel.address}</div>` : ""}
 ${hotel?.phone ? `<div style="text-align:center">Ph: ${hotel.phone}</div>` : ""}
 ${hotel?.gstNumber ? `<div style="text-align:center">GSTIN: ${hotel.gstNumber}</div>` : ""}
 
 <hr/>
 
-<div>Bill No: ${bill.billNumber}</div>
-<div>Date: ${new Date(bill.createdAt).toLocaleString()}</div>
-<div>Payment: ${bill.payments.map((p: any) => `
-<div style="display:flex;justify-content:space-between">
-  <span>${p.mode}</span>
+<div style="text-align:center;font-weight:bold">
+  *** ${copyType} ***
 </div>
-`).join("")}</div>
 
 <hr/>
-<hr/>
-<b>Payments</b>
-${bill.payments.map((p: any) => `
-<div style="display:flex;justify-content:space-between">
-  <span>${p.mode}</span>
-  <span>₹${p.amount.toFixed(2)}</span>
-</div>
-`).join("")}
 
+<div><b>Bill No:</b> ${bill.billNumber}</div>
+<div><b>Date:</b> ${new Date(bill.createdAt).toLocaleString()}</div>
+<div><b>Guest:</b> ${bill.customerName || "N/A"}</div>
+<div><b>Phone:</b> ${bill.customerPhone || "N/A"}</div>
+<div><b>Table:</b> ${tableName}</div>
+
+<hr/>
 
 ${bill.orders
         .flatMap((o: any) => o.items)
@@ -246,8 +248,13 @@ ${bill.orders
 </div>
 
 <div style="display:flex;justify-content:space-between">
-  <span>GST</span>
-  <span>₹${bill.gst.toFixed(2)}</span>
+  <span>CGST (2.5%)</span>
+  <span>₹${(bill.gst / 2).toFixed(2)}</span>
+</div>
+
+<div style="display:flex;justify-content:space-between">
+  <span>SGST (2.5%)</span>
+  <span>₹${(bill.gst / 2).toFixed(2)}</span>
 </div>
 
 <div style="display:flex;justify-content:space-between">
@@ -263,20 +270,34 @@ ${bill.orders
 <hr/>
 
 <div style="display:flex;justify-content:space-between;font-weight:bold">
-  <span>Total</span>
+  <span>TOTAL</span>
   <span>₹${bill.finalAmount.toFixed(2)}</span>
 </div>
 
 <hr/>
-<div style="text-align:center">Thank You! Visit Again</div>
 
-<script>
-  window.print();
-  window.close();
-</script>
+<div style="text-align:center">
+  ${copyType === "CUSTOMER COPY" ? "Thank You 🙏 Visit Again" : "For Internal Use"}
+</div>
 
 </body>
 </html>
+`;
+
+    const w = window.open("", "_blank", "width=300,height=800");
+    if (!w) return;
+
+    w.document.write(`
+${buildHtml("CAPTAIN COPY")}
+
+<script>
+  window.print();
+  setTimeout(() => {
+    document.body.innerHTML = \`${buildHtml("CUSTOMER COPY")}\`;
+    window.print();
+    setTimeout(() => window.close(), 300);
+  }, 300);
+</script>
 `);
   };
 
@@ -285,6 +306,8 @@ ${bill.orders
   const buildFinalItems = () => {
     return orders.flatMap(o =>
       o.items.map(i => ({
+        order_id: o._id,
+        item_id: i.item_id,
         name: i.name,
         size: i.size,
         qty: i.qty,
@@ -498,33 +521,33 @@ ${bill.orders
               <div className="font-bold">Total ₹{finalAmount}</div>
 
               <div className="border-t pt-4 space-y-2">
-  <Label>Transfer to Room</Label>
+                <Label>Transfer to Room</Label>
 
-  <Select
-    value={transferBookingId}
-    onValueChange={setTransferBookingId}
-  >
-    <SelectTrigger>
-      <SelectValue placeholder="Select occupied room" />
-    </SelectTrigger>
-    <SelectContent>
-      {activeRooms.map(r => (
-        <SelectItem key={r.booking._id} value={r.booking._id}>
-          Room {r.number}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
+                <Select
+                  value={transferBookingId}
+                  onValueChange={setTransferBookingId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select occupied room" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeRooms.map(r => (
+                      <SelectItem key={r.booking._id} value={r.booking._id}>
+                        Room {r.number}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-  <Button
-    variant="destructive"
-    className="w-full"
-    onClick={transferToRoom}
-    disabled={transferring}
-  >
-    {transferring ? "Transferring..." : "Transfer Food Bill to Room"}
-  </Button>
-</div>
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={transferToRoom}
+                  disabled={transferring}
+                >
+                  {transferring ? "Transferring..." : "Transfer Food Bill to Room"}
+                </Button>
+              </div>
 
 
               <Button className="w-full" onClick={checkout} disabled={loading}>

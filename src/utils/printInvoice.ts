@@ -1,6 +1,20 @@
 // utils/invoiceBuilder.ts
 // Professional invoice HTML generator matching hotel invoice format
 
+const getOrderNumber = (order: any) =>
+  order.order_id?.toString().slice(-6) ||
+  order._id?.toString().slice(-6) ||
+  "—";
+
+const getOrderDate = (order: any, booking: any) => {
+  const d =
+    order.createdAt ||
+    booking.actualCheckoutTime ||
+    booking.checkIn;
+
+  return d ? new Date(d).toLocaleDateString("en-IN") : "";
+};
+
 const fmt = (n?: number) =>
   (typeof n === "number" ? n : 0).toLocaleString("en-IN", {
     maximumFractionDigits: 2,
