@@ -338,20 +338,107 @@ export default function ViewBillPage() {
         )}
 
         {/* ROOM BILL SUMMARY */}
-        {isRoom && full && (
-          <Card>
-            <CardHeader><CardTitle>Room Invoice Summary</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p><b>Guest:</b> {full.guestName}</p>
-              <p><b>Room:</b> {full.roomNumber} ({full.roomType})</p>
-              <p><b>Check-in:</b> {new Date(full.checkIn).toLocaleString()}</p>
-              <p><b>Check-out:</b> {new Date(full.actualCheckoutTime).toLocaleString()}</p>
-              <p><b>Room Charges:</b> ₹{full.stayAmount}</p>
-              <p><b>Food Charges:</b> ₹{full.foodTotal}</p>
-              <p className="font-bold">Total: ₹{full.totalAmount}</p>
-            </CardContent>
-          </Card>
-        )}
+        {/* ROOM BILL SUMMARY */}
+{isRoom && full && (
+  <Card>
+    <CardHeader>
+      <CardTitle>Room Invoice Summary</CardTitle>
+    </CardHeader>
+
+    <CardContent className="space-y-4 text-sm">
+
+      {/* GUEST INFO */}
+      <div>
+        <p className="font-semibold mb-1">Guest Information</p>
+        <p><b>Name:</b> {full.guestName}</p>
+        <p><b>Phone:</b> {full.guestPhone}</p>
+      </div>
+
+      {/* STAY INFO */}
+      <div>
+        <p className="font-semibold mb-1">Stay Details</p>
+        <p><b>Room:</b> {full.room_id?.number} ({full.room_id?.type})</p>
+        <p><b>Check-in:</b> {new Date(full.checkIn).toLocaleString()}</p>
+        <p><b>Check-out:</b> {new Date(full.actualCheckoutTime).toLocaleString()}</p>
+        <p><b>Nights:</b> {full.stayNights}</p>
+      </div>
+
+      {/* ROOM CHARGES */}
+      <div>
+        <p className="font-semibold mb-1">Room Charges</p>
+        <div className="flex justify-between">
+          <span>Room Rate</span>
+          <span>₹{full.roomRate}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Stay Amount</span>
+          <span>₹{full.stayAmount}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>CGST</span>
+          <span>₹{full.stayCGST}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>SGST</span>
+          <span>₹{full.staySGST}</span>
+        </div>
+      </div>
+
+      {/* FOOD CHARGES */}
+      <div>
+        <p className="font-semibold mb-1">Food Charges</p>
+        <div className="flex justify-between">
+          <span>Subtotal</span>
+          <span>₹{full.foodSubtotal}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>GST</span>
+          <span>₹{full.foodGST}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Total</span>
+          <span>₹{full.foodTotal}</span>
+        </div>
+      </div>
+
+      {/* DISCOUNT */}
+      {full.discountAmount > 0 && (
+        <div>
+          <p className="font-semibold mb-1">Discount</p>
+          <div className="flex justify-between">
+            <span>{full.discountPercent}%</span>
+            <span>-₹{full.discountAmount}</span>
+          </div>
+        </div>
+      )}
+
+      {/* PAYMENT INFO */}
+      <div>
+        <p className="font-semibold mb-1">Payment Summary</p>
+        <div className="flex justify-between">
+          <span>Advance Paid</span>
+          <span>₹{full.advancePaid}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Advance Mode</span>
+          <span>{full.bookingInfo?.advancePaymentMode}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Balance Due</span>
+          <span>₹{full.balanceDue}</span>
+        </div>
+      </div>
+
+      {/* FINAL TOTAL */}
+      <div className="border-t pt-2 flex justify-between font-bold text-base">
+        <span>Total Amount</span>
+        <span>₹{full.totalAmount}</span>
+      </div>
+
+    </CardContent>
+  </Card>
+)}
+
       </div>
 
       {/* ROOM INVOICE MODAL */}
