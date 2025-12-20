@@ -41,52 +41,134 @@ const openPrintWindow = (html: string) => {
 };
 
 /* ---------------- THERMAL RESTAURANT BILL ---------------- */
-const buildRestaurantThermalBill = (bill: any) => {
+const buildRestaurantThermalBill = (bill: any, hotel?: any) => {
   const items = bill.orders?.flatMap((o: any) => o.items) || [];
+
+  const totalPaid = Array.isArray(bill.payments)
+    ? bill.payments.reduce((s: number, p: any) => s + Number(p.amount || 0), 0)
+    : bill.finalAmount;
 
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8" />
-  <style>
-    body { font-family: monospace; width: 58mm; padding: 8px; font-size: 12px; }
-    .center { text-align: center; }
-    .bold { font-weight: bold; }
-    .line { border-top: 1px dashed #000; margin: 6px 0; }
-    .row { display: flex; justify-content: space-between; }
-  </style>
+ <style>
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: monospace;
+    font-size: 12px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .bill {
+    width: 80mm;
+    padding: 8px;
+  }
+
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .small { font-size: 11px; }
+
+  .line {
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
 </head>
 <body>
-  <div class="center bold">RESTAURANT BILL</div>
-  <div class="center">Bill No: ${bill.billNumber}</div>
-  <div class="center">${new Date(bill.createdAt).toLocaleString()}</div>
+ <div class="bill">
+  <!-- HOTEL HEADER -->
+  <div class="center bold">${hotel?.name || "RESTAURANT"}</div>
+  ${hotel?.address ? `<div class="center small">${hotel.address}</div>` : ""}
+  ${hotel?.phone ? `<div class="center small">Ph: ${hotel.phone}</div>` : ""}
+  ${hotel?.gstNumber ? `<div class="center small">GSTIN: ${hotel.gstNumber}</div>` : ""}
 
   <div class="line"></div>
 
-  ${items
-    .map(
-      (it: any) => `
-      <div class="row">
-        <span>${it.name} × ${it.qty}</span>
-        <span>₹${it.total}</span>
-      </div>`
-    )
-    .join("")}
+  <!-- BILL INFO -->
+  <div class="row"><span>Bill No</span><span>${bill.billNumber}</span></div>
+  <div class="row"><span>Date</span><span>${new Date(bill.createdAt).toLocaleString()}</span></div>
+
+  ${bill.table?.name ? `<div class="row"><span>Table</span><span>${bill.table.name}</span></div>` : ""}
 
   <div class="line"></div>
 
+  <!-- CUSTOMER -->
+  <div><b>Customer</b></div>
+  <div class="small">${bill.customerName || "N/A"}</div>
+  <div class="small">${bill.customerPhone || ""}</div>
+
+  <div class="line"></div>
+
+  <!-- ITEMS -->
+  ${items.map((it: any) => `
+    <div class="row">
+      <span>${it.name} x ${it.qty}</span>
+      <span>₹${it.totalPrice}</span>
+    </div>
+  `).join("")}
+
+  <div class="line"></div>
+
+  <!-- TOTALS -->
   <div class="row"><span>Subtotal</span><span>₹${bill.subtotal}</span></div>
+
+  ${bill.discount > 0 ? `
+    <div class="row"><span>Discount</span><span>-₹${bill.discount}</span></div>
+  ` : ""}
+
   <div class="row"><span>CGST (2.5%)</span><span>₹${(bill.gst / 2).toFixed(2)}</span></div>
   <div class="row"><span>SGST (2.5%)</span><span>₹${(bill.gst / 2).toFixed(2)}</span></div>
+
+  <div class="line"></div>
 
   <div class="row bold"><span>TOTAL</span><span>₹${bill.finalAmount}</span></div>
 
   <div class="line"></div>
+
+  <!-- PAYMENTS -->
+  <div><b>Payment</b></div>
+
+  ${
+    Array.isArray(bill.payments) && bill.payments.length > 0
+      ? bill.payments.map((p: any) => `
+          <div class="row">
+            <span>${p.mode}</span>
+            <span>₹${p.amount}</span>
+          </div>
+        `).join("")
+      : `<div class="row"><span>${bill.paymentMode}</span><span>₹${bill.finalAmount}</span></div>`
+  }
+
+  <div class="row bold"><span>Paid</span><span>₹${totalPaid}</span></div>
+
+  <div class="line"></div>
+
+  <!-- FOOTER -->
   <div class="center">Thank You 🙏</div>
+  <div class="center small">Visit Again</div>
+ </div>
 </body>
-</html>`;
+</html>
+`;
 };
+
 
 export default function ViewBillPage() {
   const { billId, type } = useParams<{ billId: string; type?: string }>();
@@ -105,7 +187,10 @@ export default function ViewBillPage() {
             : await getBillByIdApi(billId!);
 
         if (!res?.success) throw new Error();
-        setBill(res.bill);
+        setBill({
+        ...res.bill,
+        hotel: res.hotel
+        });
       } catch {
         toast.error("Failed to load bill");
         navigate("/old-bills");
@@ -153,7 +238,7 @@ export default function ViewBillPage() {
           {!isRoom && (
             <Button
               variant="outline"
-              onClick={() => openPrintWindow(buildRestaurantThermalBill(bill))}
+              onClick={() => openPrintWindow(buildRestaurantThermalBill(bill, bill.hotel))}
             >
               <Printer className="mr-2 h-4 w-4" />
               Print Bill
@@ -172,27 +257,84 @@ export default function ViewBillPage() {
         {!isRoom && (
           <Card>
             <CardHeader><CardTitle>Restaurant Bill</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <p><b>Customer:</b> {bill.customerName || "N/A"}</p>
+            <CardContent className="space-y-4">
+  <p><b>Customer Name:</b> {bill.customerName || "N/A"}</p>
+  <p><b>Customer Phone:</b> {bill.customerPhone || "N/A"}</p>
 
-              <div className="border rounded p-3 space-y-1">
-                {bill.orders?.flatMap((o: any) =>
-                  o.items.map((it: any, i: number) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span>{it.name} × {it.qty}</span>
-                      <span>₹{it.total}</span>
-                    </div>
-                  ))
-                )}
-              </div>
+  {/* ITEMS */}
+  <div className="border rounded p-3 space-y-1">
+    {bill.orders?.flatMap((o: any) =>
+      o.items.map((it: any, i: number) => (
+        <div key={i} className="flex justify-between text-sm">
+          <span>{it.name} × {it.qty}</span>
+          <span>₹{it.totalPrice}</span>
+        </div>
+      ))
+    )}
+  </div>
 
-              <div className="border-t pt-3 space-y-1">
-                <div className="flex justify-between"><span>Subtotal</span><span>₹{bill.subtotal}</span></div>
-                <div className="flex justify-between"><span>CGST (2.5%)</span><span>₹{(bill.gst / 2).toFixed(2)}</span></div>
-                <div className="flex justify-between"><span>SGST (2.5%)</span><span>₹{(bill.gst / 2).toFixed(2)}</span></div>
-                <div className="flex justify-between font-bold"><span>Total</span><span>₹{bill.finalAmount}</span></div>
-              </div>
-            </CardContent>
+  {/* TOTALS */}
+  <div className="border-t pt-3 space-y-1 text-sm">
+    <div className="flex justify-between">
+      <span>Subtotal</span>
+      <span>₹{bill.subtotal}</span>
+    </div>
+
+    {bill.discount > 0 && (
+      <div className="flex justify-between">
+        <span>Discount</span>
+        <span>-₹{bill.discount}</span>
+      </div>
+    )}
+
+    <div className="flex justify-between">
+      <span>CGST (2.5%)</span>
+      <span>₹{(bill.gst / 2).toFixed(2)}</span>
+    </div>
+
+    <div className="flex justify-between">
+      <span>SGST (2.5%)</span>
+      <span>₹{(bill.gst / 2).toFixed(2)}</span>
+    </div>
+
+    <div className="flex justify-between font-bold text-base">
+      <span>Total</span>
+      <span>₹{bill.finalAmount}</span>
+    </div>
+  </div>
+
+  {/* PAYMENT SUMMARY (IMPORTANT) */}
+  <div className="border-t pt-3 space-y-1 text-sm">
+    <p className="font-semibold">Payment Summary</p>
+
+    {Array.isArray(bill.payments) && bill.payments.length > 0 ? (
+      <>
+        {bill.payments.map((p: any, i: number) => (
+          <div key={i} className="flex justify-between">
+            <span>{p.mode}</span>
+            <span>₹{p.amount}</span>
+          </div>
+        ))}
+
+        <div className="flex justify-between font-bold border-t pt-1">
+          <span>Total Paid</span>
+          <span>
+            ₹{bill.payments.reduce(
+              (sum: number, p: any) => sum + Number(p.amount || 0),
+              0
+            )}
+          </span>
+        </div>
+      </>
+    ) : (
+      <div className="flex justify-between">
+        <span>Payment Mode</span>
+        <span>{bill.paymentMode}</span>
+      </div>
+    )}
+  </div>
+</CardContent>
+
           </Card>
         )}
 
