@@ -50,6 +50,7 @@ export default function CreateBooking() {
     children: "0",
 
     discount: "",
+    discountScope: "TOTAL",
     gstEnabled: "true",
     roundOffEnabled: "true",
 
@@ -64,7 +65,7 @@ export default function CreateBooking() {
   >([]);
 
   const [extras, setExtras] = useState<
-    { name: string; price: string; days: number[] }[]
+    { name: string; price: string; days: number[]; gstEnabled: boolean }[]
   >([]);
 
   const [roomTypes, setRoomTypes] = useState<string[]>([]);
@@ -122,27 +123,86 @@ export default function CreateBooking() {
 
     const inDT = new Date(formData.checkIn);
     const outDT = new Date(formData.checkOut);
-    const nights = Math.max(1, Math.ceil((outDT.getTime() - inDT.getTime()) / 86400000));
+
+    const nights = Math.max(
+      1,
+      Math.ceil((outDT.getTime() - inDT.getTime()) / 86400000)
+    );
 
     const plan = plans.find(p => p.key === formData.planCode);
-    const roomPrice = plan ? plan.price * nights : 0;
+    const roomBase = plan ? plan.price * nights : 0;
 
-    let extrasTotal = 0;
-    extras.forEach(e => {
-      const days = e.days.length ? e.days : Array.from({ length: nights }, (_, i) => i + 1);
-      extrasTotal += Number(e.price || 0) * days.length;
+    let extrasBaseGST = 0;     // services WITH GST
+    let extrasBaseNoGST = 0;   // services WITHOUT GST
+
+    extras.forEach(ex => {
+      const days = ex.days.length
+        ? ex.days
+        : Array.from({ length: nights }, (_, i) => i + 1);
+
+      const amount = Number(ex.price || 0) * days.length;
+
+      if (ex.gstEnabled) extrasBaseGST += amount;
+      else extrasBaseNoGST += amount;
     });
 
-    const base = roomPrice + extrasTotal;
-    const discountAmount = +((base * Number(formData.discount || 0)) / 100).toFixed(2);
-    const taxable = base - discountAmount;
+    // ---------- DISCOUNT ----------
+    const discountPercent = Number(formData.discount || 0);
 
-    const cgst = formData.gstEnabled === "true" ? +(taxable * 0.025).toFixed(2) : 0;
-    const sgst = formData.gstEnabled === "true" ? +(taxable * 0.025).toFixed(2) : 0;
+    let discountedRoomBase = roomBase;
+    let discountedExtrasGST = extrasBaseGST;
+    let discountedExtrasNoGST = extrasBaseNoGST;
 
-    let grandTotal = taxable + cgst + sgst;
+    let discountAmount = 0;
 
-    // ROUND OFF
+    if (discountPercent > 0) {
+      if (formData.discountScope === "TOTAL") {
+        const grossBase = roomBase + extrasBaseGST + extrasBaseNoGST;
+        discountAmount = +(grossBase * discountPercent / 100).toFixed(2);
+
+        discountedRoomBase -= (discountAmount * roomBase) / grossBase;
+        discountedExtrasGST -= (discountAmount * extrasBaseGST) / grossBase;
+        discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / grossBase;
+      }
+
+      if (formData.discountScope === "ROOM") {
+        discountAmount = +(roomBase * discountPercent / 100).toFixed(2);
+        discountedRoomBase -= discountAmount;
+      }
+
+      if (formData.discountScope === "EXTRAS") {
+        const extrasBase = extrasBaseGST + extrasBaseNoGST;
+        discountAmount = +(extrasBase * discountPercent / 100).toFixed(2);
+
+        if (extrasBase > 0) {
+          discountedExtrasGST -= (discountAmount * extrasBaseGST) / extrasBase;
+          discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / extrasBase;
+        }
+      }
+    }
+
+
+    // ---------- GST ----------
+    let gstTotal = 0;
+
+    if (formData.gstEnabled === "true") {
+      // GST on room
+      gstTotal += +(discountedRoomBase * 0.05).toFixed(2);
+
+      // GST on services where GST is enabled
+      gstTotal += +(discountedExtrasGST * 0.05).toFixed(2);
+    }
+
+    const cgst = +(gstTotal / 2).toFixed(2);
+    const sgst = +(gstTotal / 2).toFixed(2);
+
+    let grandTotal =
+      discountedRoomBase +
+      discountedExtrasGST +
+      discountedExtrasNoGST +
+      gstTotal;
+
+    // ---------- ROUND OFF ----------
     let roundOffAmount = 0;
 
     if (formData.roundOffEnabled === "true") {
@@ -155,16 +215,17 @@ export default function CreateBooking() {
 
     setSummary({
       nights,
-      roomPrice,
-      extrasTotal,
+      roomPrice: roomBase,
+      extrasTotal: extrasBaseGST + extrasBaseNoGST,
       discountAmount,
-      taxable,
+      taxable: discountedRoomBase + discountedExtrasGST + discountedExtrasNoGST,
       cgst,
       sgst,
       grandTotal,
       balanceDue: +(grandTotal - advance).toFixed(2),
       roundOffAmount,
     });
+
   }, [
     staySelected,
     formData,
@@ -172,12 +233,23 @@ export default function CreateBooking() {
     plans
   ]);
 
+
   /* ---------------- HELPERS ---------------- */
   const addGuestId = () =>
     setGuestIds([...guestIds, { type: "", idNumber: "", nameOnId: "" }]);
 
   const addExtra = () =>
-    setExtras([...extras, { name: "", price: "", days: [] }]);
+    setExtras([
+      ...extras,
+      {
+        name: "",
+        price: "",
+        days: summary.nights
+          ? Array.from({ length: summary.nights }, (_, i) => i + 1)
+          : [],
+        gstEnabled: true,
+      }
+    ]);
 
   /* ---------------- SUBMIT ---------------- */
   const handleSubmit = async (e: any) => {
@@ -216,7 +288,8 @@ export default function CreateBooking() {
         addedServices: extras.map(e => ({
           name: e.name,
           price: Number(e.price),
-          days: e.days.length ? e.days : undefined
+          days: e.days.length ? e.days : undefined,
+          gstEnabled: e.gstEnabled,
         })),
 
         notes: formData.notes,
@@ -271,7 +344,7 @@ export default function CreateBooking() {
 
             <Select disabled={!staySelected} onValueChange={v => setFormData({ ...formData, planCode: v })}>
               <SelectTrigger><SelectValue placeholder="Plan" /></SelectTrigger>
-              <SelectContent>{plans.map(p => <SelectItem key={p.key} value={p.key}>{p.label}</SelectItem>)}</SelectContent>
+              <SelectContent>{plans.map(p => <SelectItem key={p.key} value={p.key}>{p.label} - {p.price}</SelectItem>)}</SelectContent>
             </Select>
           </CardContent>
         </Card>
@@ -297,6 +370,33 @@ export default function CreateBooking() {
               value={formData.guestPhone}
               onChange={(e) => setFormData({ ...formData, guestPhone: e.target.value })}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Adults *</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={formData.adults}
+                  onChange={(e) =>
+                    setFormData({ ...formData, adults: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label>Children</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={formData.children}
+                  onChange={(e) =>
+                    setFormData({ ...formData, children: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -441,33 +541,43 @@ export default function CreateBooking() {
           <CardHeader>
             <CardTitle>Extra Services</CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-4">
 
             {extras.map((ex, idx) => (
-              <div key={idx} className="border rounded-lg p-3 space-y-2">
+              <div
+                key={idx}
+                className="border rounded-lg p-4 space-y-3 bg-secondary/20"
+              >
 
-                <div className="flex gap-3">
-                  <Input
-                    placeholder="Service name"
-                    value={ex.name}
-                    onChange={(e) => {
-                      const copy = [...extras];
-                      copy[idx].name = e.target.value;
-                      setExtras(copy);
-                    }}
-                  />
+                {/* HEADER ROW */}
+                <div className="flex items-start justify-between gap-4">
 
-                  <Input
-                    type="number"
-                    placeholder="Price"
-                    value={ex.price}
-                    onChange={(e) => {
-                      const copy = [...extras];
-                      copy[idx].price = e.target.value;
-                      setExtras(copy);
-                    }}
-                  />
+                  {/* NAME + PRICE */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
+                    <Input
+                      placeholder="Service name"
+                      value={ex.name}
+                      onChange={(e) => {
+                        const copy = [...extras];
+                        copy[idx].name = e.target.value;
+                        setExtras(copy);
+                      }}
+                    />
 
+                    <Input
+                      type="number"
+                      placeholder="Price"
+                      value={ex.price}
+                      onChange={(e) => {
+                        const copy = [...extras];
+                        copy[idx].price = e.target.value;
+                        setExtras(copy);
+                      }}
+                    />
+                  </div>
+
+                  {/* REMOVE */}
                   <Button
                     variant="destructive"
                     size="icon"
@@ -477,38 +587,126 @@ export default function CreateBooking() {
                   </Button>
                 </div>
 
-                <div className="flex gap-2 flex-wrap">
-                  {Array.from({ length: summary.nights }).map((_, i) => {
-                    const day = i + 1;
-                    return (
-                      <label key={day} className="flex items-center gap-2 border px-2 py-1 rounded">
-                        <input
-                          type="checkbox"
-                          checked={ex.days.includes(day)}
-                          onChange={() => {
+                {/* GST TOGGLE */}
+                <div className="flex items-center gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={ex.gstEnabled}
+                    onChange={() => {
+                      const copy = [...extras];
+                      copy[idx].gstEnabled = !ex.gstEnabled;
+                      setExtras(copy);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Charged for {ex.days.length || summary.nights} day(s)
+                  </p>
+
+                  <span className="font-medium">Apply GST on this service</span>
+
+                  {!ex.gstEnabled && (
+                    <span className="text-xs text-muted-foreground">
+                      (No GST will be charged)
+                    </span>
+                  )}
+                </div>
+
+                {/* DAY SELECTION */}
+                {/* DAY SELECTION */}
+                {summary.nights > 1 && (
+                  <div className="space-y-2">
+
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Service Days ({ex.days.length} / {summary.nights})
+                      </p>
+
+                      <div className="flex gap-2 text-xs">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
                             const copy = [...extras];
-                            copy[idx].days = ex.days.includes(day)
-                              ? ex.days.filter(d => d !== day)
-                              : [...ex.days, day];
+                            copy[idx].days = Array.from(
+                              { length: summary.nights },
+                              (_, i) => i + 1
+                            );
                             setExtras(copy);
                           }}
-                        />
-                        Day {day}
-                      </label>
-                    );
-                  })}
-                </div>
+                        >
+                          All Days
+                        </Button>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const copy = [...extras];
+                            copy[idx].days = [];
+                            setExtras(copy);
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {Array.from({ length: summary.nights }).map((_, i) => {
+                        const day = i + 1;
+                        const checked = ex.days.includes(day);
+
+                        return (
+                          <label
+                            key={day}
+                            className={`flex items-center gap-2 px-3 py-1 rounded-md border cursor-pointer
+              ${checked ? "bg-primary text-primary-foreground" : "bg-background"}
+            `}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                const copy = [...extras];
+                                copy[idx].days = checked
+                                  ? ex.days.filter(d => d !== day)
+                                  : [...ex.days, day];
+                                setExtras(copy);
+                              }}
+                              className="hidden"
+                            />
+                            Day {day}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+
               </div>
             ))}
 
-            <Button type="button" onClick={() =>
-              setExtras([...extras, { name: "", price: "", days: [] }])
-            }>
-              <Plus className="mr-2 h-4 w-4" /> Add Extra Service
+            {/* ADD SERVICE */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setExtras([
+                  ...extras,
+                  { name: "", price: "", days: [], gstEnabled: true }
+                ])
+              }
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Extra Service
             </Button>
 
           </CardContent>
         </Card>
+
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Billing Summary</CardTitle>
@@ -518,6 +716,24 @@ export default function CreateBooking() {
             <p>Nights: <b>{summary.nights}</b></p>
             <p>Room Charges: ₹{summary.roomPrice}</p>
             <p>Extras: ₹{summary.extrasTotal}</p>
+
+            <Label>Discount Applies On</Label>
+            <Select
+              value={formData.discountScope}
+              onValueChange={(v) =>
+                setFormData({ ...formData, discountScope: v })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TOTAL">Total Bill (Room + Extras)</SelectItem>
+                <SelectItem value="ROOM">Room Only</SelectItem>
+                <SelectItem value="EXTRAS">Extra Services Only</SelectItem>
+              </SelectContent>
+            </Select>
+
 
             <Label>Discount (%)</Label>
             <Input

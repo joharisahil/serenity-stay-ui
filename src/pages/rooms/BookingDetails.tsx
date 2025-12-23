@@ -5,7 +5,7 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, Edit, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, Edit, CheckCircle, Loader2, Trash2 } from "lucide-react";
 import {
   buildRoomInvoice,
   buildFoodInvoice,
@@ -32,6 +32,11 @@ import {
   getRoomServiceBillForBookingApi,
   updateFoodBillingApi,
   updateRoomBillingApi,
+  updateGuestIdsApi,
+  updateGuestInfoApi,
+  updateCompanyDetailsApi,
+  reduceStayApi,
+  updateBookingServicesApi,
 } from "@/api/bookingApi";
 import { getRoomServiceBillApi } from "@/api/billingRestaurantApi";
 import { getHotelApi } from "@/api/hotelApi";
@@ -56,6 +61,34 @@ const fmt = (n?: number) =>
   (typeof n === "number" ? n : 0).toLocaleString("en-IN", {
     maximumFractionDigits: 2,
   });
+
+const calcExtraServiceAmount = (s: any, nights: number) => {
+  const days =
+    Array.isArray(s.days) && s.days.length > 0
+      ? s.days
+      : Array.from({ length: nights }, (_, i) => i + 1);
+
+  const qty = days.length;
+  const base = (s.price || 0) * qty;
+
+  const gstEnabled =
+    s.gstEnabled === undefined ? true : Boolean(s.gstEnabled);
+
+  const gst = gstEnabled
+    ? +(base * 0.05).toFixed(2)
+    : 0;
+
+  return {
+    qty,
+    base,
+    gstEnabled,
+    cgst: +(gst / 2).toFixed(2),
+    sgst: +(gst / 2).toFixed(2),
+    total: base + gst,
+    days,
+  };
+};
+
 
 // Print popup window
 const openPrintWindow = (html: string) => {
@@ -104,6 +137,21 @@ export default function BookingDetails() {
 
   const [finalPaymentReceived, setFinalPaymentReceived] = useState(false);
   const [finalPaymentMode, setFinalPaymentMode] = useState("CASH");
+
+  // EDIT MODALS
+  const [editGuestOpen, setEditGuestOpen] = useState(false);
+  const [editGuestIdsOpen, setEditGuestIdsOpen] = useState(false);
+  const [editCompanyOpen, setEditCompanyOpen] = useState(false);
+  const [reduceStayOpen, setReduceStayOpen] = useState(false);
+
+  // EDIT FORMS
+  const [guestForm, setGuestForm] = useState<any>({});
+  const [guestIdsForm, setGuestIdsForm] = useState<any[]>([]);
+  const [companyForm, setCompanyForm] = useState<any>({});
+  const [reduceCheckOut, setReduceCheckOut] = useState("");
+  const [editServicesOpen, setEditServicesOpen] = useState(false);
+  const [servicesForm, setServicesForm] = useState<any[]>([]);
+
 
   // ---------------------------------------------
   // Load booking + orders + hotel + available rooms
@@ -269,15 +317,24 @@ export default function BookingDetails() {
   const roomStayTotal = roomPrice * nights;
 
   // Extra services
-  const serviceExtraTotal =
-    (booking.addedServices || []).reduce((a: number, b: any) => a + (b.price || 0), 0) || 0;
+  let extrasBase = 0;
+  let extrasGST = 0;
 
-  // Base room subtotal
-  const roomBase = roomStayTotal + serviceExtraTotal;
+  (booking.addedServices || []).forEach((s: any) => {
+    const c = calcExtraServiceAmount(s, nights);
+    extrasBase += c.base;
+    extrasGST += c.cgst + c.sgst;
+  });
+
+  const roomBase = roomStayTotal + extrasBase;
 
   // GST if enabled
-  const roomCGST = booking.gstEnabled ? +(roomBase * 0.025).toFixed(2) : 0;
-  const roomSGST = booking.gstEnabled ? +(roomBase * 0.025).toFixed(2) : 0;
+  const roomOnlyGST = booking.gstEnabled
+    ? +(roomStayTotal * 0.05).toFixed(2)
+    : 0;
+
+  const roomCGST = +((roomOnlyGST / 2) + (extrasGST / 2)).toFixed(2);
+  const roomSGST = +((roomOnlyGST / 2) + (extrasGST / 2)).toFixed(2);
 
   // ROOM GROSS (before discount)
   const roomGross = roomBase + roomCGST + roomSGST;
@@ -322,7 +379,7 @@ export default function BookingDetails() {
     nights,
     roomPrice,
     roomStayTotal,
-    serviceExtraTotal,
+    extrasBase,
     roomBase,
     roomCGST,
     roomSGST,
@@ -423,9 +480,16 @@ export default function BookingDetails() {
 
         {/* Guest Info */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Guest Information</CardTitle>
+            <Button size="sm" variant="outline" onClick={() => {
+              setGuestForm(booking);
+              setEditGuestOpen(true);
+            }}>
+              Edit
+            </Button>
           </CardHeader>
+
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             <p><strong>Name:</strong> {booking.guestName}</p>
@@ -434,15 +498,15 @@ export default function BookingDetails() {
             <p><strong>City:</strong> {booking.guestCity || "—"}</p>
             <p><strong>Nationality:</strong> {booking.guestNationality || "—"}</p>
 
-            <div className="md:col-span-2">
-              <p><strong>Address:</strong> {booking.guestAddress || "—"}</p>
-            </div>
-
             <p><strong>Adults:</strong> {booking.adults}</p>
             <p><strong>Children:</strong> {booking.children}</p>
 
             <p><strong>Plan:</strong> {readablePlan(booking.planCode)}</p>
             <p><strong>Advance Mode:</strong> {booking.advancePaymentMode || "N/A"}</p>
+
+            <div className="md:col-span-2">
+              <p><strong>Address:</strong> {booking.guestAddress || "—"}</p>
+            </div>
 
           </CardContent>
         </Card>
@@ -450,8 +514,19 @@ export default function BookingDetails() {
         {/* Guest ID Proofs */}
         {booking.guestIds && booking.guestIds.length > 0 && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Guest ID Proofs</CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setGuestIdsForm(booking.guestIds || []);
+                  setEditGuestIdsOpen(true);
+                }}
+              >
+                Edit
+              </Button>
+
             </CardHeader>
             <CardContent className="space-y-4">
 
@@ -472,8 +547,23 @@ export default function BookingDetails() {
 
         {(booking.companyName || booking.companyGSTIN) && (
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Company / GST Details</CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setCompanyForm({
+                    companyName: booking.companyName,
+                    companyGSTIN: booking.companyGSTIN,
+                    companyAddress: booking.companyAddress
+                  });
+                  setEditCompanyOpen(true);
+                }}
+              >
+                Edit
+              </Button>
+
             </CardHeader>
             <CardContent className="space-y-2">
 
@@ -488,8 +578,19 @@ export default function BookingDetails() {
 
         {/* Stay Info */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Stay Details</CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setReduceCheckOut("");
+                setReduceStayOpen(true);
+              }}
+            >
+              Reduce Stay
+            </Button>
+
           </CardHeader>
           <CardContent>
             <p>
@@ -513,20 +614,69 @@ export default function BookingDetails() {
         </Card>
         {booking.addedServices?.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle>Extra Services</CardTitle>
-            </CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+  <CardTitle>Extra Services</CardTitle>
+
+  <Button
+    size="sm"
+    variant="outline"
+    onClick={() => {
+      setServicesForm(
+        JSON.parse(JSON.stringify(booking.addedServices || []))
+      );
+      setEditServicesOpen(true);
+    }}
+  >
+    Edit Services
+  </Button>
+</CardHeader>
+
             <CardContent className="space-y-2">
 
-              {booking.addedServices.map((s: any, i: number) => (
-                <div key={i} className="flex justify-between">
-                  <span>
-                    {s.name}
-                    {s.days?.length ? ` (Days: ${s.days.join(", ")})` : ""}
-                  </span>
-                  <span>₹{fmt(s.price)}</span>
-                </div>
-              ))}
+              {(booking.addedServices || []).map((s: any, i: number) => {
+                const c = calcExtraServiceAmount(s, nights);
+
+                return (
+                  <div key={i} className="border rounded-md p-3 bg-background space-y-1 text-sm">
+
+                    <div className="flex justify-between font-medium">
+                      <span>
+                        {s.name}
+                        {c.days.length > 0 && (
+                          <span className="text-muted-foreground">
+                            {" "}({c.days.length} day{c.days.length > 1 ? "s" : ""})
+                          </span>
+                        )}
+                      </span>
+                      <span>₹{fmt(c.base)}</span>
+                    </div>
+
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>GST Applied</span>
+                      <span>{c.gstEnabled ? "Yes (5%)" : "No"}</span>
+                    </div>
+
+                    {c.gstEnabled && (
+                      <>
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>CGST (2.5%)</span>
+                          <span>₹{fmt(c.cgst)}</span>
+                        </div>
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>SGST (2.5%)</span>
+                          <span>₹{fmt(c.sgst)}</span>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="flex justify-between font-semibold border-t pt-1">
+                      <span>Service Total</span>
+                      <span>₹{fmt(c.total)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+
 
             </CardContent>
           </Card>
@@ -555,12 +705,19 @@ export default function BookingDetails() {
                   <span>₹{fmt(roomStayTotal)}</span>
                 </div>
 
-                {(booking.addedServices || []).map((s: any, i: number) => (
-                  <div key={i} className="flex justify-between">
-                    <span>{s.name}</span>
-                    <span>₹{fmt(s.price)}</span>
-                  </div>
-                ))}
+                {(booking.addedServices || []).map((s: any, i: number) => {
+                  const c = calcExtraServiceAmount(s, nights);
+
+                  return (
+                    <div key={i} className="flex justify-between">
+                      <span>
+                        {s.name} ({c.qty} {c.qty > 1 ? "days" : "day"} × ₹{fmt(s.price)})
+                      </span>
+                      <span>₹{fmt(c.base)}</span>
+                    </div>
+                  );
+                })}
+
 
                 <hr />
 
@@ -963,7 +1120,7 @@ export default function BookingDetails() {
 
             <p>New Checkout Date:</p>
             <Input
-              type="date"
+              type="datetime-local"
               value={newCheckOut}
               onChange={(e) => setNewCheckOut(e.target.value)}
               className="mt-2"
@@ -974,18 +1131,30 @@ export default function BookingDetails() {
                 Cancel
               </Button>
               <Button
-                onClick={async () => {
-                  try {
-                    await extendStayApi(booking._id, newCheckOut);
-                    toast.success("Stay extended");
-                    navigate("/rooms");
-                  } catch {
-                    toast.error("Failed to extend stay");
-                  }
-                }}
-              >
-                Confirm
-              </Button>
+  onClick={async () => {
+    try {
+      const res = await extendStayApi(booking._id, newCheckOut);
+
+      if (res.warning) {
+        toast.warning(res.message);
+      } else {
+        toast.success("Stay extended successfully");
+      }
+
+      refreshBooking();
+      setShowExtendStay(false);
+    } catch (e: any) {
+      if (e?.response?.data?.message) {
+        toast.error(e.response.data.message);
+      } else {
+        toast.error("Failed to extend stay");
+      }
+    }
+  }}
+>
+  Confirm
+</Button>
+
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1111,6 +1280,480 @@ export default function BookingDetails() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <Dialog open={editGuestOpen} onOpenChange={setEditGuestOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Guest Information</DialogTitle>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              {/* Guest Name */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Guest Name
+                </label>
+                <Input
+                  value={guestForm.guestName || ""}
+                  onChange={(e) =>
+                    setGuestForm({ ...guestForm, guestName: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Phone Number
+                </label>
+                <Input
+                  value={guestForm.guestPhone || ""}
+                  onChange={(e) =>
+                    setGuestForm({ ...guestForm, guestPhone: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* City */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  City
+                </label>
+                <Input
+                  value={guestForm.guestCity || ""}
+                  onChange={(e) =>
+                    setGuestForm({ ...guestForm, guestCity: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Nationality */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Nationality
+                </label>
+                <Input
+                  value={guestForm.guestNationality || ""}
+                  onChange={(e) =>
+                    setGuestForm({ ...guestForm, guestNationality: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Adults */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Adults
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={guestForm.adults ?? ""}
+                  onChange={(e) =>
+                    setGuestForm({
+                      ...guestForm,
+                      adults: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+
+              {/* Children */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Children
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={guestForm.children ?? ""}
+                  onChange={(e) =>
+                    setGuestForm({
+                      ...guestForm,
+                      children: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+
+            </div>
+
+            {/* Address */}
+            <div className="mt-4">
+              <label className="text-sm font-medium mb-1 block">
+                Guest Address
+              </label>
+              <Input
+                value={guestForm.guestAddress || ""}
+                onChange={(e) =>
+                  setGuestForm({ ...guestForm, guestAddress: e.target.value })
+                }
+              />
+            </div>
+
+            <DialogFooter className="mt-6">
+              <Button variant="outline" onClick={() => setEditGuestOpen(false)}>
+                Cancel
+              </Button>
+
+              <Button
+                onClick={async () => {
+                  try {
+                    await updateGuestInfoApi(booking._id, {
+                      guestName: guestForm.guestName,
+                      guestPhone: guestForm.guestPhone,
+                      guestCity: guestForm.guestCity,
+                      guestNationality: guestForm.guestNationality,
+                      guestAddress: guestForm.guestAddress,
+                      adults: guestForm.adults,
+                      children: guestForm.children,
+                    });
+
+                    toast.success("Guest information updated");
+                    refreshBooking();
+                    setEditGuestOpen(false);
+                  } catch (e: any) {
+                    toast.error(
+                      e?.response?.data?.message ||
+                      "Failed to update guest information"
+                    );
+                  }
+                }}
+              >
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={editGuestIdsOpen} onOpenChange={setEditGuestIdsOpen}>
+  <DialogContent className="max-w-3xl">
+    <DialogHeader>
+      <DialogTitle>Edit Guest ID Proofs</DialogTitle>
+    </DialogHeader>
+
+    <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+      {guestIdsForm.map((id, idx) => (
+        <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end border p-3 rounded-lg">
+          
+          {/* ID Type */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              ID Type
+            </label>
+            <select
+              value={id.type}
+              onChange={(e) => {
+                const copy = [...guestIdsForm];
+                copy[idx].type = e.target.value;
+                setGuestIdsForm(copy);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select ID</option>
+              <option value="Aadhaar Card">Aadhaar Card</option>
+              <option value="Driving License">Driving License</option>
+              <option value="Passport">Passport</option>
+              <option value="Voter ID">Voter ID</option>
+            </select>
+          </div>
+
+          {/* ID Number */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              ID Number
+            </label>
+            <Input
+              value={id.idNumber}
+              onChange={(e) => {
+                const copy = [...guestIdsForm];
+                copy[idx].idNumber = e.target.value;
+                setGuestIdsForm(copy);
+              }}
+            />
+          </div>
+
+          {/* Name on ID + Delete Button */}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-1.5">
+                Name on ID
+              </label>
+              <Input
+                placeholder="Name on ID"
+                value={id.nameOnId}
+                onChange={(e) => {
+                  const copy = [...guestIdsForm];
+                  copy[idx].nameOnId = e.target.value;
+                  setGuestIdsForm(copy);
+                }}
+              />
+            </div>
+
+            <Button
+              variant="destructive"
+              size="icon"
+              className="mt-6"
+              onClick={() =>
+                setGuestIdsForm(guestIdsForm.filter((_, i) => i !== idx))
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ))}
+
+      {guestIdsForm.length === 0 && (
+        <p className="text-gray-500 text-center py-8">No guest IDs added yet.</p>
+      )}
+    </div>
+
+    <DialogFooter>
+      <Button
+        onClick={async () => {
+          await updateGuestIdsApi(booking._id, guestIdsForm);
+          toast.success("Guest IDs updated");
+          refreshBooking();
+          setEditGuestIdsOpen(false);
+        }}
+      >
+        Save
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+        <Dialog open={editCompanyOpen} onOpenChange={setEditCompanyOpen}>
+  <DialogContent className="max-w-lg">
+    <DialogHeader>
+      <DialogTitle>Edit Company / GST Details</DialogTitle>
+    </DialogHeader>
+
+    <div className="space-y-4">
+
+      {/* Company Name */}
+      <div>
+        <label className="block text-sm font-medium mb-1">
+          Company Name
+        </label>
+        <Input
+          placeholder="Enter company name"
+          value={companyForm.companyName || ""}
+          onChange={(e) =>
+            setCompanyForm({ ...companyForm, companyName: e.target.value })
+          }
+        />
+      </div>
+
+      {/* GSTIN */}
+      <div>
+        <label className="block text-sm font-medium mb-1">
+          GSTIN
+        </label>
+        <Input
+          placeholder="Enter GST number"
+          value={companyForm.companyGSTIN || ""}
+          onChange={(e) =>
+            setCompanyForm({ ...companyForm, companyGSTIN: e.target.value })
+          }
+        />
+      </div>
+
+      {/* Company Address */}
+      <div>
+        <label className="block text-sm font-medium mb-1">
+          Company Address
+        </label>
+        <Input
+          placeholder="Enter company address"
+          value={companyForm.companyAddress || ""}
+          onChange={(e) =>
+            setCompanyForm({ ...companyForm, companyAddress: e.target.value })
+          }
+        />
+      </div>
+
+    </div>
+
+    <DialogFooter className="mt-6">
+      <Button
+        variant="outline"
+        onClick={() => setEditCompanyOpen(false)}
+      >
+        Cancel
+      </Button>
+
+      <Button
+        onClick={async () => {
+          await updateCompanyDetailsApi(booking._id, companyForm);
+          toast.success("Company / GST details updated");
+          refreshBooking();
+          setEditCompanyOpen(false);
+        }}
+      >
+        Save Changes
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
+        <Dialog open={reduceStayOpen} onOpenChange={setReduceStayOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reduce Stay</DialogTitle>
+            </DialogHeader>
+
+            <p className="text-sm text-muted-foreground">
+              Current checkout: {new Date(booking.checkOut).toLocaleString()}
+            </p>
+
+            <Input
+              type="datetime-local"
+              value={reduceCheckOut}
+              onChange={(e) => setReduceCheckOut(e.target.value)}
+            />
+
+            <DialogFooter>
+              <Button
+                onClick={async () => {
+                  await reduceStayApi(booking._id, reduceCheckOut);
+                  toast.success("Stay reduced");
+                  refreshBooking();
+                  setReduceStayOpen(false);
+                }}
+              >
+                Confirm
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={editServicesOpen} onOpenChange={setEditServicesOpen}>
+  <DialogContent className="max-w-4xl">
+    <DialogHeader>
+      <DialogTitle>Edit Extra Services</DialogTitle>
+    </DialogHeader>
+
+    <div className="space-y-4 max-h-[65vh] overflow-y-auto">
+
+      {servicesForm.map((s, idx) => (
+        <div key={idx} className="border rounded-lg p-4 space-y-3">
+
+          {/* Service name + delete */}
+          <div className="flex gap-3 items-center">
+            <Input
+              placeholder="Service name"
+              value={s.name}
+              onChange={(e) => {
+                const copy = [...servicesForm];
+                copy[idx].name = e.target.value;
+                setServicesForm(copy);
+              }}
+            />
+
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={() =>
+                setServicesForm(servicesForm.filter((_, i) => i !== idx))
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Price + GST toggle */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <Input
+              type="number"
+              placeholder="Price"
+              value={s.price}
+              onChange={(e) => {
+                const copy = [...servicesForm];
+                copy[idx].price = Number(e.target.value);
+                setServicesForm(copy);
+              }}
+            />
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={s.gstEnabled !== false}
+                onChange={(e) => {
+                  const copy = [...servicesForm];
+                  copy[idx].gstEnabled = e.target.checked;
+                  setServicesForm(copy);
+                }}
+              />
+              Apply GST (5%)
+            </label>
+          </div>
+
+          {/* Days selector */}
+          <div>
+            <p className="text-sm font-medium mb-2">Applicable Days</p>
+            <div className="flex flex-wrap gap-3">
+              {Array.from({ length: nights }, (_, i) => i + 1).map((day) => (
+                <label key={day} className="flex items-center gap-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={s.days?.includes(day)}
+                    onChange={() => {
+                      const copy = [...servicesForm];
+                      copy[idx].days = s.days?.includes(day)
+                        ? copy[idx].days.filter((d: number) => d !== day)
+                        : [...(copy[idx].days || []), day];
+                      setServicesForm(copy);
+                    }}
+                  />
+                  Day {day}
+                </label>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      ))}
+
+      <Button
+        variant="outline"
+        onClick={() =>
+          setServicesForm([
+            ...servicesForm,
+            { name: "", price: 0, days: [], gstEnabled: true },
+          ])
+        }
+      >
+        + Add Service
+      </Button>
+    </div>
+
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setEditServicesOpen(false)}>
+        Cancel
+      </Button>
+
+      <Button
+        onClick={async () => {
+          try {
+            await updateBookingServicesApi(
+              booking._id,
+              servicesForm
+            );
+            toast.success("Extra services updated");
+            refreshBooking();
+            setEditServicesOpen(false);
+          } catch {
+            toast.error("Failed to update services");
+          }
+        }}
+      >
+        Save Services
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
 
       </div>
     </Layout>

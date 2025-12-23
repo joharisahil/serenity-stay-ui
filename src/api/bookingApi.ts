@@ -192,3 +192,20 @@ export const getAvailableRoomsByDateTimeApi = async (
   const res = await api.get(`/rooms/date/available?${params.toString()}`);
   return res.data.rooms;
 };
+
+// ---------------- EDIT METADATA ----------------
+export const updateGuestInfoApi = (id: string, payload: any) =>
+  api.patch(`/room-bookings/${id}/guest`, payload);
+
+export const updateGuestIdsApi = (id: string, guestIds: any[]) =>
+  api.patch(`/room-bookings/${id}/guest-ids`, { guestIds });
+
+export const updateCompanyDetailsApi = (id: string, payload: any) =>
+  api.patch(`/room-bookings/${id}/company`, payload);
+
+// ---------------- REDUCE STAY ----------------
+export const reduceStayApi = (id: string, newCheckOut: string) =>
+  api.patch(`/room-bookings/${id}/reduce-stay`, { newCheckOut });
+
+export const updateBookingServicesApi = (id: string, services: any[]) =>
+  api.patch(`/room-bookings/${id}/services`, { addedServices: services });
