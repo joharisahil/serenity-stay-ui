@@ -142,16 +142,16 @@ export default function CreateBooking() {
 
     let grandTotal = taxable + cgst + sgst;
 
-// ROUND OFF
-let roundOffAmount = 0;
+    // ROUND OFF
+    let roundOffAmount = 0;
 
-if (formData.roundOffEnabled === "true") {
-  const rounded = Math.round(grandTotal);
-  roundOffAmount = +(rounded - grandTotal).toFixed(2);
-  grandTotal = rounded;
-}
+    if (formData.roundOffEnabled === "true") {
+      const rounded = Math.round(grandTotal);
+      roundOffAmount = +(rounded - grandTotal).toFixed(2);
+      grandTotal = rounded;
+    }
 
-const advance = Number(formData.advancePaid || 0);
+    const advance = Number(formData.advancePaid || 0);
 
     setSummary({
       nights,
@@ -555,31 +555,52 @@ const advance = Number(formData.advancePaid || 0);
             </div>
 
             <Label>Round Off Total?</Label>
-<label className="flex items-center gap-2">
-  <input
-    type="checkbox"
-    checked={formData.roundOffEnabled === "true"}
-    onChange={(e) =>
-      setFormData({
-        ...formData,
-        roundOffEnabled: e.target.checked ? "true" : "false",
-      })
-    }
-  />
-  Enable Round Off
-</label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.roundOffEnabled === "true"}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    roundOffEnabled: e.target.checked ? "true" : "false",
+                  })
+                }
+              />
+              Enable Round Off
+            </label>
 
-{formData.roundOffEnabled === "true" && (
-  <div className="flex justify-between text-sm text-muted-foreground">
-    <span>Round Off Adjustment</span>
-    <span>₹{summary.roundOffAmount}</span>
-  </div>
-)}
+            {formData.roundOffEnabled === "true" && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Round Off Adjustment</span>
+                <span>₹{summary.roundOffAmount}</span>
+              </div>
+            )}
 
 
             <p className="text-xl font-bold">
               Grand Total: ₹{summary.grandTotal}
             </p>
+
+            <Label>Advance Payment Mode</Label>
+            <Select
+              value={formData.advancePaymentMode}
+              onValueChange={(v) =>
+                setFormData({ ...formData, advancePaymentMode: v })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select payment mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CASH">Cash</SelectItem>
+                <SelectItem value="UPI">UPI</SelectItem>
+                <SelectItem value="CARD">Card</SelectItem>
+                <SelectItem value="ONLINE">Online</SelectItem>
+                <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
+                <SelectItem value="OTHER">Other</SelectItem>
+              </SelectContent>
+            </Select>
+
 
             <Label>Advance Paid</Label>
             <Input
