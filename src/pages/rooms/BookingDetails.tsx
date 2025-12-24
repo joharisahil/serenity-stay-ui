@@ -418,12 +418,21 @@ export default function BookingDetails() {
   const handleCancelBooking = async () => {
     try {
       await cancelBookingApi(booking._id);
-      toast.success("Booking cancelled");
+      toast.success("Booking cancelled successfully");
       navigate("/rooms");
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || "Failed to cancel booking");
+      if (e?.response?.data?.code === "BOOKING_HAS_ORDERS") {
+        toast.error(
+          "Cannot cancel this booking because food or room-service orders are already added. Please checkout the guest instead."
+        );
+      } else {
+        toast.error(
+          e?.response?.data?.message || "Failed to cancel booking"
+        );
+      }
     }
   };
+
 
   const loadAvailableRooms = async () => {
     if (!booking?.room_id?.type) return;
@@ -615,21 +624,21 @@ export default function BookingDetails() {
         {booking.addedServices?.length > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-  <CardTitle>Extra Services</CardTitle>
+              <CardTitle>Extra Services</CardTitle>
 
-  <Button
-    size="sm"
-    variant="outline"
-    onClick={() => {
-      setServicesForm(
-        JSON.parse(JSON.stringify(booking.addedServices || []))
-      );
-      setEditServicesOpen(true);
-    }}
-  >
-    Edit Services
-  </Button>
-</CardHeader>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setServicesForm(
+                    JSON.parse(JSON.stringify(booking.addedServices || []))
+                  );
+                  setEditServicesOpen(true);
+                }}
+              >
+                Edit Services
+              </Button>
+            </CardHeader>
 
             <CardContent className="space-y-2">
 
@@ -1017,36 +1026,54 @@ export default function BookingDetails() {
           </CardContent>
         </Card>
 
-
         {/* ACTION BUTTONS */}
-        <div className="flex flex-wrap gap-4">
-          <Button disabled={checkingOut} onClick={() => setConfirmCheckout(true)}>
-            <CheckCircle className="mr-2 h-4 w-4" />
-            {checkingOut ? "Processing..." : "Mark Check-out"}
-          </Button>
+        <div className="flex flex-col gap-4">
 
-          <Button variant="destructive" onClick={() => setShowCancelModal(true)}>
-            Cancel Booking
-          </Button>
+          {/* PRIMARY ACTIONS */}
+          <div className="flex flex-wrap gap-4">
+            <Button disabled={checkingOut} onClick={() => setConfirmCheckout(true)}>
+              <CheckCircle className="mr-2 h-4 w-4" />
+              {checkingOut ? "Processing..." : "Mark Check-out"}
+            </Button>
 
-          <Button
-            variant="outline"
-            onClick={() => {
-              loadAvailableRooms();   // ← Load rooms here
-              setShowChangeRoom(true);
-            }}
-          >
-            <Edit className="mr-2 h-4 w-4" /> Change Room
-          </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                loadAvailableRooms();
+                setShowChangeRoom(true);
+              }}
+            >
+              <Edit className="mr-2 h-4 w-4" /> Change Room
+            </Button>
 
+            <Button variant="outline" onClick={() => setShowExtendStay(true)}>
+              <Edit className="mr-2 h-4 w-4" /> Extend Stay
+            </Button>
 
-          <Button variant="outline" onClick={() => setShowExtendStay(true)}>
-            <Edit className="mr-2 h-4 w-4" /> Extend Stay
-          </Button>
+            <Button variant="outline" onClick={() => setInvoiceModal(true)}>
+              <Download className="mr-2 h-4 w-4" /> Download Invoice
+            </Button>
+          </div>
 
-          <Button variant="outline" onClick={() => setInvoiceModal(true)}>
-            <Download className="mr-2 h-4 w-4" /> Download Invoice
-          </Button>
+          {/* DANGER ZONE */}
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="destructive"
+                disabled={roomOrders.length > 0}
+                onClick={() => setShowCancelModal(true)}
+              >
+                Cancel Booking
+              </Button>
+
+              {roomOrders.length > 0 && (
+                <span className="text-sm text-red-600">
+                  Food / room-service orders exist. Checkout required.
+                </span>
+              )}
+            </div>
+          </div>
+
         </div>
 
         {/* CHANGE ROOM DIALOG */}
@@ -1131,29 +1158,29 @@ export default function BookingDetails() {
                 Cancel
               </Button>
               <Button
-  onClick={async () => {
-    try {
-      const res = await extendStayApi(booking._id, newCheckOut);
+                onClick={async () => {
+                  try {
+                    const res = await extendStayApi(booking._id, newCheckOut);
 
-      if (res.warning) {
-        toast.warning(res.message);
-      } else {
-        toast.success("Stay extended successfully");
-      }
+                    if (res.warning) {
+                      toast.warning(res.message);
+                    } else {
+                      toast.success("Stay extended successfully");
+                    }
 
-      refreshBooking();
-      setShowExtendStay(false);
-    } catch (e: any) {
-      if (e?.response?.data?.message) {
-        toast.error(e.response.data.message);
-      } else {
-        toast.error("Failed to extend stay");
-      }
-    }
-  }}
->
-  Confirm
-</Button>
+                    refreshBooking();
+                    setShowExtendStay(false);
+                  } catch (e: any) {
+                    if (e?.response?.data?.message) {
+                      toast.error(e.response.data.message);
+                    } else {
+                      toast.error("Failed to extend stay");
+                    }
+                  }
+                }}
+              >
+                Confirm
+              </Button>
 
             </DialogFooter>
           </DialogContent>
@@ -1427,175 +1454,175 @@ export default function BookingDetails() {
         </Dialog>
 
         <Dialog open={editGuestIdsOpen} onOpenChange={setEditGuestIdsOpen}>
-  <DialogContent className="max-w-3xl">
-    <DialogHeader>
-      <DialogTitle>Edit Guest ID Proofs</DialogTitle>
-    </DialogHeader>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Edit Guest ID Proofs</DialogTitle>
+            </DialogHeader>
 
-    <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-      {guestIdsForm.map((id, idx) => (
-        <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end border p-3 rounded-lg">
-          
-          {/* ID Type */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5">
-              ID Type
-            </label>
-            <select
-              value={id.type}
-              onChange={(e) => {
-                const copy = [...guestIdsForm];
-                copy[idx].type = e.target.value;
-                setGuestIdsForm(copy);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select ID</option>
-              <option value="Aadhaar Card">Aadhaar Card</option>
-              <option value="Driving License">Driving License</option>
-              <option value="Passport">Passport</option>
-              <option value="Voter ID">Voter ID</option>
-            </select>
-          </div>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {guestIdsForm.map((id, idx) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end border p-3 rounded-lg">
 
-          {/* ID Number */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5">
-              ID Number
-            </label>
-            <Input
-              value={id.idNumber}
-              onChange={(e) => {
-                const copy = [...guestIdsForm];
-                copy[idx].idNumber = e.target.value;
-                setGuestIdsForm(copy);
-              }}
-            />
-          </div>
+                  {/* ID Type */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">
+                      ID Type
+                    </label>
+                    <select
+                      value={id.type}
+                      onChange={(e) => {
+                        const copy = [...guestIdsForm];
+                        copy[idx].type = e.target.value;
+                        setGuestIdsForm(copy);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select ID</option>
+                      <option value="Aadhaar Card">Aadhaar Card</option>
+                      <option value="Driving License">Driving License</option>
+                      <option value="Passport">Passport</option>
+                      <option value="Voter ID">Voter ID</option>
+                    </select>
+                  </div>
 
-          {/* Name on ID + Delete Button */}
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-1.5">
-                Name on ID
-              </label>
-              <Input
-                placeholder="Name on ID"
-                value={id.nameOnId}
-                onChange={(e) => {
-                  const copy = [...guestIdsForm];
-                  copy[idx].nameOnId = e.target.value;
-                  setGuestIdsForm(copy);
-                }}
-              />
+                  {/* ID Number */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">
+                      ID Number
+                    </label>
+                    <Input
+                      value={id.idNumber}
+                      onChange={(e) => {
+                        const copy = [...guestIdsForm];
+                        copy[idx].idNumber = e.target.value;
+                        setGuestIdsForm(copy);
+                      }}
+                    />
+                  </div>
+
+                  {/* Name on ID + Delete Button */}
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium mb-1.5">
+                        Name on ID
+                      </label>
+                      <Input
+                        placeholder="Name on ID"
+                        value={id.nameOnId}
+                        onChange={(e) => {
+                          const copy = [...guestIdsForm];
+                          copy[idx].nameOnId = e.target.value;
+                          setGuestIdsForm(copy);
+                        }}
+                      />
+                    </div>
+
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="mt-6"
+                      onClick={() =>
+                        setGuestIdsForm(guestIdsForm.filter((_, i) => i !== idx))
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {guestIdsForm.length === 0 && (
+                <p className="text-gray-500 text-center py-8">No guest IDs added yet.</p>
+              )}
             </div>
 
-            <Button
-              variant="destructive"
-              size="icon"
-              className="mt-6"
-              onClick={() =>
-                setGuestIdsForm(guestIdsForm.filter((_, i) => i !== idx))
-              }
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      ))}
-
-      {guestIdsForm.length === 0 && (
-        <p className="text-gray-500 text-center py-8">No guest IDs added yet.</p>
-      )}
-    </div>
-
-    <DialogFooter>
-      <Button
-        onClick={async () => {
-          await updateGuestIdsApi(booking._id, guestIdsForm);
-          toast.success("Guest IDs updated");
-          refreshBooking();
-          setEditGuestIdsOpen(false);
-        }}
-      >
-        Save
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+            <DialogFooter>
+              <Button
+                onClick={async () => {
+                  await updateGuestIdsApi(booking._id, guestIdsForm);
+                  toast.success("Guest IDs updated");
+                  refreshBooking();
+                  setEditGuestIdsOpen(false);
+                }}
+              >
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Dialog open={editCompanyOpen} onOpenChange={setEditCompanyOpen}>
-  <DialogContent className="max-w-lg">
-    <DialogHeader>
-      <DialogTitle>Edit Company / GST Details</DialogTitle>
-    </DialogHeader>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Company / GST Details</DialogTitle>
+            </DialogHeader>
 
-    <div className="space-y-4">
+            <div className="space-y-4">
 
-      {/* Company Name */}
-      <div>
-        <label className="block text-sm font-medium mb-1">
-          Company Name
-        </label>
-        <Input
-          placeholder="Enter company name"
-          value={companyForm.companyName || ""}
-          onChange={(e) =>
-            setCompanyForm({ ...companyForm, companyName: e.target.value })
-          }
-        />
-      </div>
+              {/* Company Name */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Company Name
+                </label>
+                <Input
+                  placeholder="Enter company name"
+                  value={companyForm.companyName || ""}
+                  onChange={(e) =>
+                    setCompanyForm({ ...companyForm, companyName: e.target.value })
+                  }
+                />
+              </div>
 
-      {/* GSTIN */}
-      <div>
-        <label className="block text-sm font-medium mb-1">
-          GSTIN
-        </label>
-        <Input
-          placeholder="Enter GST number"
-          value={companyForm.companyGSTIN || ""}
-          onChange={(e) =>
-            setCompanyForm({ ...companyForm, companyGSTIN: e.target.value })
-          }
-        />
-      </div>
+              {/* GSTIN */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  GSTIN
+                </label>
+                <Input
+                  placeholder="Enter GST number"
+                  value={companyForm.companyGSTIN || ""}
+                  onChange={(e) =>
+                    setCompanyForm({ ...companyForm, companyGSTIN: e.target.value })
+                  }
+                />
+              </div>
 
-      {/* Company Address */}
-      <div>
-        <label className="block text-sm font-medium mb-1">
-          Company Address
-        </label>
-        <Input
-          placeholder="Enter company address"
-          value={companyForm.companyAddress || ""}
-          onChange={(e) =>
-            setCompanyForm({ ...companyForm, companyAddress: e.target.value })
-          }
-        />
-      </div>
+              {/* Company Address */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Company Address
+                </label>
+                <Input
+                  placeholder="Enter company address"
+                  value={companyForm.companyAddress || ""}
+                  onChange={(e) =>
+                    setCompanyForm({ ...companyForm, companyAddress: e.target.value })
+                  }
+                />
+              </div>
 
-    </div>
+            </div>
 
-    <DialogFooter className="mt-6">
-      <Button
-        variant="outline"
-        onClick={() => setEditCompanyOpen(false)}
-      >
-        Cancel
-      </Button>
+            <DialogFooter className="mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setEditCompanyOpen(false)}
+              >
+                Cancel
+              </Button>
 
-      <Button
-        onClick={async () => {
-          await updateCompanyDetailsApi(booking._id, companyForm);
-          toast.success("Company / GST details updated");
-          refreshBooking();
-          setEditCompanyOpen(false);
-        }}
-      >
-        Save Changes
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+              <Button
+                onClick={async () => {
+                  await updateCompanyDetailsApi(booking._id, companyForm);
+                  toast.success("Company / GST details updated");
+                  refreshBooking();
+                  setEditCompanyOpen(false);
+                }}
+              >
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={reduceStayOpen} onOpenChange={setReduceStayOpen}>
           <DialogContent>
@@ -1629,130 +1656,130 @@ export default function BookingDetails() {
         </Dialog>
 
         <Dialog open={editServicesOpen} onOpenChange={setEditServicesOpen}>
-  <DialogContent className="max-w-4xl">
-    <DialogHeader>
-      <DialogTitle>Edit Extra Services</DialogTitle>
-    </DialogHeader>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Edit Extra Services</DialogTitle>
+            </DialogHeader>
 
-    <div className="space-y-4 max-h-[65vh] overflow-y-auto">
+            <div className="space-y-4 max-h-[65vh] overflow-y-auto">
 
-      {servicesForm.map((s, idx) => (
-        <div key={idx} className="border rounded-lg p-4 space-y-3">
+              {servicesForm.map((s, idx) => (
+                <div key={idx} className="border rounded-lg p-4 space-y-3">
 
-          {/* Service name + delete */}
-          <div className="flex gap-3 items-center">
-            <Input
-              placeholder="Service name"
-              value={s.name}
-              onChange={(e) => {
-                const copy = [...servicesForm];
-                copy[idx].name = e.target.value;
-                setServicesForm(copy);
-              }}
-            />
+                  {/* Service name + delete */}
+                  <div className="flex gap-3 items-center">
+                    <Input
+                      placeholder="Service name"
+                      value={s.name}
+                      onChange={(e) => {
+                        const copy = [...servicesForm];
+                        copy[idx].name = e.target.value;
+                        setServicesForm(copy);
+                      }}
+                    />
 
-            <Button
-              variant="destructive"
-              size="icon"
-              onClick={() =>
-                setServicesForm(servicesForm.filter((_, i) => i !== idx))
-              }
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() =>
+                        setServicesForm(servicesForm.filter((_, i) => i !== idx))
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
 
-          {/* Price + GST toggle */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            <Input
-              type="number"
-              placeholder="Price"
-              value={s.price}
-              onChange={(e) => {
-                const copy = [...servicesForm];
-                copy[idx].price = Number(e.target.value);
-                setServicesForm(copy);
-              }}
-            />
+                  {/* Price + GST toggle */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    <Input
+                      type="number"
+                      placeholder="Price"
+                      value={s.price}
+                      onChange={(e) => {
+                        const copy = [...servicesForm];
+                        copy[idx].price = Number(e.target.value);
+                        setServicesForm(copy);
+                      }}
+                    />
 
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={s.gstEnabled !== false}
-                onChange={(e) => {
-                  const copy = [...servicesForm];
-                  copy[idx].gstEnabled = e.target.checked;
-                  setServicesForm(copy);
-                }}
-              />
-              Apply GST (5%)
-            </label>
-          </div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={s.gstEnabled !== false}
+                        onChange={(e) => {
+                          const copy = [...servicesForm];
+                          copy[idx].gstEnabled = e.target.checked;
+                          setServicesForm(copy);
+                        }}
+                      />
+                      Apply GST (5%)
+                    </label>
+                  </div>
 
-          {/* Days selector */}
-          <div>
-            <p className="text-sm font-medium mb-2">Applicable Days</p>
-            <div className="flex flex-wrap gap-3">
-              {Array.from({ length: nights }, (_, i) => i + 1).map((day) => (
-                <label key={day} className="flex items-center gap-1 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={s.days?.includes(day)}
-                    onChange={() => {
-                      const copy = [...servicesForm];
-                      copy[idx].days = s.days?.includes(day)
-                        ? copy[idx].days.filter((d: number) => d !== day)
-                        : [...(copy[idx].days || []), day];
-                      setServicesForm(copy);
-                    }}
-                  />
-                  Day {day}
-                </label>
+                  {/* Days selector */}
+                  <div>
+                    <p className="text-sm font-medium mb-2">Applicable Days</p>
+                    <div className="flex flex-wrap gap-3">
+                      {Array.from({ length: nights }, (_, i) => i + 1).map((day) => (
+                        <label key={day} className="flex items-center gap-1 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={s.days?.includes(day)}
+                            onChange={() => {
+                              const copy = [...servicesForm];
+                              copy[idx].days = s.days?.includes(day)
+                                ? copy[idx].days.filter((d: number) => d !== day)
+                                : [...(copy[idx].days || []), day];
+                              setServicesForm(copy);
+                            }}
+                          />
+                          Day {day}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
               ))}
+
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setServicesForm([
+                    ...servicesForm,
+                    { name: "", price: 0, days: [], gstEnabled: true },
+                  ])
+                }
+              >
+                + Add Service
+              </Button>
             </div>
-          </div>
 
-        </div>
-      ))}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditServicesOpen(false)}>
+                Cancel
+              </Button>
 
-      <Button
-        variant="outline"
-        onClick={() =>
-          setServicesForm([
-            ...servicesForm,
-            { name: "", price: 0, days: [], gstEnabled: true },
-          ])
-        }
-      >
-        + Add Service
-      </Button>
-    </div>
-
-    <DialogFooter>
-      <Button variant="outline" onClick={() => setEditServicesOpen(false)}>
-        Cancel
-      </Button>
-
-      <Button
-        onClick={async () => {
-          try {
-            await updateBookingServicesApi(
-              booking._id,
-              servicesForm
-            );
-            toast.success("Extra services updated");
-            refreshBooking();
-            setEditServicesOpen(false);
-          } catch {
-            toast.error("Failed to update services");
-          }
-        }}
-      >
-        Save Services
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+              <Button
+                onClick={async () => {
+                  try {
+                    await updateBookingServicesApi(
+                      booking._id,
+                      servicesForm
+                    );
+                    toast.success("Extra services updated");
+                    refreshBooking();
+                    setEditServicesOpen(false);
+                  } catch {
+                    toast.error("Failed to update services");
+                  }
+                }}
+              >
+                Save Services
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
 
       </div>
