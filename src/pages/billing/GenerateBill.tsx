@@ -71,6 +71,8 @@ export default function GenerateBill() {
   const [transferBookingId, setTransferBookingId] = useState("");
   const [transferring, setTransferring] = useState(false);
   const [activeRooms, setActiveRooms] = useState<any[]>([]);
+  const [customerCompanyName, setCustomerCompanyName] = useState("");
+  const [customerCompanyGSTIN, setCustomerCompanyGSTIN] = useState("");
 
   /* ---------------- LOAD ORDERS ---------------- */
 
@@ -225,6 +227,13 @@ ${hotel?.gstNumber ? `<div style="text-align:center">GSTIN: ${hotel.gstNumber}</
 <div><b>Date:</b> ${new Date(bill.createdAt).toLocaleString()}</div>
 <div><b>Guest:</b> ${bill.customerName || "N/A"}</div>
 <div><b>Phone:</b> ${bill.customerPhone || "N/A"}</div>
+${bill.customerCompanyName
+  ? `<div><b>Company:</b> ${bill.customerCompanyName}</div>`
+  : ""}
+
+${bill.customerCompanyGSTIN
+  ? `<div><b>Company GSTIN:</b> ${bill.customerCompanyGSTIN}</div>`
+  : ""}
 <div><b>Table:</b> ${tableName}</div>
 
 <hr/>
@@ -335,6 +344,8 @@ ${buildHtml("CAPTAIN COPY")}
       const res = await api.post(`/billing/tables/${tableId}/checkout`, {
         customerName,
         customerPhone,
+        customerCompanyName,
+        customerCompanyGSTIN,
         payments,
         discount: discountAmount,
         items: buildFinalItems(),
@@ -405,6 +416,17 @@ ${buildHtml("CAPTAIN COPY")}
 
               <Input placeholder="Customer Name" value={customerName} onChange={e => setCustomerName(e.target.value)} />
               <Input placeholder="Customer Phone" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
+              <Input
+                placeholder="Company Name (Optional)"
+                value={customerCompanyName}
+                onChange={(e) => setCustomerCompanyName(e.target.value)}
+              />
+
+              <Input
+                placeholder="Company GSTIN (Optional)"
+                value={customerCompanyGSTIN}
+                onChange={(e) => setCustomerCompanyGSTIN(e.target.value)}
+              />
 
               <div className="space-y-2">
                 <Label>Payment Split</Label>

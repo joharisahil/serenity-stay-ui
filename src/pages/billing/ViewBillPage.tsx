@@ -113,6 +113,13 @@ const buildRestaurantThermalBill = (bill: any, hotel?: any) => {
   <div><b>Customer</b></div>
   <div class="small">${bill.customerName || "N/A"}</div>
   <div class="small">${bill.customerPhone || ""}</div>
+  ${bill.customerCompanyName
+  ? `<div class="small">Company: ${bill.customerCompanyName}</div>`
+  : ""}
+
+  ${bill.customerCompanyGSTIN
+  ? `<div class="small">GSTIN: ${bill.customerCompanyGSTIN}</div>`
+  : ""}
 
   <div class="line"></div>
 
@@ -186,10 +193,7 @@ export default function ViewBillPage() {
             : await getBillByIdApi(billId!);
 
         if (!res?.success) throw new Error();
-        setBill({
-        ...res.bill,
-        hotel: res.hotel
-        });
+        setBill(res.bill);
       } catch {
         toast.error("Failed to load bill");
         navigate("/old-bills");
@@ -215,6 +219,8 @@ export default function ViewBillPage() {
 
   const isRoom = bill.source === "ROOM";
   const full = isRoom ? bill.fullInvoice : null;
+  const hotel = bill.hotel;
+  const bookingInfo = bill.bookingInfo;
 
   return (
     <Layout>
@@ -237,7 +243,7 @@ export default function ViewBillPage() {
           {!isRoom && (
             <Button
               variant="outline"
-              onClick={() => openPrintWindow(buildRestaurantThermalBill(bill, bill.hotel))}
+              onClick={() => openPrintWindow(buildRestaurantThermalBill(bill, hotel))}
             >
               <Printer className="mr-2 h-4 w-4" />
               Print Bill
@@ -257,192 +263,194 @@ export default function ViewBillPage() {
           <Card>
             <CardHeader><CardTitle>Restaurant Bill</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-  <p><b>Customer Name:</b> {bill.customerName || "N/A"}</p>
-  <p><b>Customer Phone:</b> {bill.customerPhone || "N/A"}</p>
+              <p><b>Customer Name:</b> {bill.customerName || "N/A"}</p>
+              <p><b>Customer Phone:</b> {bill.customerPhone || "N/A"}</p>
+              {bill.customerCompanyName && (
+                <p><b>Company:</b> {bill.customerCompanyName}</p>
+              )}
 
-  {/* ITEMS */}
-  <div className="border rounded p-3 space-y-1">
-    {bill.orders?.flatMap((o: any) =>
-      o.items.map((it: any, i: number) => (
-        <div key={i} className="flex justify-between text-sm">
-          <span>{it.name} × {it.qty}</span>
-          <span>₹{it.totalPrice}</span>
-        </div>
-      ))
-    )}
-  </div>
+              {bill.customerCompanyGSTIN && (
+                <p><b>GSTIN:</b> {bill.customerCompanyGSTIN}</p>
+              )}
 
-  {/* TOTALS */}
-  <div className="border-t pt-3 space-y-1 text-sm">
-    <div className="flex justify-between">
-      <span>Subtotal</span>
-      <span>₹{bill.subtotal}</span>
-    </div>
+              {/* ITEMS */}
+              <div className="border rounded p-3 space-y-1">
+                {bill.orders?.flatMap((o: any) =>
+                  o.items.map((it: any, i: number) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span>{it.name} × {it.qty}</span>
+                      <span>₹{it.totalPrice}</span>
+                    </div>
+                  ))
+                )}
+              </div>
 
-    {bill.discount > 0 && (
-      <div className="flex justify-between">
-        <span>Discount</span>
-        <span>-₹{bill.discount}</span>
-      </div>
-    )}
+              {/* TOTALS */}
+              <div className="border-t pt-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>₹{bill.subtotal}</span>
+                </div>
 
-    <div className="flex justify-between">
-      <span>CGST (2.5%)</span>
-      <span>₹{(bill.gst / 2).toFixed(2)}</span>
-    </div>
+                {bill.discount > 0 && (
+                  <div className="flex justify-between">
+                    <span>Discount</span>
+                    <span>-₹{bill.discount}</span>
+                  </div>
+                )}
 
-    <div className="flex justify-between">
-      <span>SGST (2.5%)</span>
-      <span>₹{(bill.gst / 2).toFixed(2)}</span>
-    </div>
+                <div className="flex justify-between">
+                  <span>CGST (2.5%)</span>
+                  <span>₹{(bill.gst / 2).toFixed(2)}</span>
+                </div>
 
-    <div className="flex justify-between font-bold text-base">
-      <span>Total</span>
-      <span>₹{bill.finalAmount}</span>
-    </div>
-  </div>
+                <div className="flex justify-between">
+                  <span>SGST (2.5%)</span>
+                  <span>₹{(bill.gst / 2).toFixed(2)}</span>
+                </div>
 
-  {/* PAYMENT SUMMARY (IMPORTANT) */}
-  <div className="border-t pt-3 space-y-1 text-sm">
-    <p className="font-semibold">Payment Summary</p>
+                <div className="flex justify-between font-bold text-base">
+                  <span>Total</span>
+                  <span>₹{bill.finalAmount}</span>
+                </div>
+              </div>
 
-    {Array.isArray(bill.payments) && bill.payments.length > 0 ? (
-      <>
-        {bill.payments.map((p: any, i: number) => (
-          <div key={i} className="flex justify-between">
-            <span>{p.mode}</span>
-            <span>₹{p.amount}</span>
-          </div>
-        ))}
+              {/* PAYMENT SUMMARY */}
+              <div className="border-t pt-3 space-y-1 text-sm">
+                <p className="font-semibold">Payment Summary</p>
 
-        <div className="flex justify-between font-bold border-t pt-1">
-          <span>Total Paid</span>
-          <span>
-            ₹{bill.payments.reduce(
-              (sum: number, p: any) => sum + Number(p.amount || 0),
-              0
-            )}
-          </span>
-        </div>
-      </>
-    ) : (
-      <div className="flex justify-between">
-        <span>Payment Mode</span>
-        <span>{bill.paymentMode}</span>
-      </div>
-    )}
-  </div>
-</CardContent>
+                {Array.isArray(bill.payments) && bill.payments.length > 0 ? (
+                  <>
+                    {bill.payments.map((p: any, i: number) => (
+                      <div key={i} className="flex justify-between">
+                        <span>{p.mode}</span>
+                        <span>₹{p.amount}</span>
+                      </div>
+                    ))}
 
+                    <div className="flex justify-between font-bold border-t pt-1">
+                      <span>Total Paid</span>
+                      <span>
+                        ₹{bill.payments.reduce(
+                          (sum: number, p: any) => sum + Number(p.amount || 0),
+                          0
+                        )}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between">
+                    <span>Payment Mode</span>
+                    <span>{bill.paymentMode}</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
           </Card>
         )}
 
         {/* ROOM BILL SUMMARY */}
-        {/* ROOM BILL SUMMARY */}
-{isRoom && full && (
-  <Card>
-    <CardHeader>
-      <CardTitle>Room Invoice Summary</CardTitle>
-    </CardHeader>
+        {isRoom && full && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Room Invoice Summary</CardTitle>
+            </CardHeader>
 
-    <CardContent className="space-y-4 text-sm">
+            <CardContent className="space-y-4 text-sm">
+              {/* GUEST INFO */}
+              <div>
+                <p className="font-semibold mb-1">Guest Information</p>
+                <p><b>Name:</b> {full.guestName}</p>
+                <p><b>Phone:</b> {full.guestPhone}</p>
+              </div>
 
-      {/* GUEST INFO */}
-      <div>
-        <p className="font-semibold mb-1">Guest Information</p>
-        <p><b>Name:</b> {full.guestName}</p>
-        <p><b>Phone:</b> {full.guestPhone}</p>
-      </div>
+              {/* STAY INFO */}
+              <div>
+                <p className="font-semibold mb-1">Stay Details</p>
+                <p><b>Room:</b> {full.room_id?.number} ({full.room_id?.type})</p>
+                <p><b>Check-in:</b> {new Date(bookingInfo?.checkIn || full.createdAt).toLocaleString()}</p>
+                <p><b>Check-out:</b> {new Date(full.actualCheckoutTime).toLocaleString()}</p>
+                <p><b>Nights:</b> {full.stayNights}</p>
+              </div>
 
-      {/* STAY INFO */}
-      <div>
-        <p className="font-semibold mb-1">Stay Details</p>
-        <p><b>Room:</b> {full.room_id?.number} ({full.room_id?.type})</p>
-        <p><b>Check-in:</b> {new Date(full.checkIn).toLocaleString()}</p>
-        <p><b>Check-out:</b> {new Date(full.actualCheckoutTime).toLocaleString()}</p>
-        <p><b>Nights:</b> {full.stayNights}</p>
-      </div>
+              {/* ROOM CHARGES */}
+              <div>
+                <p className="font-semibold mb-1">Room Charges</p>
+                <div className="flex justify-between">
+                  <span>Room Rate</span>
+                  <span>₹{full.roomRate}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Stay Amount</span>
+                  <span>₹{full.stayAmount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>CGST</span>
+                  <span>₹{full.stayCGST}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>SGST</span>
+                  <span>₹{full.staySGST}</span>
+                </div>
+              </div>
 
-      {/* ROOM CHARGES */}
-      <div>
-        <p className="font-semibold mb-1">Room Charges</p>
-        <div className="flex justify-between">
-          <span>Room Rate</span>
-          <span>₹{full.roomRate}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Stay Amount</span>
-          <span>₹{full.stayAmount}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>CGST</span>
-          <span>₹{full.stayCGST}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>SGST</span>
-          <span>₹{full.staySGST}</span>
-        </div>
-      </div>
+              {/* FOOD CHARGES */}
+              <div>
+                <p className="font-semibold mb-1">Food Charges</p>
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>₹{full.foodSubtotal}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GST</span>
+                  <span>₹{full.foodGST}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total</span>
+                  <span>₹{full.foodTotal}</span>
+                </div>
+              </div>
 
-      {/* FOOD CHARGES */}
-      <div>
-        <p className="font-semibold mb-1">Food Charges</p>
-        <div className="flex justify-between">
-          <span>Subtotal</span>
-          <span>₹{full.foodSubtotal}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>GST</span>
-          <span>₹{full.foodGST}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Total</span>
-          <span>₹{full.foodTotal}</span>
-        </div>
-      </div>
+              {/* DISCOUNT */}
+              {full.discountAmount > 0 && (
+                <div>
+                  <p className="font-semibold mb-1">Discount</p>
+                  <div className="flex justify-between">
+                    <span>{full.discountPercent}%</span>
+                    <span>-₹{full.discountAmount}</span>
+                  </div>
+                </div>
+              )}
 
-      {/* DISCOUNT */}
-      {full.discountAmount > 0 && (
-        <div>
-          <p className="font-semibold mb-1">Discount</p>
-          <div className="flex justify-between">
-            <span>{full.discountPercent}%</span>
-            <span>-₹{full.discountAmount}</span>
-          </div>
-        </div>
-      )}
+              {/* PAYMENT INFO */}
+              <div>
+                <p className="font-semibold mb-1">Payment Summary</p>
+                <div className="flex justify-between">
+                  <span>Advance Paid</span>
+                  <span>₹{full.advancePaid}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Advance Mode</span>
+                  <span>{bookingInfo?.advancePaymentMode || "N/A"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Balance Due</span>
+                  <span>₹{full.balanceDue}</span>
+                </div>
+              </div>
 
-      {/* PAYMENT INFO */}
-      <div>
-        <p className="font-semibold mb-1">Payment Summary</p>
-        <div className="flex justify-between">
-          <span>Advance Paid</span>
-          <span>₹{full.advancePaid}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Advance Mode</span>
-          <span>{full.bookingInfo?.advancePaymentMode}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Balance Due</span>
-          <span>₹{full.balanceDue}</span>
-        </div>
-      </div>
-
-      {/* FINAL TOTAL */}
-      <div className="border-t pt-2 flex justify-between font-bold text-base">
-        <span>Total Amount</span>
-        <span>₹{full.totalAmount}</span>
-      </div>
-
-    </CardContent>
-  </Card>
-)}
-
+              {/* FINAL TOTAL */}
+              <div className="border-t pt-2 flex justify-between font-bold text-base">
+                <span>Total Amount</span>
+                <span>₹{full.totalAmount}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* ROOM INVOICE MODAL */}
-      {isRoom && full?.hotel && (
+      {isRoom && full && hotel && (
         <Dialog open={invoiceModal} onOpenChange={setInvoiceModal}>
           <DialogContent>
             <DialogHeader>
@@ -452,11 +460,12 @@ export default function ViewBillPage() {
             <div className="space-y-2">
               <Button
                 className="w-full"
-                onClick={() =>
+                onClick={() => {
                   openPrintWindow(
-                    buildRoomInvoice(full, full.hotel, full, true, full.advancePaymentMode)
-                  )
-                }
+                    buildRoomInvoice(full, hotel, bookingInfo, true, bookingInfo?.advancePaymentMode)
+                  );
+                  setInvoiceModal(false);
+                }}
               >
                 Room Invoice Only
               </Button>
@@ -464,22 +473,24 @@ export default function ViewBillPage() {
               <Button
                 className="w-full"
                 disabled={!full.foodOrders?.length}
-                onClick={() =>
+                onClick={() => {
                   openPrintWindow(
-                    buildFoodInvoice(full, full.hotel, full, full.foodOrders, true, full.advancePaymentMode)
-                  )
-                }
+                    buildFoodInvoice(full, hotel, bookingInfo, full.foodOrders, true, bookingInfo?.advancePaymentMode)
+                  );
+                  setInvoiceModal(false);
+                }}
               >
                 Food Invoice Only
               </Button>
 
               <Button
                 className="w-full"
-                onClick={() =>
+                onClick={() => {
                   openPrintWindow(
-                    buildCombinedInvoice(full, full.hotel, full, full.foodOrders, true, full.advancePaymentMode)
-                  )
-                }
+                    buildCombinedInvoice(full, hotel, bookingInfo, full.foodOrders, true, bookingInfo?.advancePaymentMode)
+                  );
+                  setInvoiceModal(false);
+                }}
               >
                 Full Invoice (Room + Food)
               </Button>
