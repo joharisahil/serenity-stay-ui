@@ -147,71 +147,71 @@ export default function CreateBooking() {
       else extrasBaseNoGST += amount;
     });
 
-   
+
     // ---------- DISCOUNT ----------
-const discountPercent = Number(formData.discount || 0);
-const discountAmountFlat = Number(formData.discountAmountInput || 0);
+    const discountPercent = Number(formData.discount || 0);
+    const discountAmountFlat = Number(formData.discountAmountInput || 0);
 
-let discountedRoomBase = roomBase;
-let discountedExtrasGST = extrasBaseGST;
-let discountedExtrasNoGST = extrasBaseNoGST;
+    let discountedRoomBase = roomBase;
+    let discountedExtrasGST = extrasBaseGST;
+    let discountedExtrasNoGST = extrasBaseNoGST;
 
-let discountAmount = 0;
+    let discountAmount = 0;
 
-// 👉 CASE 1: Flat discount (₹)
-if (discountAmountFlat > 0) {
-  if (formData.discountScope === "TOTAL") {
-    const grossBase = roomBase + extrasBaseGST + extrasBaseNoGST;
+    // 👉 CASE 1: Flat discount (₹)
+    if (discountAmountFlat > 0) {
+      if (formData.discountScope === "TOTAL") {
+        const grossBase = roomBase + extrasBaseGST + extrasBaseNoGST;
 
-    discountAmount = Math.min(discountAmountFlat, grossBase);
+        discountAmount = Math.min(discountAmountFlat, grossBase);
 
-    discountedRoomBase -= (discountAmount * roomBase) / grossBase;
-    discountedExtrasGST -= (discountAmount * extrasBaseGST) / grossBase;
-    discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / grossBase;
-  }
+        discountedRoomBase -= (discountAmount * roomBase) / grossBase;
+        discountedExtrasGST -= (discountAmount * extrasBaseGST) / grossBase;
+        discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / grossBase;
+      }
 
-  if (formData.discountScope === "ROOM") {
-    discountAmount = Math.min(discountAmountFlat, roomBase);
-    discountedRoomBase -= discountAmount;
-  }
+      if (formData.discountScope === "ROOM") {
+        discountAmount = Math.min(discountAmountFlat, roomBase);
+        discountedRoomBase -= discountAmount;
+      }
 
-  if (formData.discountScope === "EXTRAS") {
-    const extrasBase = extrasBaseGST + extrasBaseNoGST;
-    discountAmount = Math.min(discountAmountFlat, extrasBase);
+      if (formData.discountScope === "EXTRAS") {
+        const extrasBase = extrasBaseGST + extrasBaseNoGST;
+        discountAmount = Math.min(discountAmountFlat, extrasBase);
 
-    if (extrasBase > 0) {
-      discountedExtrasGST -= (discountAmount * extrasBaseGST) / extrasBase;
-      discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / extrasBase;
+        if (extrasBase > 0) {
+          discountedExtrasGST -= (discountAmount * extrasBaseGST) / extrasBase;
+          discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / extrasBase;
+        }
+      }
     }
-  }
-}
 
-// 👉 CASE 2: Percentage discount (only if amount not entered)
-else if (discountPercent > 0) {
-  if (formData.discountScope === "TOTAL") {
-    const grossBase = roomBase + extrasBaseGST + extrasBaseNoGST;
-    discountAmount = +(grossBase * discountPercent / 100).toFixed(2);
+    // 👉 CASE 2: Percentage discount (only if amount not entered)
+    else if (discountPercent > 0) {
+      if (formData.discountScope === "TOTAL") {
+        const grossBase = roomBase + extrasBaseGST + extrasBaseNoGST;
+        discountAmount = +(grossBase * discountPercent / 100).toFixed(2);
 
-    discountedRoomBase -= (discountAmount * roomBase) / grossBase;
-    discountedExtrasGST -= (discountAmount * extrasBaseGST) / grossBase;
-    discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / grossBase;
-  }
+        discountedRoomBase -= (discountAmount * roomBase) / grossBase;
+        discountedExtrasGST -= (discountAmount * extrasBaseGST) / grossBase;
+        discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / grossBase;
+      }
 
-  if (formData.discountScope === "ROOM") {
-    discountAmount = +(roomBase * discountPercent / 100).toFixed(2);
-    discountedRoomBase -= discountAmount;
-  }
+      if (formData.discountScope === "ROOM") {
+        discountAmount = +(roomBase * discountPercent / 100).toFixed(2);
+        discountedRoomBase -= discountAmount;
+      }
 
-  if (formData.discountScope === "EXTRAS") {
-    const extrasBase = extrasBaseGST + extrasBaseNoGST;
-    discountAmount = +(extrasBase * discountPercent / 100).toFixed(2);
+      if (formData.discountScope === "EXTRAS") {
+        const extrasBase = extrasBaseGST + extrasBaseNoGST;
+        discountAmount = +(extrasBase * discountPercent / 100).toFixed(2);
 
-    if (extrasBase > 0) {
-      discountedExtrasGST -= (discountAmount * extrasBaseGST) / extrasBase;
-      discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / extrasBase;
+        if (extrasBase > 0) {
+          discountedExtrasGST -= (discountAmount * extrasBaseGST) / extrasBase;
+          discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / extrasBase;
+        }
+      }
     }
-  }
-}
 
     // ---------- GST ----------
     let gstTotal = 0;
@@ -767,34 +767,34 @@ else if (discountPercent > 0) {
 
 
             <Label>Discount (%)</Label>
-<Input
-  type="number"
-  value={formData.discount}
-  disabled={!!formData.discountAmountInput}
-  onChange={(e) =>
-    setFormData({
-      ...formData,
-      discount: e.target.value,
-    })
-  }
-/>
+            <Input
+              type="number"
+              value={formData.discount}
+              disabled={!!formData.discountAmountInput}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  discount: e.target.value,
+                })
+              }
+            />
 
-<Label>Discount Amount (₹)</Label>
-<Input
-  type="number"
-  value={formData.discountAmountInput}
-  disabled={!!formData.discount}
-  onChange={(e) =>
-    setFormData({
-      ...formData,
-      discountAmountInput: e.target.value,
-    })
-  }
-/>
+            <Label>Discount Amount (₹)</Label>
+            <Input
+              type="number"
+              value={formData.discountAmountInput}
+              disabled={!!formData.discount}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  discountAmountInput: e.target.value,
+                })
+              }
+            />
 
-<p className="text-sm text-muted-foreground">
-  Enter either discount percentage or flat amount
-</p>
+            <p className="text-sm text-muted-foreground">
+              Enter either discount percentage or flat amount
+            </p>
 
 
             <p>Discount Amount: ₹{summary.discountAmount}</p>
