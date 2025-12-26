@@ -316,35 +316,48 @@ export default function BookingDetails() {
 
   const roomStayTotal = roomPrice * nights;
 
-  // Extra services
-  let extrasBase = 0;
-  let extrasGST = 0;
+ // ---------- ROOM BASE ----------
+let roomBase = roomStayTotal;
 
-  (booking.addedServices || []).forEach((s: any) => {
-    const c = calcExtraServiceAmount(s, nights);
-    extrasBase += c.base;
-    extrasGST += c.cgst + c.sgst;
-  });
+// Split extras into GST + NON-GST
+let extrasGstBase = 0;
+let extrasNonGstBase = 0;
 
-  const roomBase = roomStayTotal + extrasBase;
+(booking.addedServices || []).forEach((s: any) => {
+  const c = calcExtraServiceAmount(s, nights);
 
-  // GST if enabled
-  const roomOnlyGST = booking.gstEnabled
-    ? +(roomStayTotal * 0.05).toFixed(2)
+  if (c.gstEnabled) {
+    extrasGstBase += c.base;
+  } else {
+    extrasNonGstBase += c.base;
+  }
+});
+
+roomBase += extrasGstBase + extrasNonGstBase;
+
+// ---------- DISCOUNT ----------
+const roomDiscountPercent = Number(booking.discount || 0);
+const roomDiscountAmount = +((roomBase * roomDiscountPercent) / 100).toFixed(2);
+
+// ---------- TAXABLE (GST ENABLED ONLY) ----------
+const discountRatio = roomBase > 0 ? roomDiscountAmount / roomBase : 0;
+
+const taxable =
+  booking.gstEnabled
+    ? +((roomStayTotal + extrasGstBase) * (1 - discountRatio)).toFixed(2)
     : 0;
 
-  const roomCGST = +((roomOnlyGST / 2) + (extrasGST / 2)).toFixed(2);
-  const roomSGST = +((roomOnlyGST / 2) + (extrasGST / 2)).toFixed(2);
+// ---------- GST ----------
+const totalGST = booking.gstEnabled
+  ? +(taxable * 0.05).toFixed(2)
+  : 0;
 
-  // ROOM GROSS (before discount)
-  const roomGross = roomBase + roomCGST + roomSGST;
+const roomCGST = +(totalGST / 2).toFixed(2);
+const roomSGST = +(totalGST / 2).toFixed(2);
 
-  // Room discount calculation
-  const roomDiscountPercent = Number(booking.discount || 0);
-  const roomDiscountAmount = +((roomGross * roomDiscountPercent) / 100).toFixed(2);
-
-  // ROOM NET
-  const roomNet = roomGross - roomDiscountAmount;
+// ---------- ROOM TOTAL ----------
+const roomNet =
+  roomBase - roomDiscountAmount + roomCGST + roomSGST;
 
   // ---------- FOOD BILLING (DISCOUNT ON FOOD SUBTOTAL ONLY) ----------
   const foodSubtotalRaw = roomOrderSummary?.subtotal || 0;
@@ -376,25 +389,25 @@ export default function BookingDetails() {
   const balance = grandTotal - (booking.advancePaid || 0);
 
   const billingData = {
-    nights,
-    roomPrice,
-    roomStayTotal,
-    extrasBase,
-    roomBase,
-    roomCGST,
-    roomSGST,
-    roomGross,
-    roomDiscountAmount,
-    roomNet,
-    foodSubtotalRaw,
-    foodDiscountAmount,
-    foodSubtotalAfterDiscount,
-    foodCGST,
-    foodSGST,
-    foodTotal,
-    grandTotal,
-    balance
-  };
+  nights,
+  roomPrice,
+  roomStayTotal,
+  extrasBase: extrasGstBase + extrasNonGstBase,
+  roomBase,
+  roomCGST,
+  roomSGST,
+  roomDiscountAmount,
+  roomNet,
+  foodSubtotalRaw,
+  foodDiscountAmount,
+  foodSubtotalAfterDiscount,
+  foodCGST,
+  foodSGST,
+  foodTotal,
+  grandTotal,
+  balance
+};
+
 
   // ---------------- Handlers -----------------
   const handleCheckout = async () => {
@@ -733,18 +746,18 @@ export default function BookingDetails() {
                 {/* GST */}
                 <div className="flex justify-between">
                   <span>CGST (2.5%)</span>
-                  <span>₹{fmt(booking.cgst)}</span>
+                  <span>₹{fmt(billingData.roomCGST)}</span>
                 </div>
 
                 <div className="flex justify-between">
                   <span>SGST (2.5%)</span>
-                  <span>₹{fmt(booking.sgst)}</span>
+                  <span>₹{fmt(billingData.roomSGST)}</span>
                 </div>
 
                 {/* Discount */}
                 <div className="flex justify-between">
                   <span>Room Discount ({booking.discount}%)</span>
-                  <span>- ₹{fmt(booking.discountAmount)}</span>
+                  <span>- ₹{fmt(billingData.roomDiscountAmount)}</span>
                 </div>
 
                 {/* Room Total */}

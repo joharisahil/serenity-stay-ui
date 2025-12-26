@@ -36,7 +36,7 @@ const openPrintWindow = (html: string) => {
     try {
       win.focus();
       win.print();
-    } catch {}
+    } catch { }
   }, 300);
 };
 
@@ -114,12 +114,12 @@ const buildRestaurantThermalBill = (bill: any, hotel?: any) => {
   <div class="small">${bill.customerName || "N/A"}</div>
   <div class="small">${bill.customerPhone || ""}</div>
   ${bill.customerCompanyName
-  ? `<div class="small">Company: ${bill.customerCompanyName}</div>`
-  : ""}
+      ? `<div class="small">Company: ${bill.customerCompanyName}</div>`
+      : ""}
 
   ${bill.customerCompanyGSTIN
-  ? `<div class="small">GSTIN: ${bill.customerCompanyGSTIN}</div>`
-  : ""}
+      ? `<div class="small">GSTIN: ${bill.customerCompanyGSTIN}</div>`
+      : ""}
 
   <div class="line"></div>
 
@@ -152,8 +152,7 @@ const buildRestaurantThermalBill = (bill: any, hotel?: any) => {
   <!-- PAYMENTS -->
   <div><b>Payment</b></div>
 
-  ${
-    Array.isArray(bill.payments) && bill.payments.length > 0
+  ${Array.isArray(bill.payments) && bill.payments.length > 0
       ? bill.payments.map((p: any) => `
           <div class="row">
             <span>${p.mode}</span>
@@ -161,7 +160,7 @@ const buildRestaurantThermalBill = (bill: any, hotel?: any) => {
           </div>
         `).join("")
       : `<div class="row"><span>${bill.paymentMode}</span><span>₹${bill.finalAmount}</span></div>`
-  }
+    }
 
   <div class="row bold"><span>Paid</span><span>₹${totalPaid}</span></div>
 
@@ -394,12 +393,48 @@ export default function ViewBillPage() {
                 </div>
               </div>
 
+              {/* EXTRA SERVICES */}
+              {full.extraServices?.length > 0 && (
+                <div>
+                  <p className="font-semibold mb-1">Extra Services</p>
+
+                  {full.extraServices.map((s: any, i: number) => {
+                    const daysCount = Array.isArray(s.days) ? s.days.length : 1;
+                    const amount = s.price * daysCount;
+
+                    return (
+                      <div key={i} className="flex justify-between items-center text-sm">
+                        <div className="flex flex-col">
+                          <span>
+                            {s.name} × {daysCount}
+                          </span>
+
+                          <span className="text-xs text-muted-foreground">
+                            {s.gstEnabled ? (
+                              <span className="text-green-600 font-medium">
+                                GST Included
+                              </span>
+                            ) : (
+                              <span className="text-gray-500 font-medium">
+                                GST Exempt
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        <span>₹{amount}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* FOOD CHARGES */}
               <div>
                 <p className="font-semibold mb-1">Food Charges</p>
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>₹{full.foodSubtotal}</span>
+                  <span>₹{full.foodSubtotalRaw}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>GST</span>
@@ -416,11 +451,12 @@ export default function ViewBillPage() {
                 <div>
                   <p className="font-semibold mb-1">Discount</p>
                   <div className="flex justify-between">
-                    <span>{full.discountPercent}%</span>
+                    <span>{full.discountPercent}% (Room + Services)</span>
                     <span>-₹{full.discountAmount}</span>
                   </div>
                 </div>
               )}
+
 
               {/* PAYMENT INFO */}
               <div>
@@ -437,13 +473,30 @@ export default function ViewBillPage() {
                   <span>Balance Due</span>
                   <span>₹{full.balanceDue}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span>Final Payment Mode</span>
+                  <span>{full?.finalPaymentMode || "N/A"}</span>
+                </div>
               </div>
 
               {/* FINAL TOTAL */}
-              <div className="border-t pt-2 flex justify-between font-bold text-base">
-                <span>Total Amount</span>
-                <span>₹{full.totalAmount}</span>
+              <div className="border-t pt-2 space-y-1">
+                <div className="flex justify-between">
+                  <span>Room + Services (after discount)</span>
+                  <span>₹{full.roomNet}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span>Food Total</span>
+                  <span>₹{full.foodTotal}</span>
+                </div>
+
+                <div className="flex justify-between font-bold text-base border-t pt-1">
+                  <span>Grand Total</span>
+                  <span>₹{full.totalAmount}</span>
+                </div>
               </div>
+
             </CardContent>
           </Card>
         )}

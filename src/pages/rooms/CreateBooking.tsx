@@ -282,58 +282,75 @@ export default function CreateBooking() {
       }
     ]);
 
-  /* ---------------- SUBMIT ---------------- */
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    setLoading(true);
+  // ---------------- SUBMIT ----------------
+const handleSubmit = async (e: any) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      await createBookingApi({
-        room_id: formData.roomNumber,
-        checkIn: formData.checkIn,
-        checkOut: formData.checkOut,
+  try {
+    // 🔑 NORMALIZE DISCOUNT
+    let finalDiscountPercent = Number(formData.discount || 0);
 
-        guestName: formData.guestName,
-        guestPhone: formData.guestPhone,
-        guestCity: formData.guestCity,
-        guestNationality: formData.guestNationality,
-        guestAddress: formData.guestAddress,
+    if (!finalDiscountPercent && Number(formData.discountAmountInput || 0) > 0) {
+      const grossBase =
+        summary.taxable + summary.discountAmount;
 
-        companyName: formData.companyName,
-        companyGSTIN: formData.companyGSTIN,
-        companyAddress: formData.companyAddress,
-
-        adults: Number(formData.adults),
-        children: Number(formData.children),
-
-        planCode: formData.planCode,
-        gstEnabled: formData.gstEnabled === "true",
-        roundOffEnabled: formData.roundOffEnabled === "true",
-        roundOffAmount: summary.roundOffAmount,
-
-        discount: Number(formData.discount || 0),
-        advancePaid: Number(formData.advancePaid || 0),
-        advancePaymentMode: formData.advancePaymentMode,
-
-        guestIds,
-        addedServices: extras.map(e => ({
-          name: e.name,
-          price: Number(e.price),
-          days: e.days.length ? e.days : undefined,
-          gstEnabled: e.gstEnabled,
-        })),
-
-        notes: formData.notes,
-      });
-
-      toast.success("Booking created successfully");
-      navigate("/rooms/bookings");
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || "Booking failed");
-    } finally {
-      setLoading(false);
+      if (grossBase > 0) {
+        finalDiscountPercent = +(
+          (Number(formData.discountAmountInput) / grossBase) *
+          100
+        ).toFixed(2);
+      }
     }
-  };
+
+    await createBookingApi({
+      room_id: formData.roomNumber,
+      checkIn: formData.checkIn,
+      checkOut: formData.checkOut,
+
+      guestName: formData.guestName,
+      guestPhone: formData.guestPhone,
+      guestCity: formData.guestCity,
+      guestNationality: formData.guestNationality,
+      guestAddress: formData.guestAddress,
+
+      companyName: formData.companyName,
+      companyGSTIN: formData.companyGSTIN,
+      companyAddress: formData.companyAddress,
+
+      adults: Number(formData.adults),
+      children: Number(formData.children),
+
+      planCode: formData.planCode,
+      gstEnabled: formData.gstEnabled === "true",
+      roundOffEnabled: formData.roundOffEnabled === "true",
+      roundOffAmount: summary.roundOffAmount,
+
+      // ✅ FIXED
+      discount: finalDiscountPercent,
+
+      advancePaid: Number(formData.advancePaid || 0),
+      advancePaymentMode: formData.advancePaymentMode,
+
+      guestIds,
+      addedServices: extras.map(e => ({
+        name: e.name,
+        price: Number(e.price),
+        days: e.days.length ? e.days : undefined,
+        gstEnabled: e.gstEnabled,
+      })),
+
+      notes: formData.notes,
+    });
+
+    toast.success("Booking created successfully");
+    navigate("/rooms/bookings");
+  } catch (e: any) {
+    toast.error(e?.response?.data?.message || "Booking failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   /* ---------------- UI ---------------- */
   return (
@@ -795,6 +812,10 @@ export default function CreateBooking() {
             <p className="text-sm text-muted-foreground">
               Enter either discount percentage or flat amount
             </p>
+            <p className="text-xs text-muted-foreground">
+  Discount will be stored as percentage. Flat discount is converted internally.
+</p>
+
 
 
             <p>Discount Amount: ₹{summary.discountAmount}</p>
