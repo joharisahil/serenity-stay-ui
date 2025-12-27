@@ -86,7 +86,11 @@ export const getBookingByDateRangeApi = async (roomId: string, checkIn: string, 
 ------------------------------------------------------------ */
 export const updateRoomBillingApi = async (
   bookingId: string,
-  payload: { discount: number; gstEnabled: boolean }
+  payload: { 
+    discount: number;
+    discountScope?: "TOTAL" | "ROOM" | "EXTRAS";
+    gstEnabled: boolean;
+    roundOffEnabled?: boolean; }
 ) => {
   const res = await api.patch(
     `/room-bookings/${bookingId}/room-billing`,

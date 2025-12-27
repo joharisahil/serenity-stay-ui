@@ -316,48 +316,48 @@ export default function BookingDetails() {
 
   const roomStayTotal = roomPrice * nights;
 
- // ---------- ROOM BASE ----------
-let roomBase = roomStayTotal;
+  // ---------- ROOM BASE ----------
+  let roomBase = roomStayTotal;
 
-// Split extras into GST + NON-GST
-let extrasGstBase = 0;
-let extrasNonGstBase = 0;
+  // Split extras into GST + NON-GST
+  let extrasGstBase = 0;
+  let extrasNonGstBase = 0;
 
-(booking.addedServices || []).forEach((s: any) => {
-  const c = calcExtraServiceAmount(s, nights);
+  (booking.addedServices || []).forEach((s: any) => {
+    const c = calcExtraServiceAmount(s, nights);
 
-  if (c.gstEnabled) {
-    extrasGstBase += c.base;
-  } else {
-    extrasNonGstBase += c.base;
-  }
-});
+    if (c.gstEnabled) {
+      extrasGstBase += c.base;
+    } else {
+      extrasNonGstBase += c.base;
+    }
+  });
 
-roomBase += extrasGstBase + extrasNonGstBase;
+  roomBase += extrasGstBase + extrasNonGstBase;
 
-// ---------- DISCOUNT ----------
-const roomDiscountPercent = Number(booking.discount || 0);
-const roomDiscountAmount = +((roomBase * roomDiscountPercent) / 100).toFixed(2);
+  // ---------- DISCOUNT ----------
+  const roomDiscountPercent = Number(booking.discount || 0);
+  const roomDiscountAmount = +((roomBase * roomDiscountPercent) / 100).toFixed(2);
 
-// ---------- TAXABLE (GST ENABLED ONLY) ----------
-const discountRatio = roomBase > 0 ? roomDiscountAmount / roomBase : 0;
+  // ---------- TAXABLE (GST ENABLED ONLY) ----------
+  const discountRatio = roomBase > 0 ? roomDiscountAmount / roomBase : 0;
 
-const taxable =
-  booking.gstEnabled
-    ? +((roomStayTotal + extrasGstBase) * (1 - discountRatio)).toFixed(2)
+  const taxable =
+    booking.gstEnabled
+      ? +((roomStayTotal + extrasGstBase) * (1 - discountRatio)).toFixed(2)
+      : 0;
+
+  // ---------- GST ----------
+  const totalGST = booking.gstEnabled
+    ? +(taxable * 0.05).toFixed(2)
     : 0;
 
-// ---------- GST ----------
-const totalGST = booking.gstEnabled
-  ? +(taxable * 0.05).toFixed(2)
-  : 0;
+  const roomCGST = +(totalGST / 2).toFixed(2);
+  const roomSGST = +(totalGST / 2).toFixed(2);
 
-const roomCGST = +(totalGST / 2).toFixed(2);
-const roomSGST = +(totalGST / 2).toFixed(2);
-
-// ---------- ROOM TOTAL ----------
-const roomNet =
-  roomBase - roomDiscountAmount + roomCGST + roomSGST;
+  // ---------- ROOM TOTAL ----------
+  const roomNet =
+    roomBase - roomDiscountAmount + roomCGST + roomSGST;
 
   // ---------- FOOD BILLING (DISCOUNT ON FOOD SUBTOTAL ONLY) ----------
   const foodSubtotalRaw = roomOrderSummary?.subtotal || 0;
@@ -383,30 +383,39 @@ const roomNet =
   const foodTotal = foodSubtotalAfterDiscount + foodGST;
 
   // ---------- FINAL TOTAL ----------
-  const grandTotal = roomNet + foodTotal;
+  let grandTotal = roomNet + foodTotal;
+
+  let roundOffAmount = booking.roundOffAmount || 0;
+
+  if (booking.roundOffEnabled) {
+    const rounded = Math.round(grandTotal);
+    roundOffAmount = +(rounded - grandTotal).toFixed(2);
+    grandTotal = rounded;
+  }
 
   // BALANCE
   const balance = grandTotal - (booking.advancePaid || 0);
 
   const billingData = {
-  nights,
-  roomPrice,
-  roomStayTotal,
-  extrasBase: extrasGstBase + extrasNonGstBase,
-  roomBase,
-  roomCGST,
-  roomSGST,
-  roomDiscountAmount,
-  roomNet,
-  foodSubtotalRaw,
-  foodDiscountAmount,
-  foodSubtotalAfterDiscount,
-  foodCGST,
-  foodSGST,
-  foodTotal,
-  grandTotal,
-  balance
-};
+    nights,
+    roomPrice,
+    roomStayTotal,
+    extrasBase: extrasGstBase + extrasNonGstBase,
+    roomBase,
+    roomCGST,
+    roomSGST,
+    roomDiscountAmount,
+    roomNet,
+    foodSubtotalRaw,
+    foodDiscountAmount,
+    foodSubtotalAfterDiscount,
+    foodCGST,
+    foodSGST,
+    foodTotal,
+    roundOffEnabled: booking.roundOffEnabled,
+    grandTotal,
+    balance
+  };
 
 
   // ---------------- Handlers -----------------
@@ -634,7 +643,7 @@ const roomNet =
             <p><strong>Nights:</strong> {nights}</p>
           </CardContent>
         </Card>
-        {booking.addedServices?.length > 0 && (
+        {/* {booking.addedServices?.length > 0 && ( */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Extra Services</CardTitle>
@@ -702,7 +711,7 @@ const roomNet =
 
             </CardContent>
           </Card>
-        )}
+        {/* )} */}
 
         {/* Billing */}
         {/* BILLING SECTION */}
@@ -1007,6 +1016,35 @@ const roomNet =
                 <span>Balance Due</span>
                 <span className="text-warning">₹{finalPaymentReceived ? fmt(0) : fmt(balance)}</span>
               </div>
+              <div className="flex justify-between items-center">
+                <label className="font-medium">Round Off Total</label>
+                <input
+                  type="checkbox"
+                  checked={booking.roundOffEnabled}
+                  onChange={async (e) => {
+                    try {
+                      await updateRoomBillingApi(booking._id, {
+                        discount: booking.discount,
+                        discountScope: booking.discountScope,
+                        gstEnabled: booking.gstEnabled,
+                        roundOffEnabled: e.target.checked,
+                      });
+                      toast.success("Round-off updated");
+                      refreshBooking();
+                    } catch {
+                      toast.error("Failed to update round-off");
+                    }
+                  }}
+                />
+              </div>
+              {booking.roundOffEnabled && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Round Off Adjustment</span>
+                  <span>₹{fmt(roundOffAmount)}</span>
+                </div>
+              )}
+
+
               {/* FINAL PAYMENT SECTION */}
               <div className="space-y-3 mt-4">
                 <label className="flex items-center gap-2">
