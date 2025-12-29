@@ -221,6 +221,45 @@ export default function ViewBillPage() {
   const hotel = bill.hotel;
   const bookingInfo = bill.bookingInfo;
 
+  // Transform fullInvoice to match the format expected by print functions
+  const transformedBooking = full ? {
+    ...full,
+    // Map discountPercent to discount for compatibility
+    discount: full.discountPercent || 0,
+    foodDiscount: full.foodDiscountPercent || 0,
+    // Ensure advancePaymentMode exists
+    advancePaymentMode: full.advancePaymentMode || bookingInfo?.advancePaymentMode || "N/A",
+    // Ensure all necessary fields exist
+    gstEnabled: full.gstEnabled !== undefined ? full.gstEnabled : true,
+    foodGSTEnabled: full.foodGSTEnabled !== undefined ? full.foodGSTEnabled : true,
+    addedServices: full.extraServices || [],
+  } : null;
+
+  // Calculate billing data for display (matching the logic from BookingDetails)
+  const nights = full ? full.stayNights : 0;
+  const roomPrice = full ? full.roomRate : 0;
+  const roomStayTotal = full ? full.stayAmount : 0;
+
+  const billingData = full ? {
+    nights,
+    roomPrice,
+    roomStayTotal,
+    roomBase: full.roomGross - full.stayCGST - full.staySGST,
+    roomCGST: full.stayCGST,
+    roomSGST: full.staySGST,
+    roomGross: full.roomGross,
+    roomDiscountAmount: full.discountAmount,
+    roomNet: full.roomNet,
+    foodSubtotalRaw: full.foodSubtotalRaw,
+    foodDiscountAmount: full.foodDiscountAmount,
+    foodSubtotalAfterDiscount: full.foodSubtotalAfterDiscount,
+    foodCGST: full.foodCGST,
+    foodSGST: full.foodSGST,
+    foodTotal: full.foodTotal,
+    grandTotal: full.grandTotal,
+    balance: full.balanceDue,
+  } : null;
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -366,8 +405,8 @@ export default function ViewBillPage() {
               {/* STAY INFO */}
               <div>
                 <p className="font-semibold mb-1">Stay Details</p>
-                <p><b>Room:</b> {full.room_id?.number} ({full.room_id?.type})</p>
-                <p><b>Check-in:</b> {new Date(bookingInfo?.checkIn || full.createdAt).toLocaleString()}</p>
+                <p><b>Room:</b> {full.room_id?.number || full.roomNumber} ({full.room_id?.type || full.roomType})</p>
+                <p><b>Check-in:</b> {new Date(full.checkIn).toLocaleString()}</p>
                 <p><b>Check-out:</b> {new Date(full.actualCheckoutTime).toLocaleString()}</p>
                 <p><b>Nights:</b> {full.stayNights}</p>
               </div>
@@ -457,7 +496,6 @@ export default function ViewBillPage() {
                 </div>
               )}
 
-
               {/* PAYMENT INFO */}
               <div>
                 <p className="font-semibold mb-1">Payment Summary</p>
@@ -467,7 +505,7 @@ export default function ViewBillPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Advance Mode</span>
-                  <span>{bookingInfo?.advancePaymentMode || "N/A"}</span>
+                  <span>{full.advancePaymentMode || bookingInfo?.advancePaymentMode || "N/A"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Balance Due</span>
@@ -475,7 +513,7 @@ export default function ViewBillPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Final Payment Mode</span>
-                  <span>{full?.finalPaymentMode || "N/A"}</span>
+                  <span>{full.finalPaymentMode || "N/A"}</span>
                 </div>
               </div>
 
@@ -503,7 +541,7 @@ export default function ViewBillPage() {
       </div>
 
       {/* ROOM INVOICE MODAL */}
-      {isRoom && full && hotel && (
+      {isRoom && transformedBooking && hotel && billingData && (
         <Dialog open={invoiceModal} onOpenChange={setInvoiceModal}>
           <DialogContent>
             <DialogHeader>
@@ -515,7 +553,13 @@ export default function ViewBillPage() {
                 className="w-full"
                 onClick={() => {
                   openPrintWindow(
-                    buildRoomInvoice(full, hotel, bookingInfo, true, bookingInfo?.advancePaymentMode)
+                    buildRoomInvoice(
+                      transformedBooking,
+                      hotel,
+                      billingData,
+                      full.finalPaymentReceived || false,
+                      full.finalPaymentMode || transformedBooking.advancePaymentMode
+                    )
                   );
                   setInvoiceModal(false);
                 }}
@@ -528,7 +572,14 @@ export default function ViewBillPage() {
                 disabled={!full.foodOrders?.length}
                 onClick={() => {
                   openPrintWindow(
-                    buildFoodInvoice(full, hotel, bookingInfo, full.foodOrders, true, bookingInfo?.advancePaymentMode)
+                    buildFoodInvoice(
+                      transformedBooking,
+                      hotel,
+                      billingData,
+                      full.foodOrders,
+                      full.finalPaymentReceived || false,
+                      full.finalPaymentMode || transformedBooking.advancePaymentMode
+                    )
                   );
                   setInvoiceModal(false);
                 }}
@@ -540,7 +591,14 @@ export default function ViewBillPage() {
                 className="w-full"
                 onClick={() => {
                   openPrintWindow(
-                    buildCombinedInvoice(full, hotel, bookingInfo, full.foodOrders, true, bookingInfo?.advancePaymentMode)
+                    buildCombinedInvoice(
+                      transformedBooking,
+                      hotel,
+                      billingData,
+                      full.foodOrders || [],
+                      full.finalPaymentReceived || false,
+                      full.finalPaymentMode || transformedBooking.advancePaymentMode
+                    )
                   );
                   setInvoiceModal(false);
                 }}
