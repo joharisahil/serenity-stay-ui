@@ -89,6 +89,16 @@ export default function CreateBooking() {
 
   const staySelected = Boolean(formData.checkIn && formData.checkOut);
 
+  const toUTCISOString = (localDateTime: string) => {
+  const [date, time] = localDateTime.split("T");
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+
+  const local = new Date(y, m - 1, d, hh, mm);
+  return local.toISOString();
+};
+
+
   /* ---------------- LOAD ROOM TYPES ---------------- */
   useEffect(() => {
     getRoomTypesApi()
@@ -305,8 +315,8 @@ const handleSubmit = async (e: any) => {
 
     await createBookingApi({
       room_id: formData.roomNumber,
-      checkIn: formData.checkIn,
-      checkOut: formData.checkOut,
+      checkIn: toUTCISOString(formData.checkIn),
+    checkOut: toUTCISOString(formData.checkOut),
 
       guestName: formData.guestName,
       guestPhone: formData.guestPhone,

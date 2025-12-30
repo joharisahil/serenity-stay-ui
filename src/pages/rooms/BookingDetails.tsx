@@ -161,6 +161,14 @@ export default function BookingDetails() {
   const selectedCheckIn = location.state?.selectedCheckIn || null;
   const selectedCheckOut = location.state?.selectedCheckOut || null;
 
+  const formatLocal = (iso: string) =>
+  new Date(iso).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+
   useEffect(() => {
     if (!roomId) return;
 
@@ -624,21 +632,9 @@ export default function BookingDetails() {
 
           </CardHeader>
           <CardContent>
-            <p>
-              <strong>Check-in:</strong>{" "}
-              {new Date(booking.checkIn).toLocaleString([], {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })}
-            </p>
+            <p><strong>Check-in:</strong> {formatLocal(booking.checkIn)}</p>
 
-            <p>
-              <strong>Check-out:</strong>{" "}
-              {new Date(booking.checkOut).toLocaleString([], {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })}
-            </p>
+            <p><strong>Check-out:</strong> {formatLocal(booking.checkOut)}</p>
 
             <p><strong>Nights:</strong> {nights}</p>
           </CardContent>
@@ -862,7 +858,7 @@ export default function BookingDetails() {
                         {/* Order Header */}
                         <div className="flex justify-between font-medium">
                           <span>Order #{String(order._id).slice(-6)}</span>
-                          <span>{new Date(order.createdAt).toLocaleString()}</span>
+                          <span>{formatLocal(order.createdAt)}</span>
                         </div>
 
                         {/* Items */}
@@ -1682,7 +1678,7 @@ export default function BookingDetails() {
             </DialogHeader>
 
             <p className="text-sm text-muted-foreground">
-              Current checkout: {new Date(booking.checkOut).toLocaleString()}
+              Current checkout: {formatLocal(booking.checkOut)}
             </p>
 
             <Input

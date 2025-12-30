@@ -23,6 +23,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+  const formatLocal = (iso: string) =>
+  new Date(iso).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
 /* ---------------- PRINT HELPER ---------------- */
 const openPrintWindow = (html: string) => {
   const win = window.open("", "_blank", "width=400,height=700");
@@ -103,7 +110,7 @@ const buildRestaurantThermalBill = (bill: any, hotel?: any) => {
 
   <!-- BILL INFO -->
   <div class="row"><span>Bill No</span><span>${bill.billNumber}</span></div>
-  <div class="row"><span>Date</span><span>${new Date(bill.createdAt).toLocaleString()}</span></div>
+  <div class="row"><span>Date</span><span>${formatLocal(bill.createdAt)}</span></div>
 
   ${bill.table?.name ? `<div class="row"><span>Table</span><span>${bill.table.name}</span></div>` : ""}
 
@@ -273,7 +280,7 @@ export default function ViewBillPage() {
             <div>
               <h1 className="text-3xl font-bold">Bill #{bill.billNumber}</h1>
               <p className="text-muted-foreground">
-                {new Date(bill.createdAt).toLocaleString()}
+                {formatLocal(bill.createdAt)}
               </p>
             </div>
           </div>
@@ -406,8 +413,8 @@ export default function ViewBillPage() {
               <div>
                 <p className="font-semibold mb-1">Stay Details</p>
                 <p><b>Room:</b> {full.room_id?.number || full.roomNumber} ({full.room_id?.type || full.roomType})</p>
-                <p><b>Check-in:</b> {new Date(full.checkIn).toLocaleString()}</p>
-                <p><b>Check-out:</b> {new Date(full.actualCheckoutTime).toLocaleString()}</p>
+                <p><b>Check-in:</b> {formatLocal(full.checkIn)}</p>
+                <p><b>Check-out:</b> {formatLocal(full.actualCheckoutTime)}</p>
                 <p><b>Nights:</b> {full.stayNights}</p>
               </div>
 
