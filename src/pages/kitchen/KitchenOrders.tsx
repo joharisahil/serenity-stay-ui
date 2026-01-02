@@ -45,6 +45,11 @@ const printKOT = (order: any) => {
     return;
   }
 
+  const orderDateTime = new Date(order.createdAt).toLocaleString(undefined, {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+
   const kotHtml = `
     <html>
     <head>
@@ -87,7 +92,7 @@ const printKOT = (order: any) => {
 
       <div class="row"><b>Order:</b> <span>${order._id.slice(-4)}</span></div>
       <div class="row"><b>Table:</b> <span>${order.table_id?.name || "N/A"}</span></div>
-      <div class="row"><b>Time:</b> <span>${new Date(order.createdAt).toLocaleTimeString()}</span></div>
+      <div class="row"><b>Date:</b> <span>${orderDateTime}</span></div>
 
       <hr />
       <b>Items</b><br/>
@@ -103,7 +108,7 @@ const printKOT = (order: any) => {
         .join("")}
 
       <hr />
-      <div class="row"><b>Total:</b> <span>₹${order.total}</span></div>
+      <div class="row"><b>Total:</b> <span>₹${order.total.toFixed(2)}</span></div>
 
       <script>
         setTimeout(() => {
