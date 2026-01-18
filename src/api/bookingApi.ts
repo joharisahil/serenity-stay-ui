@@ -213,3 +213,40 @@ export const reduceStayApi = (id: string, newCheckOut: string) =>
 
 export const updateBookingServicesApi = (id: string, services: any[]) =>
   api.patch(`/room-bookings/${id}/services`, { addedServices: services });
+
+// Add these functions to your existing bookingApi.js file
+
+// or however you've set up your axios instance
+
+/**
+ * Add a new advance payment
+ * POST /api/bookings/:id/advances
+ */
+export const addAdvancePaymentApi = async (bookingId, advanceData) => {
+  return api.post(
+    `/room-bookings/${bookingId}/advances`,
+    advanceData
+  ).then(res => res.data);
+};
+
+
+/**
+ * Update an existing advance payment
+ * PATCH /api/bookings/:bookingId/advances/:advanceId
+ */
+export const updateAdvancePaymentApi = async (bookingId, advanceId, advanceData) => {
+  const response = await api.patch(
+    `/room-bookings/${bookingId}/advances/${advanceId}`,
+    advanceData
+  );
+  return response.data;
+};
+
+/**
+ * Delete an advance payment
+ * DELETE /api/bookings/:bookingId/advances/:advanceId
+ */
+export const deleteAdvancePaymentApi = async (bookingId, advanceId) => {
+  const response = await api.delete(`/room-bookings/${bookingId}/advances/${advanceId}`);
+  return response.data;
+};
