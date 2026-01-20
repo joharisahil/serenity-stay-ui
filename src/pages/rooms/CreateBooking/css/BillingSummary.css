@@ -1,0 +1,90 @@
+/* ================================
+   ERP Billing Summary (Scoped)
+   ================================ */
+
+.erp-billing {
+  border: 1px solid hsl(var(--primary) / 0.45);
+  border-radius: 14px;
+  background: hsl(var(--background));
+  overflow: hidden;
+}
+
+/* ---------- Header ---------- */
+.erp-billing .billing-header {
+  padding: 12px 16px;
+  background: hsl(var(--primary) / 0.12);
+  border-bottom: 1px solid hsl(var(--primary) / 0.6);
+}
+
+.erp-billing .billing-header h2 {
+  color: hsl(var(--primary));
+  letter-spacing: 0.06em;
+}
+
+/* ---------- Rows ---------- */
+.erp-billing .billing-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.erp-billing .billing-row-label {
+  color: hsl(var(--muted-foreground));
+}
+
+.erp-billing .billing-row-value {
+  font-weight: 500;
+}
+
+/* ---------- Dividers ---------- */
+.erp-billing .billing-divider {
+  height: 1px;
+  background: hsl(var(--primary) / 0.35);
+  margin: 12px 0;
+}
+
+/* ---------- Grand Total ---------- */
+.erp-billing .billing-grand-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: hsl(var(--primary) / 0.14);
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* ---------- Payment Mode ---------- */
+.erp-billing .payment-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.erp-billing .payment-mode:hover {
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+.erp-billing .payment-mode.selected {
+  background: hsl(var(--primary) / 0.16);
+  border-color: hsl(var(--primary) / 0.7);
+  color: hsl(var(--primary));
+}
+
+/* ---------- Balance Due ---------- */
+.erp-billing .billing-balance {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed hsl(var(--primary) / 0.4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}

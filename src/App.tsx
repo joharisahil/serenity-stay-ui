@@ -11,8 +11,14 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RoomList from "./pages/rooms/RoomList";
 import ManageRooms from "./pages/rooms/ManageRooms";
-import CreateBooking from "./pages/rooms/CreateBooking";
-import BookingDetails from "./pages/rooms/BookingDetails/BookingDetails";
+
+
+
+//import CreateBooking from "./pages/rooms/CreateBooking";
+
+import CreateBooking from "./pages/rooms/CreateBooking/CreateBooking";
+
+import BookingDetails from "./pages/rooms/BookingDetails";
 import BanquetCalendar from "./pages/banquet/BanquetCalendar";
 import CreateBanquet from "./pages/banquet/CreateBanquet";
 import BanquetDetails from "./pages/banquet/BanquetDetails";
