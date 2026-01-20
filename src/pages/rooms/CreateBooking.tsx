@@ -55,8 +55,8 @@
 //     gstEnabled: "true",
 //     roundOffEnabled: "true",
 
-    advanceAmount: "",
-    advancePaymentMode: "CASH",
+//     advancePaid: "",
+//     advancePaymentMode: "CASH",
 
 //     notes: "",
 //   });
@@ -252,7 +252,7 @@
 //       grandTotal = rounded;
 //     }
 
-    const advance = Number(formData.advanceAmount || 0);
+//     const advance = Number(formData.advancePaid || 0);
 
 //     setSummary({
 //       nights,
@@ -339,8 +339,8 @@
 //       // ✅ FIXED
 //       discount: finalDiscountPercent,
 
-      advanceAmount: Number(formData.advanceAmount || 0),
-      advancePaymentMode: formData.advancePaymentMode,
+//       advancePaid: Number(formData.advancePaid || 0),
+//       advancePaymentMode: formData.advancePaymentMode,
 
 //       guestIds,
 //       addedServices: extras.map(e => ({
@@ -902,14 +902,14 @@
 //             </Select>
 
 
-            <Label>Advance Paid</Label>
-            <Input
-              type="number"
-              value={formData.advanceAmount}
-              onChange={(e) =>
-                setFormData({ ...formData, advanceAmount: e.target.value })
-              }
-            />
+//             <Label>Advance Paid</Label>
+//             <Input
+//               type="number"
+//               value={formData.advancePaid}
+//               onChange={(e) =>
+//                 setFormData({ ...formData, advancePaid: e.target.value })
+//               }
+//             />
 
 //             <p className="text-2xl font-bold text-primary">
 //               Balance Due: ₹{summary.balanceDue}

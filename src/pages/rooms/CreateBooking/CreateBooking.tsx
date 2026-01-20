@@ -16,7 +16,7 @@ import { CompanyForm } from "./components/CompanyForm";
 import { IdProofSection } from "./components/IdProofSection";
 import { ExtraServicesSection } from "./components/ExtraServicesSection";
 import { BillingSummary } from "./components/BillingSummary";
-
+import { useGuestSearch } from "./hooks/useGuestSearch";
 import {
   getRoomTypesApi,
   getAvailableRoomsByDateTimeApi,
@@ -53,13 +53,28 @@ export default function CreateBooking() {
     advancePaymentMode: "CASH",
     notes: "",
   });
+  // 🔍 Guest search (autocomplete)
+  const {
+    results: guestSuggestions,
+    activeField,
+    setActiveField,
+    clearResults,
+  } = useGuestSearch(formData.guestName, formData.guestPhone);
 
-  const [guestIds, setGuestIds] = useState<{ type: string; idNumber: string; nameOnId: string }[]>([]);
-  const [extras, setExtras] = useState<{ name: string; price: string; days: number[]; gstEnabled: boolean }[]>([]);
-  
+  const [guestIds, setGuestIds] = useState<
+    { type: string; idNumber: string; nameOnId: string }[]
+  >([]);
+  const [extras, setExtras] = useState<
+    { name: string; price: string; days: number[]; gstEnabled: boolean }[]
+  >([]);
+
   const [roomTypes, setRoomTypes] = useState<string[]>([]);
-  const [rooms, setRooms] = useState<{ _id: string; number: string; status?: string; type?: string }[]>([]);
-  const [plans, setPlans] = useState<{ key: string; label: string; price: number; meals?: string }[]>([]);
+  const [rooms, setRooms] = useState<
+    { _id: string; number: string; status?: string; type?: string }[]
+  >([]);
+  const [plans, setPlans] = useState<
+    { key: string; label: string; price: number; meals?: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
 
   const [summary, setSummary] = useState({
@@ -96,7 +111,11 @@ export default function CreateBooking() {
   useEffect(() => {
     if (!staySelected || !formData.roomType) return;
 
-    getAvailableRoomsByDateTimeApi(formData.checkIn, formData.checkOut, formData.roomType)
+    getAvailableRoomsByDateTimeApi(
+      formData.checkIn,
+      formData.checkOut,
+      formData.roomType,
+    )
       .then(setRooms)
       .catch(() => toast.error("Failed to load rooms"));
   }, [staySelected, formData.roomType, formData.checkIn, formData.checkOut]);
@@ -116,16 +135,21 @@ export default function CreateBooking() {
 
     const inDT = new Date(formData.checkIn);
     const outDT = new Date(formData.checkOut);
-    const nights = Math.max(1, Math.ceil((outDT.getTime() - inDT.getTime()) / 86400000));
+    const nights = Math.max(
+      1,
+      Math.ceil((outDT.getTime() - inDT.getTime()) / 86400000),
+    );
 
-    const plan = plans.find(p => p.key === formData.planCode);
+    const plan = plans.find((p) => p.key === formData.planCode);
     const roomBase = plan ? plan.price * nights : 0;
 
     let extrasBaseGST = 0;
     let extrasBaseNoGST = 0;
 
-    extras.forEach(ex => {
-      const days = ex.days.length ? ex.days : Array.from({ length: nights }, (_, i) => i + 1);
+    extras.forEach((ex) => {
+      const days = ex.days.length
+        ? ex.days
+        : Array.from({ length: nights }, (_, i) => i + 1);
       const amount = Number(ex.price || 0) * days.length;
       if (ex.gstEnabled) extrasBaseGST += amount;
       else extrasBaseNoGST += amount;
@@ -146,7 +170,8 @@ export default function CreateBooking() {
         if (grossBase > 0) {
           discountedRoomBase -= (discountAmount * roomBase) / grossBase;
           discountedExtrasGST -= (discountAmount * extrasBaseGST) / grossBase;
-          discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / grossBase;
+          discountedExtrasNoGST -=
+            (discountAmount * extrasBaseNoGST) / grossBase;
         }
       } else if (formData.discountScope === "ROOM") {
         discountAmount = Math.min(discountAmountFlat, roomBase);
@@ -156,27 +181,30 @@ export default function CreateBooking() {
         discountAmount = Math.min(discountAmountFlat, extrasBase);
         if (extrasBase > 0) {
           discountedExtrasGST -= (discountAmount * extrasBaseGST) / extrasBase;
-          discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / extrasBase;
+          discountedExtrasNoGST -=
+            (discountAmount * extrasBaseNoGST) / extrasBase;
         }
       }
     } else if (discountPercent > 0) {
       const grossBase = roomBase + extrasBaseGST + extrasBaseNoGST;
       if (formData.discountScope === "TOTAL") {
-        discountAmount = +(grossBase * discountPercent / 100).toFixed(2);
+        discountAmount = +((grossBase * discountPercent) / 100).toFixed(2);
         if (grossBase > 0) {
           discountedRoomBase -= (discountAmount * roomBase) / grossBase;
           discountedExtrasGST -= (discountAmount * extrasBaseGST) / grossBase;
-          discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / grossBase;
+          discountedExtrasNoGST -=
+            (discountAmount * extrasBaseNoGST) / grossBase;
         }
       } else if (formData.discountScope === "ROOM") {
-        discountAmount = +(roomBase * discountPercent / 100).toFixed(2);
+        discountAmount = +((roomBase * discountPercent) / 100).toFixed(2);
         discountedRoomBase -= discountAmount;
       } else if (formData.discountScope === "EXTRAS") {
         const extrasBase = extrasBaseGST + extrasBaseNoGST;
-        discountAmount = +(extrasBase * discountPercent / 100).toFixed(2);
+        discountAmount = +((extrasBase * discountPercent) / 100).toFixed(2);
         if (extrasBase > 0) {
           discountedExtrasGST -= (discountAmount * extrasBaseGST) / extrasBase;
-          discountedExtrasNoGST -= (discountAmount * extrasBaseNoGST) / extrasBase;
+          discountedExtrasNoGST -=
+            (discountAmount * extrasBaseNoGST) / extrasBase;
         }
       }
     }
@@ -190,7 +218,11 @@ export default function CreateBooking() {
     const cgst = +(gstTotal / 2).toFixed(2);
     const sgst = +(gstTotal / 2).toFixed(2);
 
-    let grandTotal = discountedRoomBase + discountedExtrasGST + discountedExtrasNoGST + gstTotal;
+    let grandTotal =
+      discountedRoomBase +
+      discountedExtrasGST +
+      discountedExtrasNoGST +
+      gstTotal;
 
     let roundOffAmount = 0;
     if (formData.roundOffEnabled === "true") {
@@ -216,7 +248,7 @@ export default function CreateBooking() {
   }, [staySelected, formData, extras, plans]);
 
   const updateFormData = (updates: Partial<typeof formData>) => {
-    setFormData(prev => ({ ...prev, ...updates }));
+    setFormData((prev) => ({ ...prev, ...updates }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -227,10 +259,16 @@ export default function CreateBooking() {
       // Normalize discount to percentage
       let finalDiscountPercent = Number(formData.discount || 0);
 
-      if (!finalDiscountPercent && Number(formData.discountAmountInput || 0) > 0) {
+      if (
+        !finalDiscountPercent &&
+        Number(formData.discountAmountInput || 0) > 0
+      ) {
         const grossBase = summary.taxable + summary.discountAmount;
         if (grossBase > 0) {
-          finalDiscountPercent = +((Number(formData.discountAmountInput) / grossBase) * 100).toFixed(2);
+          finalDiscountPercent = +(
+            (Number(formData.discountAmountInput) / grossBase) *
+            100
+          ).toFixed(2);
         }
       }
 
@@ -263,7 +301,7 @@ export default function CreateBooking() {
         advancePaymentMode: formData.advancePaymentMode,
 
         guestIds,
-        addedServices: extras.map(e => ({
+        addedServices: extras.map((e) => ({
           name: e.name,
           price: Number(e.price),
           days: e.days.length ? e.days : undefined,
@@ -315,7 +353,6 @@ export default function CreateBooking() {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left Column - Form Sections (70%) */}
           <div className="flex-1 lg:w-[70%] space-y-4">
-            
             {/* Section 1: Stay & Room Selection */}
             <SectionCard number={1} title="Stay & Room Selection">
               <div className="space-y-4">
@@ -329,7 +366,9 @@ export default function CreateBooking() {
                     <Input
                       type="datetime-local"
                       value={formData.checkIn}
-                      onChange={(e) => updateFormData({ checkIn: e.target.value })}
+                      onChange={(e) =>
+                        updateFormData({ checkIn: e.target.value })
+                      }
                     />
                   </div>
                   <div className="erp-field">
@@ -340,7 +379,9 @@ export default function CreateBooking() {
                     <Input
                       type="datetime-local"
                       value={formData.checkOut}
-                      onChange={(e) => updateFormData({ checkOut: e.target.value })}
+                      onChange={(e) =>
+                        updateFormData({ checkOut: e.target.value })
+                      }
                     />
                   </div>
                 </div>
@@ -363,15 +404,23 @@ export default function CreateBooking() {
                   selectedRoom={formData.roomNumber}
                   selectedPlan={formData.planCode}
                   disabled={!staySelected}
-                  onRoomTypeChange={(v) => updateFormData({ roomType: v, roomNumber: "", planCode: "" })}
-                  onRoomChange={(v) => updateFormData({ roomNumber: v, planCode: "" })}
+                  onRoomTypeChange={(v) =>
+                    updateFormData({
+                      roomType: v,
+                      roomNumber: "",
+                      planCode: "",
+                    })
+                  }
+                  onRoomChange={(v) =>
+                    updateFormData({ roomNumber: v, planCode: "" })
+                  }
                   onPlanChange={(v) => updateFormData({ planCode: v })}
                 />
               </div>
             </SectionCard>
 
             {/* Section 2: Guest Information */}
-            <SectionCard number={2} title="Guest Information" disabled={!staySelected}>
+            {/* <SectionCard number={2} title="Guest Information" disabled={!staySelected}>
               <GuestForm
                 formData={{
                   guestName: formData.guestName,
@@ -384,10 +433,56 @@ export default function CreateBooking() {
                 }}
                 onChange={updateFormData}
               />
+            </SectionCard> */}
+            {/* Section 2: Guest Information */}
+            <SectionCard
+              number={2}
+              title="Guest Information"
+              disabled={!staySelected}
+            >
+              <GuestForm
+                formData={{
+                  guestName: formData.guestName,
+                  guestPhone: formData.guestPhone,
+                  guestCity: formData.guestCity,
+                  guestNationality: formData.guestNationality,
+                  guestAddress: formData.guestAddress,
+                  adults: formData.adults,
+                  children: formData.children,
+                }}
+                onChange={updateFormData}
+                // 🔽 NEW PROPS for autocomplete
+                suggestions={guestSuggestions}
+                activeField={activeField}
+                onFieldFocus={setActiveField}
+                onSelectGuest={(g) => {
+                  updateFormData({
+                    guestName: g.guestName,
+                    guestPhone: g.guestPhone,
+                    guestCity: g.guestCity || "",
+                    guestNationality: g.guestNationality || "Indian",
+                    guestAddress: g.guestAddress || "",
+                    adults: String(g.adults || 1),
+                    children: String(g.children || 0),
+
+                    // company auto-fill
+                    companyName: g.companyName || "",
+                    companyGSTIN: g.companyGSTIN || "",
+                    companyAddress: g.companyAddress || "",
+                  });
+                  setGuestIds(g.guestIds || []);
+
+                  clearResults();
+                }}
+              />
             </SectionCard>
 
             {/* Section 3: Company / GST Details */}
-            <SectionCard number={3} title="Company / GST Details (Optional)" disabled={!staySelected}>
+            <SectionCard
+              number={3}
+              title="Company / GST Details (Optional)"
+              disabled={!staySelected}
+            >
               <CompanyForm
                 formData={{
                   companyName: formData.companyName,
@@ -400,14 +495,15 @@ export default function CreateBooking() {
 
             {/* Section 4: ID Proofs */}
             <SectionCard number={4} title="ID Proofs" disabled={!staySelected}>
-              <IdProofSection
-                idProofs={guestIds}
-                onChange={setGuestIds}
-              />
+              <IdProofSection idProofs={guestIds} onChange={setGuestIds} />
             </SectionCard>
 
             {/* Section 5: Extra Services */}
-            <SectionCard number={5} title="Extra Services" disabled={!staySelected}>
+            <SectionCard
+              number={5}
+              title="Extra Services"
+              disabled={!staySelected}
+            >
               <ExtraServicesSection
                 services={extras}
                 nights={summary.nights}
@@ -416,7 +512,11 @@ export default function CreateBooking() {
             </SectionCard>
 
             {/* Section 6: Notes */}
-            <SectionCard number={6} title="Booking Notes" disabled={!staySelected}>
+            <SectionCard
+              number={6}
+              title="Booking Notes"
+              disabled={!staySelected}
+            >
               <div className="erp-field">
                 <Label className="erp-label">Special Requests / Notes</Label>
                 <Textarea
