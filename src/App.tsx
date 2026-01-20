@@ -12,7 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import RoomList from "./pages/rooms/RoomList";
 import ManageRooms from "./pages/rooms/ManageRooms";
 import CreateBooking from "./pages/rooms/CreateBooking";
-import BookingDetails from "./pages/rooms/BookingDetails";
+import BookingDetails from "./pages/rooms/BookingDetails/BookingDetails";
 import BanquetCalendar from "./pages/banquet/BanquetCalendar";
 import CreateBanquet from "./pages/banquet/CreateBanquet";
 import BanquetDetails from "./pages/banquet/BanquetDetails";

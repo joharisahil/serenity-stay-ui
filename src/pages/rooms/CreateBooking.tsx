@@ -55,7 +55,7 @@ export default function CreateBooking() {
     gstEnabled: "true",
     roundOffEnabled: "true",
 
-    advancePaid: "",
+    advanceAmount: "",
     advancePaymentMode: "CASH",
 
     notes: "",
@@ -252,7 +252,7 @@ export default function CreateBooking() {
       grandTotal = rounded;
     }
 
-    const advance = Number(formData.advancePaid || 0);
+    const advance = Number(formData.advanceAmount || 0);
 
     setSummary({
       nights,
@@ -339,7 +339,7 @@ const handleSubmit = async (e: any) => {
       // ✅ FIXED
       discount: finalDiscountPercent,
 
-      advancePaid: Number(formData.advancePaid || 0),
+      advanceAmount: Number(formData.advanceAmount || 0),
       advancePaymentMode: formData.advancePaymentMode,
 
       guestIds,
@@ -905,9 +905,9 @@ const handleSubmit = async (e: any) => {
             <Label>Advance Paid</Label>
             <Input
               type="number"
-              value={formData.advancePaid}
+              value={formData.advanceAmount}
               onChange={(e) =>
-                setFormData({ ...formData, advancePaid: e.target.value })
+                setFormData({ ...formData, advanceAmount: e.target.value })
               }
             />
 
