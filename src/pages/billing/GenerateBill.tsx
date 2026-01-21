@@ -500,22 +500,22 @@ ${buildHtml("CAPTAIN COPY")}
                 <Label>GST</Label>
                 <div className="flex items-center justify-between text-sm">
                   <label className="flex items-center gap-2">
-                    <input
+                    {/* <input
                       type="checkbox"
                       checked={applyCGST}
                       onChange={(e) => setApplyCGST(e.target.checked)}
-                    />
+                    /> */}
                     CGST (2.5%)
                   </label>
                   <span>₹{cgst.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <label className="flex items-center gap-2">
-                    <input
+                    {/* <input
                       type="checkbox"
                       checked={applySGST}
                       onChange={(e) => setApplySGST(e.target.checked)}
-                    />
+                    /> */}
                     SGST (2.5%)
                   </label>
                   <span>₹{sgst.toFixed(2)}</span>
