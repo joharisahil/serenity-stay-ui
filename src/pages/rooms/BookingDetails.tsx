@@ -5,11 +5,18 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, Edit, CheckCircle, Loader2, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Edit,
+  CheckCircle,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import {
   buildRoomInvoice,
   buildFoodInvoice,
-  buildCombinedInvoice
+  buildCombinedInvoice,
 } from "@/utils/printInvoice";
 import { toast } from "sonner";
 import {
@@ -71,12 +78,9 @@ const calcExtraServiceAmount = (s: any, nights: number) => {
   const qty = days.length;
   const base = (s.price || 0) * qty;
 
-  const gstEnabled =
-    s.gstEnabled === undefined ? true : Boolean(s.gstEnabled);
+  const gstEnabled = s.gstEnabled === undefined ? true : Boolean(s.gstEnabled);
 
-  const gst = gstEnabled
-    ? +(base * 0.05).toFixed(2)
-    : 0;
+  const gst = gstEnabled ? +(base * 0.05).toFixed(2) : 0;
 
   return {
     qty,
@@ -88,7 +92,15 @@ const calcExtraServiceAmount = (s: any, nights: number) => {
     days,
   };
 };
+const toUTCISOString = (localDateTime?: string) => {
+  if (!localDateTime) return null;
 
+  const [date, time] = localDateTime.split("T");
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+
+  return new Date(y, m - 1, d, hh, mm).toISOString();
+};
 
 // Print popup window
 const openPrintWindow = (html: string) => {
@@ -103,7 +115,7 @@ const openPrintWindow = (html: string) => {
     try {
       win.focus();
       win.print();
-    } catch (e) { }
+    } catch (e) {}
   }, 300);
 };
 
@@ -112,7 +124,6 @@ export default function BookingDetails() {
   const location = useLocation();
   const { roomId } = useParams();
   const passedBookingId = location.state?.bookingId || null;
-
 
   const [booking, setBooking] = useState<any | null>(null);
   const [roomOrders, setRoomOrders] = useState<any[]>([]);
@@ -152,7 +163,6 @@ export default function BookingDetails() {
   const [editServicesOpen, setEditServicesOpen] = useState(false);
   const [servicesForm, setServicesForm] = useState<any[]>([]);
 
-
   // ---------------------------------------------
   // Load booking + orders + hotel + available rooms
   // ---------------------------------------------
@@ -162,12 +172,11 @@ export default function BookingDetails() {
   const selectedCheckOut = location.state?.selectedCheckOut || null;
 
   const formatLocal = (iso: string) =>
-  new Date(iso).toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-
+    new Date(iso).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
 
   useEffect(() => {
     if (!roomId) return;
@@ -191,7 +200,6 @@ export default function BookingDetails() {
           const res = await getTodayBookingByRoomApi(roomId);
 
           booking = res.booking || null;
-
         }
 
         if (!mounted) return;
@@ -249,7 +257,7 @@ export default function BookingDetails() {
               availableSameType = await getAvailableRoomsByDateApi(
                 selectedCheckIn,
                 selectedCheckOut,
-                type
+                type,
               );
             } else {
               // 🔹 TODAY MODE — USE SIMPLE API
@@ -259,13 +267,10 @@ export default function BookingDetails() {
 
             if (!mounted) return;
             setAvailableRooms(availableSameType);
-
           } catch (e) {
             if (mounted) setAvailableRooms([]);
           }
         }
-
-
       } catch (e) {
         toast.error("Failed to load booking details");
       } finally {
@@ -279,7 +284,6 @@ export default function BookingDetails() {
     };
   }, [roomId, passedBookingId, selectedCheckIn, selectedCheckOut]);
 
-
   if (loading)
     return (
       <Layout>
@@ -288,7 +292,6 @@ export default function BookingDetails() {
         </div>
       </Layout>
     );
-
 
   if (!booking)
     return (
@@ -308,8 +311,8 @@ export default function BookingDetails() {
     Math.ceil(
       (new Date(booking.checkOut).getTime() -
         new Date(booking.checkIn).getTime()) /
-      (1000 * 60 * 60 * 24)
-    )
+        (1000 * 60 * 60 * 24),
+    ),
   );
 
   // ---------- ROOM PRICE ----------
@@ -317,7 +320,8 @@ export default function BookingDetails() {
   if (booking.room_id?.plans && booking.planCode) {
     const [planCode, type] = String(booking.planCode).split("_");
     const plan = booking.room_id.plans.find((p: any) => p.code === planCode);
-    if (plan) roomPrice = type === "SINGLE" ? plan.singlePrice : plan.doublePrice;
+    if (plan)
+      roomPrice = type === "SINGLE" ? plan.singlePrice : plan.doublePrice;
   } else {
     roomPrice = booking.baseRate || 0;
   }
@@ -345,27 +349,25 @@ export default function BookingDetails() {
 
   // ---------- DISCOUNT ----------
   const roomDiscountPercent = Number(booking.discount || 0);
-  const roomDiscountAmount = +((roomBase * roomDiscountPercent) / 100).toFixed(2);
+  const roomDiscountAmount = +((roomBase * roomDiscountPercent) / 100).toFixed(
+    2,
+  );
 
   // ---------- TAXABLE (GST ENABLED ONLY) ----------
   const discountRatio = roomBase > 0 ? roomDiscountAmount / roomBase : 0;
 
-  const taxable =
-    booking.gstEnabled
-      ? +((roomStayTotal + extrasGstBase) * (1 - discountRatio)).toFixed(2)
-      : 0;
+  const taxable = booking.gstEnabled
+    ? +((roomStayTotal + extrasGstBase) * (1 - discountRatio)).toFixed(2)
+    : 0;
 
   // ---------- GST ----------
-  const totalGST = booking.gstEnabled
-    ? +(taxable * 0.05).toFixed(2)
-    : 0;
+  const totalGST = booking.gstEnabled ? +(taxable * 0.05).toFixed(2) : 0;
 
   const roomCGST = +(totalGST / 2).toFixed(2);
   const roomSGST = +(totalGST / 2).toFixed(2);
 
   // ---------- ROOM TOTAL ----------
-  const roomNet =
-    roomBase - roomDiscountAmount + roomCGST + roomSGST;
+  const roomNet = roomBase - roomDiscountAmount + roomCGST + roomSGST;
 
   // ---------- FOOD BILLING (DISCOUNT ON FOOD SUBTOTAL ONLY) ----------
   const foodSubtotalRaw = roomOrderSummary?.subtotal || 0;
@@ -373,7 +375,10 @@ export default function BookingDetails() {
 
   // Discount applies BEFORE GST
   const foodDiscountPercent = Number(booking.foodDiscount || 0);
-  const foodDiscountAmount = +((foodSubtotalRaw * foodDiscountPercent) / 100).toFixed(2);
+  const foodDiscountAmount = +(
+    (foodSubtotalRaw * foodDiscountPercent) /
+    100
+  ).toFixed(2);
 
   // New discounted subtotal
   const foodSubtotalAfterDiscount = foodSubtotalRaw - foodDiscountAmount;
@@ -422,9 +427,8 @@ export default function BookingDetails() {
     foodTotal,
     roundOffEnabled: booking.roundOffEnabled,
     grandTotal,
-    balance
+    balance,
   };
-
 
   // ---------------- Handlers -----------------
   const handleCheckout = async () => {
@@ -434,7 +438,7 @@ export default function BookingDetails() {
     try {
       await checkoutBookingApi(booking._id, {
         finalPaymentReceived,
-        finalPaymentMode
+        finalPaymentMode,
       });
       toast.success("Guest checked out successfully");
       navigate("/rooms");
@@ -453,16 +457,13 @@ export default function BookingDetails() {
     } catch (e: any) {
       if (e?.response?.data?.code === "BOOKING_HAS_ORDERS") {
         toast.error(
-          "Cannot cancel this booking because food or room-service orders are already added. Please checkout the guest instead."
+          "Cannot cancel this booking because food or room-service orders are already added. Please checkout the guest instead.",
         );
       } else {
-        toast.error(
-          e?.response?.data?.message || "Failed to cancel booking"
-        );
+        toast.error(e?.response?.data?.message || "Failed to cancel booking");
       }
     }
   };
-
 
   const loadAvailableRooms = async () => {
     if (!booking?.room_id?.type) return;
@@ -471,7 +472,9 @@ export default function BookingDetails() {
       const rooms = await getAvailableRoomsApi(booking.room_id.type);
 
       // Remove current room from the list
-      const filteredRooms = rooms.filter((r: any) => r._id !== booking.room_id._id);
+      const filteredRooms = rooms.filter(
+        (r: any) => r._id !== booking.room_id._id,
+      );
 
       setAvailableRooms(filteredRooms);
     } catch {
@@ -491,8 +494,6 @@ export default function BookingDetails() {
     }
   };
 
-
-
   // ============================================================
   // UI STARTS
   // ============================================================
@@ -502,14 +503,19 @@ export default function BookingDetails() {
         {/* HEADER */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/rooms")}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/rooms")}
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
 
             <div>
               <h1 className="text-3xl font-bold">Booking Details</h1>
               <p className="text-muted-foreground">
-                Room {booking?.room_id?.number || roomId} — {booking?.room_id?.type || ""}
+                Room {booking?.room_id?.number || roomId} —{" "}
+                {booking?.room_id?.type || ""}
               </p>
             </div>
           </div>
@@ -521,32 +527,53 @@ export default function BookingDetails() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Guest Information</CardTitle>
-            <Button size="sm" variant="outline" onClick={() => {
-              setGuestForm(booking);
-              setEditGuestOpen(true);
-            }}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setGuestForm(booking);
+                setEditGuestOpen(true);
+              }}
+            >
               Edit
             </Button>
           </CardHeader>
 
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <p>
+              <strong>Name:</strong> {booking.guestName}
+            </p>
+            <p>
+              <strong>Phone:</strong> {booking.guestPhone}
+            </p>
 
-            <p><strong>Name:</strong> {booking.guestName}</p>
-            <p><strong>Phone:</strong> {booking.guestPhone}</p>
+            <p>
+              <strong>City:</strong> {booking.guestCity || "—"}
+            </p>
+            <p>
+              <strong>Nationality:</strong> {booking.guestNationality || "—"}
+            </p>
 
-            <p><strong>City:</strong> {booking.guestCity || "—"}</p>
-            <p><strong>Nationality:</strong> {booking.guestNationality || "—"}</p>
+            <p>
+              <strong>Adults:</strong> {booking.adults}
+            </p>
+            <p>
+              <strong>Children:</strong> {booking.children}
+            </p>
 
-            <p><strong>Adults:</strong> {booking.adults}</p>
-            <p><strong>Children:</strong> {booking.children}</p>
-
-            <p><strong>Plan:</strong> {readablePlan(booking.planCode)}</p>
-            <p><strong>Advance Mode:</strong> {booking.advancePaymentMode || "N/A"}</p>
+            <p>
+              <strong>Plan:</strong> {readablePlan(booking.planCode)}
+            </p>
+            <p>
+              <strong>Advance Mode:</strong>{" "}
+              {booking.advancePaymentMode || "N/A"}
+            </p>
 
             <div className="md:col-span-2">
-              <p><strong>Address:</strong> {booking.guestAddress || "—"}</p>
+              <p>
+                <strong>Address:</strong> {booking.guestAddress || "—"}
+              </p>
             </div>
-
           </CardContent>
         </Card>
 
@@ -565,21 +592,24 @@ export default function BookingDetails() {
               >
                 Edit
               </Button>
-
             </CardHeader>
             <CardContent className="space-y-4">
-
               {booking.guestIds.map((id: any, idx: number) => (
                 <div
                   key={idx}
                   className="border p-3 rounded-md bg-secondary/30 space-y-1"
                 >
-                  <p><strong>ID Type:</strong> {id.type}</p>
-                  <p><strong>ID Number:</strong> {id.idNumber}</p>
-                  <p><strong>Name on ID:</strong> {id.nameOnId}</p>
+                  <p>
+                    <strong>ID Type:</strong> {id.type}
+                  </p>
+                  <p>
+                    <strong>ID Number:</strong> {id.idNumber}
+                  </p>
+                  <p>
+                    <strong>Name on ID:</strong> {id.nameOnId}
+                  </p>
                 </div>
               ))}
-
             </CardContent>
           </Card>
         )}
@@ -595,25 +625,28 @@ export default function BookingDetails() {
                   setCompanyForm({
                     companyName: booking.companyName,
                     companyGSTIN: booking.companyGSTIN,
-                    companyAddress: booking.companyAddress
+                    companyAddress: booking.companyAddress,
                   });
                   setEditCompanyOpen(true);
                 }}
               >
                 Edit
               </Button>
-
             </CardHeader>
             <CardContent className="space-y-2">
-
-              <p><strong>Company Name:</strong> {booking.companyName || "—"}</p>
-              <p><strong>GSTIN:</strong> {booking.companyGSTIN || "—"}</p>
-              <p><strong>Company Address:</strong> {booking.companyAddress || "—"}</p>
-
+              <p>
+                <strong>Company Name:</strong> {booking.companyName || "—"}
+              </p>
+              <p>
+                <strong>GSTIN:</strong> {booking.companyGSTIN || "—"}
+              </p>
+              <p>
+                <strong>Company Address:</strong>{" "}
+                {booking.companyAddress || "—"}
+              </p>
             </CardContent>
           </Card>
         )}
-
 
         {/* Stay Info */}
         <Card>
@@ -629,84 +662,89 @@ export default function BookingDetails() {
             >
               Reduce Stay
             </Button>
-
           </CardHeader>
           <CardContent>
-            <p><strong>Check-in:</strong> {formatLocal(booking.checkIn)}</p>
+            <p>
+              <strong>Check-in:</strong> {formatLocal(booking.checkIn)}
+            </p>
 
-            <p><strong>Check-out:</strong> {formatLocal(booking.checkOut)}</p>
+            <p>
+              <strong>Check-out:</strong> {formatLocal(booking.checkOut)}
+            </p>
 
-            <p><strong>Nights:</strong> {nights}</p>
+            <p>
+              <strong>Nights:</strong> {nights}
+            </p>
           </CardContent>
         </Card>
         {/* {booking.addedServices?.length > 0 && ( */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Extra Services</CardTitle>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Extra Services</CardTitle>
 
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setServicesForm(
-                    JSON.parse(JSON.stringify(booking.addedServices || []))
-                  );
-                  setEditServicesOpen(true);
-                }}
-              >
-                Edit Services
-              </Button>
-            </CardHeader>
-
-            <CardContent className="space-y-2">
-
-              {(booking.addedServices || []).map((s: any, i: number) => {
-                const c = calcExtraServiceAmount(s, nights);
-
-                return (
-                  <div key={i} className="border rounded-md p-3 bg-background space-y-1 text-sm">
-
-                    <div className="flex justify-between font-medium">
-                      <span>
-                        {s.name}
-                        {c.days.length > 0 && (
-                          <span className="text-muted-foreground">
-                            {" "}({c.days.length} day{c.days.length > 1 ? "s" : ""})
-                          </span>
-                        )}
-                      </span>
-                      <span>₹{fmt(c.base)}</span>
-                    </div>
-
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>GST Applied</span>
-                      <span>{c.gstEnabled ? "Yes (5%)" : "No"}</span>
-                    </div>
-
-                    {c.gstEnabled && (
-                      <>
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>CGST (2.5%)</span>
-                          <span>₹{fmt(c.cgst)}</span>
-                        </div>
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>SGST (2.5%)</span>
-                          <span>₹{fmt(c.sgst)}</span>
-                        </div>
-                      </>
-                    )}
-
-                    <div className="flex justify-between font-semibold border-t pt-1">
-                      <span>Service Total</span>
-                      <span>₹{fmt(c.total)}</span>
-                    </div>
-                  </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setServicesForm(
+                  JSON.parse(JSON.stringify(booking.addedServices || [])),
                 );
-              })}
+                setEditServicesOpen(true);
+              }}
+            >
+              Edit Services
+            </Button>
+          </CardHeader>
 
+          <CardContent className="space-y-2">
+            {(booking.addedServices || []).map((s: any, i: number) => {
+              const c = calcExtraServiceAmount(s, nights);
 
-            </CardContent>
-          </Card>
+              return (
+                <div
+                  key={i}
+                  className="border rounded-md p-3 bg-background space-y-1 text-sm"
+                >
+                  <div className="flex justify-between font-medium">
+                    <span>
+                      {s.name}
+                      {c.days.length > 0 && (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          ({c.days.length} day{c.days.length > 1 ? "s" : ""})
+                        </span>
+                      )}
+                    </span>
+                    <span>₹{fmt(c.base)}</span>
+                  </div>
+
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>GST Applied</span>
+                    <span>{c.gstEnabled ? "Yes (5%)" : "No"}</span>
+                  </div>
+
+                  {c.gstEnabled && (
+                    <>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>CGST (2.5%)</span>
+                        <span>₹{fmt(c.cgst)}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>SGST (2.5%)</span>
+                        <span>₹{fmt(c.sgst)}</span>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex justify-between font-semibold border-t pt-1">
+                    <span>Service Total</span>
+                    <span>₹{fmt(c.total)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
         {/* )} */}
 
         {/* Billing */}
@@ -717,7 +755,6 @@ export default function BookingDetails() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-
             {/* ░░░░░░░░░░░ ROOM BILLING (Collapsible) ░░░░░░░░░░░ */}
             <details className="border rounded-md p-4 bg-secondary/20">
               <summary className="cursor-pointer font-semibold text-lg">
@@ -725,10 +762,11 @@ export default function BookingDetails() {
               </summary>
 
               <div className="mt-4 space-y-3">
-
                 {/* Nightly stay details */}
                 <div className="flex justify-between">
-                  <span>Room ({nights} nights × ₹{fmt(roomPrice)})</span>
+                  <span>
+                    Room ({nights} nights × ₹{fmt(roomPrice)})
+                  </span>
                   <span>₹{fmt(roomStayTotal)}</span>
                 </div>
 
@@ -738,13 +776,13 @@ export default function BookingDetails() {
                   return (
                     <div key={i} className="flex justify-between">
                       <span>
-                        {s.name} ({c.qty} {c.qty > 1 ? "days" : "day"} × ₹{fmt(s.price)})
+                        {s.name} ({c.qty} {c.qty > 1 ? "days" : "day"} × ₹
+                        {fmt(s.price)})
                       </span>
                       <span>₹{fmt(c.base)}</span>
                     </div>
                   );
                 })}
-
 
                 <hr />
 
@@ -768,14 +806,11 @@ export default function BookingDetails() {
                 {/* Room Total */}
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Room Total</span>
-                  <span>₹{fmt(
-                    billingData.roomNet
-                  )}</span>
+                  <span>₹{fmt(billingData.roomNet)}</span>
                 </div>
 
                 {/* Editable fields */}
                 <div className="mt-4 border-t pt-4 space-y-3">
-
                   {/* GST Toggle */}
                   <div className="flex justify-between items-center">
                     <label className="font-medium">Apply Room GST</label>
@@ -828,10 +863,7 @@ export default function BookingDetails() {
                         Apply
                       </Button>
                     </div>
-
-
                   </div>
-
                 </div>
               </div>
             </details>
@@ -849,7 +881,6 @@ export default function BookingDetails() {
                   </CardHeader>
 
                   <CardContent className="space-y-4">
-
                     {roomOrders.map((order: any) => (
                       <div
                         key={order._id}
@@ -864,7 +895,10 @@ export default function BookingDetails() {
                         {/* Items */}
                         <div className="ml-2">
                           {order.items.map((it: any, idx: number) => (
-                            <div key={idx} className="text-sm flex justify-between">
+                            <div
+                              key={idx}
+                              className="text-sm flex justify-between"
+                            >
                               <span>
                                 {it.name} × {it.qty}
                               </span>
@@ -892,13 +926,11 @@ export default function BookingDetails() {
           </div> */}
                       </div>
                     ))}
-
                   </CardContent>
                 </Card>
               )}
 
               <div className="mt-4 space-y-3">
-
                 {/* Food Subtotal */}
                 <div className="flex justify-between">
                   <span>Food Subtotal</span>
@@ -923,7 +955,6 @@ export default function BookingDetails() {
                   <span>₹{fmt(foodSGST)}</span>
                 </div>
 
-
                 {/* Total */}
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Food Total</span>
@@ -932,7 +963,6 @@ export default function BookingDetails() {
 
                 {/* Editable food billing controls */}
                 <div className="mt-4 border-t pt-4 space-y-3">
-
                   {/* GST Toggle */}
                   <div className="flex justify-between items-center">
                     <label className="font-medium">Apply Food GST</label>
@@ -945,7 +975,9 @@ export default function BookingDetails() {
                             foodDiscount: booking.foodDiscount,
                             foodGSTEnabled: e.target.checked,
                           });
-                          const foodRes = await getRoomServiceBillForBookingApi(booking._id);
+                          const foodRes = await getRoomServiceBillForBookingApi(
+                            booking._id,
+                          );
                           setRoomOrders(foodRes.orders || []);
                           setRoomOrderSummary(foodRes.summary || null);
                           toast.success("Food GST updated");
@@ -988,11 +1020,8 @@ export default function BookingDetails() {
                         Apply
                       </Button>
                     </div>
-
-
                   </div>
                 </div>
-
               </div>
             </details>
 
@@ -1010,7 +1039,9 @@ export default function BookingDetails() {
 
               <div className="flex justify-between font-bold text-lg border-t pt-2">
                 <span>Balance Due</span>
-                <span className="text-warning">₹{finalPaymentReceived ? fmt(0) : fmt(balance)}</span>
+                <span className="text-warning">
+                  ₹{finalPaymentReceived ? fmt(0) : fmt(balance)}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <label className="font-medium">Round Off Total</label>
@@ -1040,7 +1071,6 @@ export default function BookingDetails() {
                 </div>
               )}
 
-
               {/* FINAL PAYMENT SECTION */}
               <div className="space-y-3 mt-4">
                 <label className="flex items-center gap-2">
@@ -1067,18 +1097,18 @@ export default function BookingDetails() {
                   </select>
                 )}
               </div>
-
             </div>
-
           </CardContent>
         </Card>
 
         {/* ACTION BUTTONS */}
         <div className="flex flex-col gap-4">
-
           {/* PRIMARY ACTIONS */}
           <div className="flex flex-wrap gap-4">
-            <Button disabled={checkingOut} onClick={() => setConfirmCheckout(true)}>
+            <Button
+              disabled={checkingOut}
+              onClick={() => setConfirmCheckout(true)}
+            >
               <CheckCircle className="mr-2 h-4 w-4" />
               {checkingOut ? "Processing..." : "Mark Check-out"}
             </Button>
@@ -1120,7 +1150,6 @@ export default function BookingDetails() {
               )}
             </div>
           </div>
-
         </div>
 
         {/* CHANGE ROOM DIALOG */}
@@ -1131,7 +1160,6 @@ export default function BookingDetails() {
             if (open) loadAvailableRooms();
           }}
         >
-
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Change Room</DialogTitle>
@@ -1165,7 +1193,10 @@ export default function BookingDetails() {
             </div>
 
             <DialogFooter className="mt-4">
-              <Button variant="outline" onClick={() => setShowChangeRoom(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowChangeRoom(false)}
+              >
                 Cancel
               </Button>
 
@@ -1177,7 +1208,9 @@ export default function BookingDetails() {
                     toast.success("Room changed successfully");
                     navigate("/rooms");
                   } catch (e: any) {
-                    toast.error(e?.response?.data?.message || "Failed to change room");
+                    toast.error(
+                      e?.response?.data?.message || "Failed to change room",
+                    );
                   }
                 }}
               >
@@ -1190,7 +1223,9 @@ export default function BookingDetails() {
         {/* EXTEND STAY */}
         <Dialog open={showExtendStay} onOpenChange={setShowExtendStay}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Extend Stay</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>Extend Stay</DialogTitle>
+            </DialogHeader>
 
             <p>New Checkout Date:</p>
             <Input
@@ -1201,13 +1236,19 @@ export default function BookingDetails() {
             />
 
             <DialogFooter className="mt-4">
-              <Button variant="outline" onClick={() => setShowExtendStay(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowExtendStay(false)}
+              >
                 Cancel
               </Button>
               <Button
                 onClick={async () => {
                   try {
-                    const res = await extendStayApi(booking._id, newCheckOut);
+                    const res = await extendStayApi(
+                      booking._id,
+                      toUTCISOString(newCheckOut),
+                    );
 
                     if (res.warning) {
                       toast.warning(res.message);
@@ -1228,7 +1269,6 @@ export default function BookingDetails() {
               >
                 Confirm
               </Button>
-
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1236,12 +1276,17 @@ export default function BookingDetails() {
         {/* CANCEL BOOKING */}
         <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Cancel Booking</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>Cancel Booking</DialogTitle>
+            </DialogHeader>
 
             <p>Are you sure you want to cancel this booking?</p>
 
             <DialogFooter className="mt-4 flex justify-end gap-4">
-              <Button variant="outline" onClick={() => setShowCancelModal(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowCancelModal(false)}
+              >
                 Close
               </Button>
 
@@ -1267,7 +1312,10 @@ export default function BookingDetails() {
             <p>Are you sure you want to check out this guest?</p>
 
             <DialogFooter className="mt-4 flex justify-end gap-4">
-              <Button variant="outline" onClick={() => setConfirmCheckout(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmCheckout(false)}
+              >
                 Cancel
               </Button>
 
@@ -1288,9 +1336,7 @@ export default function BookingDetails() {
         <Dialog open={invoiceModal} onOpenChange={setInvoiceModal}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>
-                Select Invoice Type
-              </DialogTitle>
+              <DialogTitle>Select Invoice Type</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-3">
               <Button
@@ -1302,8 +1348,8 @@ export default function BookingDetails() {
                       hotel,
                       billingData,
                       finalPaymentReceived,
-                      finalPaymentMode
-                    )
+                      finalPaymentMode,
+                    ),
                   )
                 }
               >
@@ -1320,8 +1366,8 @@ export default function BookingDetails() {
                       billingData,
                       roomOrders,
                       finalPaymentReceived,
-                      finalPaymentMode
-                    )
+                      finalPaymentMode,
+                    ),
                   )
                 }
                 disabled={roomOrders.length === 0}
@@ -1339,8 +1385,8 @@ export default function BookingDetails() {
                       billingData,
                       roomOrders,
                       finalPaymentReceived,
-                      finalPaymentMode
-                    )
+                      finalPaymentMode,
+                    ),
                   )
                 }
               >
@@ -1361,7 +1407,6 @@ export default function BookingDetails() {
             </DialogHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
               {/* Guest Name */}
               <div>
                 <label className="text-sm font-medium mb-1 block">
@@ -1390,9 +1435,7 @@ export default function BookingDetails() {
 
               {/* City */}
               <div>
-                <label className="text-sm font-medium mb-1 block">
-                  City
-                </label>
+                <label className="text-sm font-medium mb-1 block">City</label>
                 <Input
                   value={guestForm.guestCity || ""}
                   onChange={(e) =>
@@ -1409,16 +1452,17 @@ export default function BookingDetails() {
                 <Input
                   value={guestForm.guestNationality || ""}
                   onChange={(e) =>
-                    setGuestForm({ ...guestForm, guestNationality: e.target.value })
+                    setGuestForm({
+                      ...guestForm,
+                      guestNationality: e.target.value,
+                    })
                   }
                 />
               </div>
 
               {/* Adults */}
               <div>
-                <label className="text-sm font-medium mb-1 block">
-                  Adults
-                </label>
+                <label className="text-sm font-medium mb-1 block">Adults</label>
                 <Input
                   type="number"
                   min={1}
@@ -1449,7 +1493,6 @@ export default function BookingDetails() {
                   }
                 />
               </div>
-
             </div>
 
             {/* Address */}
@@ -1489,7 +1532,7 @@ export default function BookingDetails() {
                   } catch (e: any) {
                     toast.error(
                       e?.response?.data?.message ||
-                      "Failed to update guest information"
+                        "Failed to update guest information",
                     );
                   }
                 }}
@@ -1508,8 +1551,10 @@ export default function BookingDetails() {
 
             <div className="space-y-4 max-h-[60vh] overflow-y-auto">
               {guestIdsForm.map((id, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end border p-3 rounded-lg">
-
+                <div
+                  key={idx}
+                  className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end border p-3 rounded-lg"
+                >
                   {/* ID Type */}
                   <div>
                     <label className="block text-sm font-medium mb-1.5">
@@ -1569,7 +1614,9 @@ export default function BookingDetails() {
                       size="icon"
                       className="mt-6"
                       onClick={() =>
-                        setGuestIdsForm(guestIdsForm.filter((_, i) => i !== idx))
+                        setGuestIdsForm(
+                          guestIdsForm.filter((_, i) => i !== idx),
+                        )
                       }
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1579,7 +1626,9 @@ export default function BookingDetails() {
               ))}
 
               {guestIdsForm.length === 0 && (
-                <p className="text-gray-500 text-center py-8">No guest IDs added yet.</p>
+                <p className="text-gray-500 text-center py-8">
+                  No guest IDs added yet.
+                </p>
               )}
             </div>
 
@@ -1604,7 +1653,6 @@ export default function BookingDetails() {
             </DialogHeader>
 
             <div className="space-y-4">
-
               {/* Company Name */}
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -1614,21 +1662,25 @@ export default function BookingDetails() {
                   placeholder="Enter company name"
                   value={companyForm.companyName || ""}
                   onChange={(e) =>
-                    setCompanyForm({ ...companyForm, companyName: e.target.value })
+                    setCompanyForm({
+                      ...companyForm,
+                      companyName: e.target.value,
+                    })
                   }
                 />
               </div>
 
               {/* GSTIN */}
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  GSTIN
-                </label>
+                <label className="block text-sm font-medium mb-1">GSTIN</label>
                 <Input
                   placeholder="Enter GST number"
                   value={companyForm.companyGSTIN || ""}
                   onChange={(e) =>
-                    setCompanyForm({ ...companyForm, companyGSTIN: e.target.value })
+                    setCompanyForm({
+                      ...companyForm,
+                      companyGSTIN: e.target.value,
+                    })
                   }
                 />
               </div>
@@ -1642,11 +1694,13 @@ export default function BookingDetails() {
                   placeholder="Enter company address"
                   value={companyForm.companyAddress || ""}
                   onChange={(e) =>
-                    setCompanyForm({ ...companyForm, companyAddress: e.target.value })
+                    setCompanyForm({
+                      ...companyForm,
+                      companyAddress: e.target.value,
+                    })
                   }
                 />
               </div>
-
             </div>
 
             <DialogFooter className="mt-6">
@@ -1690,7 +1744,11 @@ export default function BookingDetails() {
             <DialogFooter>
               <Button
                 onClick={async () => {
-                  await reduceStayApi(booking._id, reduceCheckOut);
+                  await reduceStayApi(
+                    booking._id,
+                    toUTCISOString(reduceCheckOut),
+                  );
+
                   toast.success("Stay reduced");
                   refreshBooking();
                   setReduceStayOpen(false);
@@ -1709,10 +1767,8 @@ export default function BookingDetails() {
             </DialogHeader>
 
             <div className="space-y-4 max-h-[65vh] overflow-y-auto">
-
               {servicesForm.map((s, idx) => (
                 <div key={idx} className="border rounded-lg p-4 space-y-3">
-
                   {/* Service name + delete */}
                   <div className="flex gap-3 items-center">
                     <Input
@@ -1729,7 +1785,9 @@ export default function BookingDetails() {
                       variant="destructive"
                       size="icon"
                       onClick={() =>
-                        setServicesForm(servicesForm.filter((_, i) => i !== idx))
+                        setServicesForm(
+                          servicesForm.filter((_, i) => i !== idx),
+                        )
                       }
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1767,25 +1825,31 @@ export default function BookingDetails() {
                   <div>
                     <p className="text-sm font-medium mb-2">Applicable Days</p>
                     <div className="flex flex-wrap gap-3">
-                      {Array.from({ length: nights }, (_, i) => i + 1).map((day) => (
-                        <label key={day} className="flex items-center gap-1 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={s.days?.includes(day)}
-                            onChange={() => {
-                              const copy = [...servicesForm];
-                              copy[idx].days = s.days?.includes(day)
-                                ? copy[idx].days.filter((d: number) => d !== day)
-                                : [...(copy[idx].days || []), day];
-                              setServicesForm(copy);
-                            }}
-                          />
-                          Day {day}
-                        </label>
-                      ))}
+                      {Array.from({ length: nights }, (_, i) => i + 1).map(
+                        (day) => (
+                          <label
+                            key={day}
+                            className="flex items-center gap-1 text-sm"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={s.days?.includes(day)}
+                              onChange={() => {
+                                const copy = [...servicesForm];
+                                copy[idx].days = s.days?.includes(day)
+                                  ? copy[idx].days.filter(
+                                      (d: number) => d !== day,
+                                    )
+                                  : [...(copy[idx].days || []), day];
+                                setServicesForm(copy);
+                              }}
+                            />
+                            Day {day}
+                          </label>
+                        ),
+                      )}
                     </div>
                   </div>
-
                 </div>
               ))}
 
@@ -1803,17 +1867,17 @@ export default function BookingDetails() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditServicesOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setEditServicesOpen(false)}
+              >
                 Cancel
               </Button>
 
               <Button
                 onClick={async () => {
                   try {
-                    await updateBookingServicesApi(
-                      booking._id,
-                      servicesForm
-                    );
+                    await updateBookingServicesApi(booking._id, servicesForm);
                     toast.success("Extra services updated");
                     refreshBooking();
                     setEditServicesOpen(false);
@@ -1827,8 +1891,6 @@ export default function BookingDetails() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-
       </div>
     </Layout>
   );
