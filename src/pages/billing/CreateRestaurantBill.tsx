@@ -35,17 +35,17 @@ export default function CreateRestaurantBill() {
   /* ------------------------------------
    * START / ENSURE TABLE SESSION
    * ----------------------------------*/
-  useEffect(() => {
-    if (!tableId) {
-      toast.error("Invalid table");
-      navigate("/billing");
-      return;
-    }
+  // useEffect(() => {
+  //   if (!tableId) {
+  //     toast.error("Invalid table");
+  //     navigate("/billing");
+  //     return;
+  //   }
 
-    api.post(`/tables/${tableId}/start-session`).catch(() => {
-      toast.error("Failed to start table session");
-    });
-  }, [tableId]);
+  //   api.post(`/tables/${tableId}/start-session`).catch(() => {
+  //     toast.error("Failed to start table session");
+  //   });
+  // }, [tableId]);
 
   /* ------------------------------------
    * LOAD MENU
