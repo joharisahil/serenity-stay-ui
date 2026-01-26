@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { CheckCircle, Edit, Download } from "lucide-react";
 import { toast } from "sonner";
+import { useState, useEffect } from "react";
 
 import {
   checkoutBookingApi,
@@ -76,6 +76,18 @@ export function ActionButtons({
   const [showChangeRoom, setShowChangeRoom] = useState(false);
   const [newRoomId, setNewRoomId] = useState("");
 
+  /* ===============================
+     LOCAL INVOICE PAYMENT STATE
+     (frontend-only, safe)
+  =============================== */
+  const [invoicePaymentReceived, setInvoicePaymentReceived] =
+    useState(finalPaymentReceived);
+  const [invoicePaymentMode, setInvoicePaymentMode] =
+    useState(finalPaymentMode);
+  useEffect(() => {
+    setInvoicePaymentReceived(finalPaymentReceived);
+    setInvoicePaymentMode(finalPaymentMode);
+  }, [finalPaymentReceived, finalPaymentMode]);
   /* ================= ACTION HANDLERS ================= */
 
   const handleCheckout = async () => {
@@ -86,6 +98,11 @@ export function ActionButtons({
         finalPaymentReceived,
         finalPaymentMode,
       });
+
+      // ✅ sync local invoice state
+      setInvoicePaymentReceived(true);
+      setInvoicePaymentMode(finalPaymentMode);
+
       toast.success("Guest checked out successfully");
       navigate("/rooms");
     } catch (e: any) {
@@ -103,7 +120,7 @@ export function ActionButtons({
     } catch (e: any) {
       if (e?.response?.data?.code === "BOOKING_HAS_ORDERS") {
         toast.error(
-          "Cannot cancel booking. Orders exist. Please checkout instead."
+          "Cannot cancel booking. Orders exist. Please checkout instead.",
         );
       } else {
         toast.error(e?.response?.data?.message || "Cancel failed");
@@ -115,9 +132,7 @@ export function ActionButtons({
 
   return (
     <>
-      {/* ===== ACTION BUTTON ROWS (NO SCROLL) ===== */}
       <div className="space-y-3 text-sm">
-
         {/* PRIMARY ROW */}
         <div className="grid grid-cols-1">
           <Button
@@ -172,7 +187,6 @@ export function ActionButtons({
             </p>
           )}
         </div>
-
       </div>
 
       {/* ===== CHANGE ROOM ===== */}
@@ -196,7 +210,11 @@ export function ActionButtons({
           </select>
 
           <DialogFooter>
-            <Button size="sm" variant="outline" onClick={() => setShowChangeRoom(false)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowChangeRoom(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -228,10 +246,18 @@ export function ActionButtons({
           <p>Are you sure you want to cancel this booking?</p>
 
           <DialogFooter>
-            <Button size="sm" variant="outline" onClick={() => setShowCancelModal(false)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowCancelModal(false)}
+            >
               Close
             </Button>
-            <Button size="sm" variant="destructive" onClick={handleCancelBooking}>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleCancelBooking}
+            >
               Confirm Cancel
             </Button>
           </DialogFooter>
@@ -246,7 +272,11 @@ export function ActionButtons({
           </DialogHeader>
 
           <DialogFooter>
-            <Button size="sm" variant="outline" onClick={() => setConfirmCheckout(false)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setConfirmCheckout(false)}
+            >
               Cancel
             </Button>
             <Button size="sm" onClick={handleCheckout} disabled={checkingOut}>
@@ -273,9 +303,9 @@ export function ActionButtons({
                     booking,
                     hotel,
                     billingData,
-                    finalPaymentReceived,
-                    finalPaymentMode
-                  )
+                    invoicePaymentReceived,
+                    invoicePaymentMode,
+                  ),
                 )
               }
             >
@@ -293,9 +323,9 @@ export function ActionButtons({
                     hotel,
                     billingData,
                     roomOrders,
-                    finalPaymentReceived,
-                    finalPaymentMode
-                  )
+                    invoicePaymentReceived,
+                    invoicePaymentMode,
+                  ),
                 )
               }
             >
@@ -312,18 +342,22 @@ export function ActionButtons({
                     hotel,
                     billingData,
                     roomOrders,
-                    finalPaymentReceived,
-                    finalPaymentMode
-                  )
+                    invoicePaymentReceived,
+                    invoicePaymentMode,
+                  ),
                 )
               }
             >
-              Full Invoice
+              Full Invoice (Room + Food)
             </Button>
           </div>
 
           <DialogFooter>
-            <Button size="sm" variant="outline" onClick={() => setInvoiceModal(false)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setInvoiceModal(false)}
+            >
               Close
             </Button>
           </DialogFooter>
@@ -332,7 +366,6 @@ export function ActionButtons({
     </>
   );
 }
-
 
 /*old ui*/
 // import { useState } from "react";

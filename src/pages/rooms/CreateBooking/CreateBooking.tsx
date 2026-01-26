@@ -34,6 +34,8 @@ export default function CreateBooking() {
     roomType: "",
     roomNumber: "",
     planCode: "",
+    
+    finalRoomPrice: "",
     guestName: "",
     guestPhone: "",
     guestCity: "",
@@ -91,6 +93,7 @@ export default function CreateBooking() {
   });
 
   const staySelected = Boolean(formData.checkIn && formData.checkOut);
+  const isSpecialPricing = Number(formData.finalRoomPrice) > 0;
 
   const toUTCISOString = (localDateTime: string) => {
     const [date, time] = localDateTime.split("T");
@@ -141,7 +144,22 @@ export default function CreateBooking() {
     );
 
     const plan = plans.find((p) => p.key === formData.planCode);
-    const roomBase = plan ? plan.price * nights : 0;
+
+    let roomBase = 0;
+    let roomGSTFromRoom = 0;
+
+    if (isSpecialPricing) {
+      // finalRoomPrice is per-night & GST inclusive
+      const finalPerNight = Number(formData.finalRoomPrice || 0);
+
+      const basePerNight = +(finalPerNight / 1.05).toFixed(2);
+      const gstPerNight = +(finalPerNight - basePerNight).toFixed(2);
+
+      roomBase = basePerNight * nights;
+      roomGSTFromRoom = gstPerNight * nights;
+    } else {
+      roomBase = plan ? plan.price * nights : 0;
+    }
 
     let extrasBaseGST = 0;
     let extrasBaseNoGST = 0;
@@ -211,7 +229,10 @@ export default function CreateBooking() {
 
     let gstTotal = 0;
     if (formData.gstEnabled === "true") {
-      gstTotal += +(discountedRoomBase * 0.05).toFixed(2);
+      gstTotal += isSpecialPricing
+        ? roomGSTFromRoom
+        : +(discountedRoomBase * 0.05).toFixed(2);
+
       gstTotal += +(discountedExtrasGST * 0.05).toFixed(2);
     }
 
@@ -291,6 +312,11 @@ export default function CreateBooking() {
         children: Number(formData.children),
 
         planCode: formData.planCode,
+         pricingMode: isSpecialPricing ? "SPECIAL" : "PLAN",
+  pricingType: isSpecialPricing ? "FINAL_INCLUSIVE" : "BASE_EXCLUSIVE",
+        finalRoomPrice: isSpecialPricing
+          ? Number(formData.finalRoomPrice)
+          : undefined,
         gstEnabled: formData.gstEnabled === "true",
         roundOffEnabled: formData.roundOffEnabled === "true",
         roundOffAmount: summary.roundOffAmount,
@@ -541,6 +567,7 @@ export default function CreateBooking() {
                 roundOffEnabled: formData.roundOffEnabled,
                 advanceAmount: formData.advanceAmount,
                 advancePaymentMode: formData.advancePaymentMode,
+                finalRoomPrice :formData.finalRoomPrice,
               }}
               onFormChange={updateFormData}
             />

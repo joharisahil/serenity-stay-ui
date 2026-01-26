@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { updateRoomBillingApi } from "@/api/bookingApi";
 import { Booking } from "../BookingDetails.types";
@@ -19,6 +20,11 @@ interface RoomChargesSectionProps {
   onRefresh: () => void;
 }
 
+const reverseGST = (finalAmount: number, gstRate = 5) => {
+  const base = +(finalAmount / (1 + gstRate / 100)).toFixed(2);
+  return base;
+};
+
 export function RoomChargesSection({
   booking,
   billingData,
@@ -28,8 +34,7 @@ export function RoomChargesSection({
     String(booking.discount ?? "")
   );
 
-  /* ---------------- DERIVED VALUES ---------------- */
-
+  /* ===================== NIGHTS ===================== */
   const nights =
     booking.nights ||
     Math.max(
@@ -41,6 +46,7 @@ export function RoomChargesSection({
       )
     );
 
+  /* ===================== PLAN RATE ===================== */
   const planRate = useMemo(() => {
     const [planCode, occupancy] = String(booking.planCode || "").split("_");
     const plan = booking.room_id?.plans?.find((p) => p.code === planCode);
@@ -48,22 +54,23 @@ export function RoomChargesSection({
     return occupancy === "SINGLE" ? plan.singlePrice : plan.doublePrice;
   }, [booking]);
 
-  const roomBaseTotal = planRate * nights;
+  /* ===================== OFFER LOGIC ===================== */
+  const isOfferPricing =
+    booking.pricingType === "FINAL_INCLUSIVE" &&
+    Number(booking.finalRoomPrice) > 0;
 
-  const extrasTotal = useMemo(
-    () =>
-      (booking.addedServices || []).reduce(
-        (sum, s) => sum + Number(s.price || 0),
-        0
-      ),
-    [booking]
-  );
+  // 👉 THIS is the key change
+  const effectiveRoomRate = isOfferPricing
+    ? reverseGST(Number(booking.finalRoomPrice)) // BASE only
+    : planRate;
 
+  const roomBaseTotal = effectiveRoomRate * nights;
+
+  /* ===================== ROOM TOTAL (BACKEND TRUTH) ===================== */
   const roomTotal =
     (booking.taxable || 0) + (booking.cgst || 0) + (booking.sgst || 0);
 
-  /* ---------------- UI ---------------- */
-
+  /* ===================== UI ===================== */
   return (
     <details className="border rounded-md p-4 bg-secondary/20">
       <summary className="cursor-pointer font-semibold text-lg">
@@ -71,15 +78,22 @@ export function RoomChargesSection({
       </summary>
 
       <div className="mt-4 space-y-4">
+        {/* OFFER LABEL */}
+        {isOfferPricing && (
+          <Badge className="bg-green-600 text-white w-fit">
+            Offer Price Applied
+          </Badge>
+        )}
+
         {/* ROOM CHARGES */}
         <div className="space-y-1">
           <div className="flex justify-between font-medium">
-            <span>Room Charges</span>
+            <span>{isOfferPricing ? "Offer Price" : "Room Charges"}</span>
             <span>₹{fmt(roomBaseTotal)}</span>
           </div>
 
           <div className="text-sm text-muted-foreground pl-2">
-            {nights} night{nights > 1 ? "s" : ""} × ₹{fmt(planRate)}
+            {nights} night{nights > 1 ? "s" : ""} × ₹{fmt(effectiveRoomRate)}
           </div>
         </div>
 
@@ -120,6 +134,7 @@ export function RoomChargesSection({
           <span>Room Discount ({booking.discount || 0}%)</span>
           <span>- ₹{fmt(booking.discountAmount || 0)}</span>
         </div>
+
         {/* ROOM TOTAL */}
         <div className="flex justify-between font-bold text-lg border-t pt-2">
           <span>Room Total</span>

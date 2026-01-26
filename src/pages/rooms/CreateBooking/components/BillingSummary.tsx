@@ -31,6 +31,7 @@ interface BillingSummaryProps {
     roundOffEnabled: string;
     advanceAmount: string;
     advancePaymentMode: string;
+      finalRoomPrice?: string;
   };
   onFormChange: (updates: Partial<BillingSummaryProps["formData"]>) => void;
 }
@@ -63,6 +64,36 @@ export function BillingSummary({ summary, formData, onFormChange }: BillingSumma
           </h2>
         </div>
       </div>
+    {/* Special Pricing */}
+<div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
+  <div className="flex items-center justify-between">
+    <Label className="text-xs font-medium text-primary uppercase tracking-wide">
+      Special Room Price
+    </Label>
+
+    {formData.finalRoomPrice && (
+      <span className="text-[11px] font-medium text-primary">
+        Special pricing applied
+      </span>
+    )}
+  </div>
+
+  <Input
+    type="number"
+    min="0"
+    className="h-9 text-sm"
+    placeholder="Final price per night (GST inclusive)"
+    value={formData.finalRoomPrice || ""}
+    onChange={(e) =>
+      onFormChange({ finalRoomPrice: e.target.value })
+    }
+  />
+
+  <p className="text-[11px] text-muted-foreground leading-tight">
+    Overrides plan price. Amount includes CGST + SGST (5%).
+    Leave empty to use standard plan pricing.
+  </p>
+</div>
 
       <div className="p-4 space-y-4">
         {/* Charges Section */}

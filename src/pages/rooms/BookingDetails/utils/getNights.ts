@@ -5,11 +5,13 @@ export const getNights = (checkIn?: string, checkOut?: string) => {
   const co = new Date(checkOut);
 
   // Normalize to midnight
-  ci.setHours(0, 0, 0, 0);
-  co.setHours(0, 0, 0, 0);
+  const inDate = new Date(ci.getFullYear(), ci.getMonth(), ci.getDate());
+  const outDate = new Date(co.getFullYear(), co.getMonth(), co.getDate());
 
-  const diffMs = co.getTime() - ci.getTime();
-  const nights = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round(
+    (outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
 
-  return Math.max(1, nights);
+  // Hotel rule: inclusive of both days
+  return Math.max(1, diffDays + 1);
 };

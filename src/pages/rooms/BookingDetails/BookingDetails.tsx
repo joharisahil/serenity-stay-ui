@@ -102,6 +102,9 @@ export default function BookingDetails() {
       toast.error(e?.response?.data?.message ?? "Failed to delete advance");
     }
   };
+  const handleCancelAdvance = (index: number) => {
+  setAdvances((prev) => prev.filter((_, i) => i !== index));
+};
 
   /* ================= AVAILABLE ROOMS ================= */
 
@@ -233,6 +236,7 @@ export default function BookingDetails() {
             onUpdateAdvance={updateAdvance}
             onDepositAdvance={handleDepositAdvance}
             onDeleteAdvance={handleDeleteAdvance}
+            onCancelAdvance={handleCancelAdvance}
           />
 
         </div>

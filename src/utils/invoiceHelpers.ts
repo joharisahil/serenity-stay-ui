@@ -5,6 +5,30 @@ export const fmt = (n?: number) =>
     maximumFractionDigits: 2,
   });
 export function buildGuestAndCompanySection(booking: any) {
+  const checkIn = new Date(booking.checkIn);
+  const checkOut = new Date(booking.checkOut);
+
+  const nights = Math.max(
+    1,
+    Math.ceil(
+      (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
+    )
+  );
+
+  const stayDetailsSection = `
+  <div class="section">
+    <div class="section-title">Stay Details</div>
+    <div class="info-grid">
+      <div><strong>Check-in:</strong> ${checkIn.toLocaleString("en-IN")}</div>
+      <div><strong>Check-out:</strong> ${checkOut.toLocaleString("en-IN")}</div>
+      <div><strong>Nights:</strong> ${nights}</div>
+      <div><strong>Room:</strong> ${booking.room_id.number} (${booking.room_id.type})</div>
+      <div><strong>Adults:</strong> ${booking.adults ?? 0}</div>
+      <div><strong>Children:</strong> ${booking.children ?? 0}</div>
+    </div>
+  </div>
+  `;
+
   const companySection =
     booking.companyName || booking.companyGSTIN || booking.companyAddress
       ? `
@@ -39,7 +63,6 @@ export function buildGuestAndCompanySection(booking: any) {
       <div><strong>Phone:</strong> ${booking.guestPhone}</div>
       <div><strong>City:</strong> ${booking.guestCity}</div>
       <div><strong>Nationality:</strong> ${booking.guestNationality}</div>
-      <div><strong>Room:</strong> ${booking.room_id.number} (${booking.room_id.type})</div>
       <div><strong>Plan:</strong> ${readablePlan(booking.planCode)}</div>
       ${
         booking.guestAddress
@@ -48,6 +71,8 @@ export function buildGuestAndCompanySection(booking: any) {
       }
     </div>
   </div>
+
+  ${stayDetailsSection}
 
   ${companySection}
 `;
@@ -82,4 +107,29 @@ export function readablePlan(planCode?: string) {
   if (!planCode) return "N/A";
   const raw = String(planCode).split("_")[0];
   return PLAN_NAMES[raw] || raw;
+}
+
+
+export function calculateHotelNights(checkInISO: string, checkOutISO: string) {
+  const checkIn = new Date(checkInISO);
+  const checkOut = new Date(checkOutISO);
+
+  const inDate = new Date(
+    checkIn.getFullYear(),
+    checkIn.getMonth(),
+    checkIn.getDate()
+  );
+
+  const outDate = new Date(
+    checkOut.getFullYear(),
+    checkOut.getMonth(),
+    checkOut.getDate()
+  );
+
+  const diffDays = Math.round(
+    (outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  // Hotel rule: inclusive of both dates
+  return Math.max(1, diffDays + 1);
 }

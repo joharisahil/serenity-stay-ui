@@ -85,7 +85,8 @@ export interface Booking {
   checkOut: string;
 
   planCode?: string;
-
+  pricingType?: "BASE_EXCLUSIVE" | "FINAL_INCLUSIVE";
+  finalRoomPrice?: number;
   gstEnabled: boolean;
   foodGSTEnabled: boolean;
   roundOffEnabled: boolean;

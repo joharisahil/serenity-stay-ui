@@ -2,7 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Advance } from "../BookingDetails.types";
-import { fmt, formatLocal } from "../utils/formatters";
+import { fmt } from "../utils/formatters";
+import { X } from "lucide-react";
 
 interface AdvancePaymentsSectionProps {
   advances: Advance[];
@@ -12,7 +13,8 @@ interface AdvancePaymentsSectionProps {
   onUpdateAdvance: (index: number, key: string, value: any) => void;
 
   onDepositAdvance: (index: number) => void;
-  onDeleteAdvance: (advanceId: string) => void; // ✅ FIX
+  onDeleteAdvance: (advanceId: string) => void;
+  onCancelAdvance: (index: number) => void;
 }
 
 export function AdvancePaymentsSection({
@@ -22,40 +24,59 @@ export function AdvancePaymentsSection({
   onUpdateAdvance,
   onDepositAdvance,
   onDeleteAdvance,
+  onCancelAdvance,
 }: AdvancePaymentsSectionProps) {
   return (
     <Card>
-      <CardHeader className="flex flex-row justify-between items-center">
+      <CardHeader className="flex items-center justify-between">
         <CardTitle>Advance Payments</CardTitle>
         <Button size="sm" variant="outline" onClick={onAddAdvance}>
           + Add Advance
         </Button>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         {advances.map((adv, idx) => {
           const isSaved = Boolean(adv._id);
 
           return (
             <div
               key={adv._id || idx}
-              className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end border p-3 rounded-lg"
+              className="
+                grid
+                grid-cols-1
+                sm:grid-cols-2
+                md:grid-cols-5
+                gap-3
+                items-center
+                border
+                rounded-lg
+                p-3
+              "
             >
+              {/* Amount */}
               <Input
                 type="number"
                 placeholder="Amount"
                 value={adv.amount}
+                disabled={isSaved}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                className="appearance-none"
+                onWheel={(e) => e.currentTarget.blur()}
                 onChange={(e) =>
                   onUpdateAdvance(idx, "amount", Number(e.target.value))
                 }
-                disabled={isSaved}
               />
 
+              {/* Mode */}
               <select
-                className="border rounded p-2"
+                className="h-10 w-full border rounded px-2"
                 value={adv.mode}
                 disabled={isSaved}
-                onChange={(e) => onUpdateAdvance(idx, "mode", e.target.value)}
+                onChange={(e) =>
+                  onUpdateAdvance(idx, "mode", e.target.value)
+                }
               >
                 <option value="CASH">Cash</option>
                 <option value="UPI">UPI</option>
@@ -63,38 +84,76 @@ export function AdvancePaymentsSection({
                 <option value="BANK">Bank</option>
               </select>
 
+              {/* Date (NO TIME) */}
               {isSaved ? (
-                <div className="h-10 flex items-center px-3 text-sm text-muted-foreground">
-                  {formatLocal(adv.date)}
+                <div className="text-sm text-muted-foreground">
+                  {new Date(adv.date).toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
                 </div>
               ) : (
                 <Input
                   type="date"
-                  value={adv.date || ""}
-                  onChange={(e) => onUpdateAdvance(idx, "date", e.target.value)}
+                  value={adv.date}
+                  onChange={(e) =>
+                    onUpdateAdvance(idx, "date", e.target.value)
+                  }
                 />
               )}
 
+              {/* Note (RESTORED ✅) */}
               <Input
                 placeholder="Note"
                 value={adv.note || ""}
                 disabled={isSaved}
-                onChange={(e) => onUpdateAdvance(idx, "note", e.target.value)}
+                onChange={(e) =>
+                  onUpdateAdvance(idx, "note", e.target.value)
+                }
               />
 
-              {/* ACTION BUTTON */}
-              {isSaved ? (
-                <Button
-                  variant="destructive"
-                  onClick={() => onDeleteAdvance(adv._id!)}
-                >
-                  Delete Advance
-                </Button>
-              ) : (
-                <Button variant="default" onClick={() => onDepositAdvance(idx)}>
-                  Deposit Advance
-                </Button>
-              )}
+              {/* Actions */}
+              <div className="flex gap-2">
+                {isSaved ? (
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    onClick={() => onDeleteAdvance(adv._id!)}
+                  >
+                    Delete
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      className="flex-1"
+                      onClick={() => onDepositAdvance(idx)}
+                    >
+                      Deposit
+                    </Button>
+
+                    {/* ❌ Cancel with border */}
+                    <button
+                      type="button"
+                      onClick={() => onCancelAdvance(idx)}
+                      className="
+                        h-10 w-10
+                        flex items-center justify-center
+                        rounded-md
+                        border
+                        border-border
+                        text-muted-foreground
+                        hover:border-destructive
+                        hover:text-destructive
+                        transition
+                      "
+                      title="Cancel"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           );
         })}
@@ -105,7 +164,7 @@ export function AdvancePaymentsSection({
           </p>
         )}
 
-        <div className="flex justify-between font-semibold border-t pt-2">
+        <div className="flex justify-between border-t pt-3 font-semibold">
           <span>Total Advance Paid</span>
           <span className="text-success">₹{fmt(totalAdvance)}</span>
         </div>

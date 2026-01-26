@@ -1,5 +1,8 @@
 import { invoiceStyles } from "./invoiceConstants";
-import { fmt, calcExtraServiceAmount,buildGuestAndCompanySection, readablePlan } from "./invoiceHelpers";
+import { fmt, calcExtraServiceAmount,buildGuestAndCompanySection, readablePlan ,calculateHotelNights } from "./invoiceHelpers";
+
+
+
 
 export function buildRoomInvoice(
   booking: any,
@@ -8,103 +11,78 @@ export function buildRoomInvoice(
   finalPaymentReceived: boolean,
   finalPaymentMode: string
 ) {
-  const nights = billingData.nights;
+  /* ===============================
+     SAFE NIGHT CALCULATION
+  =============================== */
+  const calculateNights = (checkInISO: string, checkOutISO: string) => {
+    const inD = new Date(checkInISO);
+    const outD = new Date(checkOutISO);
+
+    const inDate = new Date(inD.getFullYear(), inD.getMonth(), inD.getDate());
+    const outDate = new Date(outD.getFullYear(), outD.getMonth(), outD.getDate());
+
+    const diffDays = Math.round(
+      (outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    return Math.max(1, diffDays + 1);
+  };
+
+  const nights = calculateNights(booking.checkIn, booking.checkOut);
 
   /* ===============================
-     ROOM RATE (FROM PLAN)
+     DISPLAY RATE (FOR TABLE ONLY)
   =============================== */
-  const [planCode, occupancy] = booking.planCode.split("_");
-  const plan = booking.room_id?.plans?.find((p: any) => p.code === planCode);
-  const roomRate =
-    occupancy === "SINGLE" ? plan?.singlePrice : plan?.doublePrice;
+  let displayRoomRate = 0;
+
+  if (booking.pricingType === "FINAL_INCLUSIVE") {
+    displayRoomRate = +(booking.finalRoomPrice / 1.05).toFixed(2);
+  } else {
+    const [planCode, occupancy] = booking.planCode.split("_");
+    const plan = booking.room_id?.plans?.find((p: any) => p.code === planCode);
+
+    displayRoomRate =
+      occupancy === "SINGLE"
+        ? plan?.singlePrice || 0
+        : plan?.doublePrice || 0;
+  }
+
+  const roomDisplayAmount = +(displayRoomRate * nights).toFixed(2);
 
   /* ===============================
-     ROOM BASE (STAY ONLY)
+     EXTRA SERVICES (DISPLAY ONLY)
   =============================== */
-  const roomBase = roomRate * nights;
-
-  /* ===============================
-     EXTRA SERVICES (ROOM ONLY)
-  =============================== */
-  let extrasBase = 0;
   let extrasRows = "";
 
   (booking.addedServices || []).forEach((s: any) => {
-    const qty = Array.isArray(s.days) ? s.days.length : 0;
-    const base = Number(s.price || 0) * qty;
-
-    extrasBase += base;
-
-    const cgst = s.gstEnabled ? +(base * 0.025).toFixed(2) : 0;
-    const sgst = s.gstEnabled ? +(base * 0.025).toFixed(2) : 0;
+    const qty = Array.isArray(s.days) ? s.days.length : 1;
+    const amount = +(Number(s.price || 0) * qty).toFixed(2);
 
     extrasRows += `
       <tr>
         <td>${s.name} <span class="gst-badge">GST 5%</span></td>
         <td class="text-center">${qty} day${qty > 1 ? "s" : ""}</td>
         <td class="text-right">₹${fmt(s.price)}</td>
-        <td class="text-right">₹${fmt(base)}</td>
+        <td class="text-right">₹${fmt(amount)}</td>
       </tr>
-      ${
-        s.gstEnabled
-          ? `
-      <tr>
-        <td colspan="3" style="padding-left:30px;font-size:12px;color:#666;">CGST (2.5%)</td>
-        <td class="text-right" style="font-size:12px;">₹${fmt(cgst)}</td>
-      </tr>
-      <tr>
-        <td colspan="3" style="padding-left:30px;font-size:12px;color:#666;">SGST (2.5%)</td>
-        <td class="text-right" style="font-size:12px;">₹${fmt(sgst)}</td>
-      </tr>
-      `
-          : ""
-      }
     `;
   });
 
   /* ===============================
-     ROOM TAXABLE & GST (ROOM ONLY)
+     BACKEND TOTALS (SOURCE OF TRUTH)
   =============================== */
-  const roomTaxable = roomBase + extrasBase;
-  const roomCGST = booking.gstEnabled ? +(roomTaxable * 0.025).toFixed(2) : 0;
-  const roomSGST = booking.gstEnabled ? +(roomTaxable * 0.025).toFixed(2) : 0;
+  const taxableValue = booking.taxable;
+  const cgst = booking.cgst;
+  const sgst = booking.sgst;
 
-  const roomTotal = roomTaxable + roomCGST + roomSGST;
+  const roomGrandTotal = +(taxableValue + cgst + sgst).toFixed(2);
+
+  const rawBalance = +(roomGrandTotal - booking.advancePaid).toFixed(2);
+  const balanceDue = finalPaymentReceived ? 0 : Math.max(0, rawBalance);
 
   /* ===============================
-     BALANCE (ROOM ONLY)
+     HTML
   =============================== */
-  const balanceDue = Math.max(0, roomTotal - booking.advancePaid);
-
-  /* ===============================
-     COMPANY SECTION
-  =============================== */
-  const companySection =
-    booking.companyName || booking.companyGSTIN || booking.companyAddress
-      ? `
-  <div class="section">
-    <div class="section-title">Company / Billing Details</div>
-    <div class="company-box">
-      ${
-        booking.companyName
-          ? `<div class="info-item"><strong>Company Name:</strong> ${booking.companyName}</div>`
-          : ""
-      }
-      ${
-        booking.companyGSTIN
-          ? `<div class="info-item"><strong>GSTIN:</strong> ${booking.companyGSTIN}</div>`
-          : ""
-      }
-      ${
-        booking.companyAddress
-          ? `<div class="info-item"><strong>Company Address:</strong> ${booking.companyAddress}</div>`
-          : ""
-      }
-    </div>
-  </div>
-`
-      : "";
-
   return `
 <!DOCTYPE html>
 <html>
@@ -114,20 +92,29 @@ export function buildRoomInvoice(
   ${invoiceStyles}
 </head>
 <body>
+
 <div class="invoice-container">
+
+  ${
+    finalPaymentReceived
+      ? `<div class="paid-stamp">PAID</div>`
+      : ""
+  }
 
   <div class="header">
     <h1>${hotel.name}</h1>
     <p>${hotel.address}</p>
     <p>Phone: ${hotel.phone} | Email: ${hotel.email}</p>
     <p><strong>GSTIN:</strong> ${hotel.gstNumber}</p>
-    <p style="font-size:18px;font-weight:bold;">ROOM INVOICE</p>
+    <p style="font-size:18px;font-weight:bold;">ROOM TAX INVOICE</p>
   </div>
 
- ${buildGuestAndCompanySection(booking)}
+  ${buildGuestAndCompanySection(booking)}
 
+  <!-- ================= BILLING DETAILS ================= -->
   <div class="section">
     <div class="section-title">Billing Details</div>
+
     <table class="table">
       <thead>
         <tr>
@@ -138,37 +125,96 @@ export function buildRoomInvoice(
         </tr>
       </thead>
       <tbody>
+
         <tr>
-          <td>Room Charges <span class="gst-badge">GST 5%</span></td>
-          <td class="text-center">${nights} nights</td>
-          <td class="text-right">₹${fmt(roomRate)}</td>
-          <td class="text-right">₹${fmt(roomBase)}</td>
+          <td>
+            Room Charges <span class="gst-badge">GST 5%</span><br/>
+            ${
+              booking.pricingType === "FINAL_INCLUSIVE"
+                ? "<small>(Offer Price – GST Inclusive)</small>"
+                : ""
+            }
+          </td>
+          <td class="text-center">${nights} night${nights > 1 ? "s" : ""}</td>
+          <td class="text-right">₹${fmt(displayRoomRate)}</td>
+          <td class="text-right">₹${fmt(roomDisplayAmount)}</td>
         </tr>
+
         ${extrasRows}
+
+        ${
+          booking.discountAmount
+            ? `
+        <tr style="color:#d32f2f;">
+          <td colspan="3" style="text-align:right;">
+            Room Discount (${booking.discount}%)
+          </td>
+          <td class="text-right">- ₹${fmt(booking.discountAmount)}</td>
+        </tr>`
+            : ""
+        }
+
+        <tr style="font-weight:bold;">
+          <td colspan="3" style="text-align:right;">Taxable Value</td>
+          <td class="text-right">₹${fmt(taxableValue)}</td>
+        </tr>
+
+        <tr>
+          <td colspan="3" style="text-align:right;">CGST (2.5%)</td>
+          <td class="text-right">₹${fmt(cgst)}</td>
+        </tr>
+
+        <tr>
+          <td colspan="3" style="text-align:right;">SGST (2.5%)</td>
+          <td class="text-right">₹${fmt(sgst)}</td>
+        </tr>
+
       </tbody>
     </table>
+  </div>
 
-    <div class="total-section">
-      <div class="total-row"><span>Subtotal:</span><span>₹${fmt(
-        roomTaxable
-      )}</span></div>
-      <div class="total-row"><span>CGST (2.5%):</span><span>₹${fmt(
-        roomCGST
-      )}</span></div>
-      <div class="total-row"><span>SGST (2.5%):</span><span>₹${fmt(
-        roomSGST
-      )}</span></div>
-      <div class="total-row"><span>Gross Total:</span><span>₹0</span></div>
-      <div class="total-row grand-total"><span>Room Total:</span><span>₹${fmt(
-        roomTotal
-      )}</span></div>
-      <div class="total-row"><span>Advance Paid (${
-        booking.advancePaymentMode
-      }):</span><span>₹${fmt(booking.advancePaid)}</span></div>
-      <div class="total-row grand-total" style="color:#d32f2f;"><span>Balance Due:</span><span>₹${fmt(
-        balanceDue
-      )}</span></div>
+  <!-- ================= FINAL SUMMARY ================= -->
+  <div class="section">
+    <div class="section-title">Final Summary</div>
+
+    <div class="total-row">
+      <span>Room + Extras Taxable:</span>
+      <span>₹${fmt(taxableValue)}</span>
     </div>
+
+    <div class="total-row">
+      <span>CGST (2.5%):</span>
+      <span>₹${fmt(cgst)}</span>
+    </div>
+
+    <div class="total-row">
+      <span>SGST (2.5%):</span>
+      <span>₹${fmt(sgst)}</span>
+    </div>
+
+    <div class="total-row grand-total">
+      <span>Room Grand Total:</span>
+      <span>₹${fmt(roomGrandTotal)}</span>
+    </div>
+
+    <div class="total-row">
+      <span>Advance Paid:</span>
+      <span>₹${fmt(booking.advancePaid)}</span>
+    </div>
+
+    ${
+      finalPaymentReceived
+        ? `
+    <div class="total-row" style="color:#2e7d32;font-weight:bold;">
+      <span>Final Payment Received (${finalPaymentMode || "Cash"}):</span>
+      <span>₹${fmt(roomGrandTotal)}</span>
+    </div>`
+        : `
+    <div class="total-row grand-total" style="color:#d32f2f;">
+      <span>Balance Due:</span>
+      <span>₹${fmt(balanceDue)}</span>
+    </div>`
+    }
   </div>
 
   <div class="footer">
@@ -180,6 +226,11 @@ export function buildRoomInvoice(
 </html>
 `;
 }
+
+
+
+
+
 
 export function buildFoodInvoice(
   booking: any,
@@ -409,107 +460,80 @@ export function buildCombinedInvoice(
   finalPaymentReceived: boolean,
   finalPaymentMode: string
 ) {
-  const nights = billingData.nights;
+  /* =========================
+     NIGHTS (HOTEL CALENDAR RULE)
+  ========================= */
+  const nights = calculateHotelNights(
+    booking.checkIn,
+    booking.checkOut
+  );
 
   /* =========================
-     ROOM EXTRAS ROWS
+     ROOM DISPLAY (NOT TOTAL)
+  ========================= */
+  const perNightBase =
+    booking.pricingType === "FINAL_INCLUSIVE"
+      ? +(booking.finalRoomPrice / 1.05).toFixed(2)
+      : billingData.roomPrice;
+
+  const roomDisplayAmount = +(perNightBase * nights).toFixed(2);
+
+  /* =========================
+     EXTRA SERVICES (DISPLAY)
   ========================= */
   let extrasRows = "";
-  let extrasBase = 0;
 
   (booking.addedServices || []).forEach((s: any) => {
-    const qty = s.days?.length || 0;
-    const base = s.price * qty;
-    extrasBase += base;
-
-    const cgst = +(base * 0.025).toFixed(2);
-    const sgst = +(base * 0.025).toFixed(2);
+    const qty = s.days?.length || 1;
+    const amount = s.price * qty;
 
     extrasRows += `
       <tr>
         <td>${s.name} <span class="gst-badge">GST 5%</span></td>
         <td class="text-center">${qty} day${qty > 1 ? "s" : ""}</td>
         <td class="text-right">₹${fmt(s.price)}</td>
-        <td class="text-right">₹${fmt(base)}</td>
-      </tr>
-      <tr>
-        <td colspan="3" style="padding-left:30px;font-size:12px;color:#666;">CGST (2.5%)</td>
-        <td class="text-right" style="font-size:12px;">₹${fmt(cgst)}</td>
-      </tr>
-      <tr>
-        <td colspan="3" style="padding-left:30px;font-size:12px;color:#666;">SGST (2.5%)</td>
-        <td class="text-right" style="font-size:12px;">₹${fmt(sgst)}</td>
+        <td class="text-right">₹${fmt(amount)}</td>
       </tr>
     `;
   });
 
   /* =========================
-     FOOD ROWS + TOTALS
-  ========================= */
-  let foodSubtotal = 0;
-
-  const orderRows = roomOrders
-    .map((order) =>
-      order.items
-        .map((item: any) => {
-          const rate = item.unitPrice || item.totalPrice / item.qty;
-          foodSubtotal += item.totalPrice;
-
-          return `
-          <tr>
-            <td>${item.name}</td>
-            <td class="text-center">${item.qty}</td>
-            <td class="text-right">₹${fmt(rate)}</td>
-            <td class="text-right">₹${fmt(item.totalPrice)}</td>
-          </tr>
-        `;
-        })
-        .join("")
-    )
-    .join("");
-
-  foodSubtotal = +foodSubtotal.toFixed(2);
-
-  const foodDiscountPercent = booking.foodDiscount || 0;
-  const foodDiscountAmount = +(
-    (foodSubtotal * foodDiscountPercent) /
-    100
-  ).toFixed(2);
-  const foodAfterDiscount = foodSubtotal - foodDiscountAmount;
-
-  const foodCGST = booking.foodGSTEnabled
-    ? +(foodAfterDiscount * 0.025).toFixed(2)
-    : 0;
-  const foodSGST = booking.foodGSTEnabled
-    ? +(foodAfterDiscount * 0.025).toFixed(2)
-    : 0;
-  const foodTotal = +(foodAfterDiscount + foodCGST + foodSGST).toFixed(2);
-
-  /* =========================
      ROOM TOTALS (BACKEND TRUTH)
   ========================= */
-  const roomBase = booking.taxable;
+  const roomTaxable = booking.taxable;
   const roomCGST = booking.cgst;
   const roomSGST = booking.sgst;
-  const roomNetTotal = roomBase + roomCGST + roomSGST;
+  const roomNetTotal = +(roomTaxable + roomCGST + roomSGST).toFixed(2);
 
   /* =========================
-     GRAND TOTAL + BALANCE
+     FOOD
   ========================= */
-  const grandTotal = +(roomNetTotal + foodTotal).toFixed(2);
-  //const balance = finalPaymentReceived ? 0 : +(grandTotal - booking.advancePaid).toFixed(2);
+  let foodRows = "";
+
+  roomOrders.forEach(order => {
+    order.items.forEach((item: any) => {
+      foodRows += `
+        <tr>
+          <td>${item.name}</td>
+          <td class="text-center">${item.qty}</td>
+          <td class="text-right">₹${fmt(item.unitPrice || item.totalPrice / item.qty)}</td>
+          <td class="text-right">₹${fmt(item.totalPrice)}</td>
+        </tr>
+      `;
+    });
+  });
+
+  const foodSubtotal = booking.foodTotals?.subtotal || 0;
+  const foodDiscountAmount = booking.foodDiscountAmount || 0;
+  const foodGST = booking.foodTotals?.gst || 0;
+  const foodNetTotal = booking.foodTotals?.total || 0;
+
   /* =========================
-   ROUND OFF (HOTEL STANDARD)
-========================= */
-  const roundedGrandTotal = Math.round(grandTotal);
-  const roundOffAmount = +(roundedGrandTotal - grandTotal).toFixed(2);
+     GRAND TOTAL / BALANCE
+  ========================= */
+  const grandTotal = +(roomNetTotal + foodNetTotal).toFixed(2);
+  const balanceDue = finalPaymentReceived ? 0 : booking.balanceDue;
 
-  const finalGrandTotal = roundedGrandTotal;
-  const balance = finalPaymentReceived
-    ? 0
-    : +(finalGrandTotal - booking.advancePaid).toFixed(2);
-
-  
   /* =========================
      HTML
   ========================= */
@@ -517,119 +541,170 @@ export function buildCombinedInvoice(
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Combined Invoice</title>
+  <meta charset="UTF-8" />
+  <title>Tax Invoice</title>
   ${invoiceStyles}
 </head>
 <body>
+
 <div class="invoice-container">
+
+  ${
+    finalPaymentReceived
+      ? `<div class="paid-stamp">PAID</div>`
+      : ""
+  }
 
   <div class="header">
     <h1>${hotel.name}</h1>
     <p>${hotel.address}</p>
     <p>Phone: ${hotel.phone} | Email: ${hotel.email}</p>
     <p><strong>GSTIN:</strong> ${hotel.gstNumber}</p>
-    <p style="font-size:18px;font-weight:bold;">COMPLETE INVOICE</p>
+    <p style="font-size:18px;font-weight:bold;">TAX INVOICE</p>
   </div>
 
-${buildGuestAndCompanySection(booking)}
+  ${buildGuestAndCompanySection(booking)}
 
+  <!-- ROOM + EXTRAS -->
   <div class="section">
     <div class="section-title">Room Charges</div>
+
     <table class="table">
-      <tr>
-        <td>Room Charges <span class="gst-badge">GST 5%</span></td>
-        <td class="text-center">${nights} nights</td>
-        <td class="text-right">₹${fmt(billingData.roomPrice)}</td>
-        <td class="text-right">₹${fmt(roomBase - extrasBase)}</td>
-      </tr>
-      ${extrasRows}
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th class="text-center">Qty</th>
+          <th class="text-right">Rate</th>
+          <th class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr>
+          <td>
+            Room Charges <span class="gst-badge">GST 5%</span><br/>
+            ${
+              booking.pricingType === "FINAL_INCLUSIVE"
+                ? "<small>(Offer Price – GST Inclusive)</small>"
+                : ""
+            }
+          </td>
+          <td class="text-center">${nights} nights</td>
+          <td class="text-right">₹${fmt(perNightBase)}</td>
+          <td class="text-right">₹${fmt(roomDisplayAmount)}</td>
+        </tr>
+
+        ${extrasRows}
+
+        ${
+          booking.discountAmount
+            ? `
+        <tr style="color:#d32f2f;">
+          <td colspan="3" style="text-align:right;">
+            Room Discount (${booking.discount}%)
+          </td>
+          <td class="text-right">- ₹${fmt(booking.discountAmount)}</td>
+        </tr>`
+            : ""
+        }
+
+        <tr style="font-weight:bold;">
+          <td colspan="3" style="text-align:right;">Room Taxable Value</td>
+          <td class="text-right">₹${fmt(roomTaxable)}</td>
+        </tr>
+
+        <tr>
+          <td colspan="3" style="text-align:right;">CGST (2.5%)</td>
+          <td class="text-right">₹${fmt(roomCGST)}</td>
+        </tr>
+
+        <tr>
+          <td colspan="3" style="text-align:right;">SGST (2.5%)</td>
+          <td class="text-right">₹${fmt(roomSGST)}</td>
+        </tr>
+
+      </tbody>
     </table>
   </div>
 
+  <!-- FOOD -->
   ${
-    roomOrders.length
+    foodRows
       ? `
   <div class="section">
     <div class="section-title">Food / Room Service</div>
     <table class="table">
       <thead>
         <tr>
-          <th>Item</th>
+          <th>Description</th>
           <th class="text-center">Qty</th>
           <th class="text-right">Rate</th>
           <th class="text-right">Amount</th>
         </tr>
       </thead>
-      <tbody>${orderRows}</tbody>
+      <tbody>
+        ${foodRows}
+        <tr>
+          <td colspan="3" style="text-align:right;">Food Subtotal</td>
+          <td class="text-right">₹${fmt(foodSubtotal)}</td>
+        </tr>
+        <tr style="color:#d32f2f;">
+          <td colspan="3" style="text-align:right;">
+            Food Discount
+          </td>
+          <td class="text-right">- ₹${fmt(foodDiscountAmount)}</td>
+        </tr>
+        <tr>
+          <td colspan="3" style="text-align:right;">Food GST</td>
+          <td class="text-right">₹${fmt(foodGST)}</td>
+        </tr>
+        <tr style="font-weight:bold;">
+          <td colspan="3" style="text-align:right;">Food Net Total</td>
+          <td class="text-right">₹${fmt(foodNetTotal)}</td>
+        </tr>
+      </tbody>
     </table>
-  </div>
-  `
+  </div>`
       : ""
   }
 
+  <!-- FINAL SUMMARY -->
   <div class="section">
     <div class="section-title">Final Summary</div>
-    <div class="total-section">
 
-      <div class="total-row"><span>Room Charges:</span><span>₹${fmt(
-        roomBase
-      )}</span></div>
-      <div class="total-row"><span>Room CGST (2.5%):</span><span>₹${fmt(
-        roomCGST
-      )}</span></div>
-      <div class="total-row"><span>Room SGST (2.5%):</span><span>₹${fmt(
-        roomSGST
-      )}</span></div>
-      <div class="total-row" style="font-weight:bold;"><span>Room Net Total:</span><span>₹${fmt(
-        roomNetTotal
-      )}</span></div>
-
-      ${
-        foodSubtotal > 0
-          ? `
-      <div class="total-row" style="margin-top:10px;"><span>Food Subtotal:</span><span>₹${fmt(
-        foodSubtotal
-      )}</span></div>
-      <div class="total-row" style="color:#d32f2f;"><span>Food Discount (${foodDiscountPercent}%):</span><span>- ₹${fmt(
-              foodDiscountAmount
-            )}</span></div>
-      <div class="total-row"><span>Food CGST (2.5%):</span><span>₹${fmt(
-        foodCGST
-      )}</span></div>
-      <div class="total-row"><span>Food SGST (2.5%):</span><span>₹${fmt(
-        foodSGST
-      )}</span></div>
-      <div class="total-row" style="font-weight:bold;"><span>Food Net Total:</span><span>₹${fmt(
-        foodTotal
-      )}</span></div>
-      `
-          : ""
-      }
-
-      <div class="total-row">
-  <span>Grand Total (Before Round Off):</span>
-  <span>₹${fmt(grandTotal)}</span>
-</div>
-
-<div class="total-row">
-  <span>Round Off:</span>
-  <span>${roundOffAmount >= 0 ? "+" : ""}₹${fmt(roundOffAmount)}</span>
-</div>
-
-<div class="total-row grand-total">
-  <span>Grand Total:</span>
-  <span>₹${fmt(finalGrandTotal)}</span>
-</div>
-
-      <div class="total-row" style="color:#4CAF50;"><span>Advance Paid (${
-        booking.advancePaymentMode
-      }):</span><span>₹${fmt(booking.advancePaid)}</span></div>
-      <div class="total-row grand-total" style="color:#d32f2f;"><span>Balance Due:</span><span>₹${fmt(
-        balance
-      )}</span></div>
-
+    <div class="total-row">
+      <span>Room Net Total:</span>
+      <span>₹${fmt(roomNetTotal)}</span>
     </div>
+
+    <div class="total-row">
+      <span>Food Net Total:</span>
+      <span>₹${fmt(foodNetTotal)}</span>
+    </div>
+
+    <div class="total-row grand-total">
+      <span>Grand Total:</span>
+      <span>₹${fmt(grandTotal)}</span>
+    </div>
+
+    <div class="total-row">
+      <span>Advance Paid:</span>
+      <span>₹${fmt(booking.advancePaid)}</span>
+    </div>
+
+    ${
+      finalPaymentReceived
+        ? `
+    <div class="total-row" style="color:#2e7d32;font-weight:bold;">
+      <span>Final Payment Received (${finalPaymentMode || "Cash"}):</span>
+      <span>₹${fmt(grandTotal)}</span>
+    </div>`
+        : `
+    <div class="total-row grand-total" style="color:#d32f2f;">
+      <span>Balance Due:</span>
+      <span>₹${fmt(balanceDue)}</span>
+    </div>`
+    }
   </div>
 
   <div class="footer">
@@ -639,14 +714,12 @@ ${buildGuestAndCompanySection(booking)}
     <div class="signature-box"><div class="signature-line">Guest Sign.</div></div>
   </div>
 
-  <div style="text-align:center;font-size:9px;margin-top:10px;">
-    E. & O.E. | Prepared By: ${hotel.name} on ${new Date().toLocaleString(
-    "en-IN"
-  )}
-  </div>
-
 </div>
 </body>
 </html>
 `;
 }
+
+
+
+
