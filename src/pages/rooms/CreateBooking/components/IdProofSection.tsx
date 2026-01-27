@@ -38,7 +38,7 @@ const ID_TYPES = [
 const ID_TYPE_API_TO_UI: Record<string, string> = {
   "AADHAAR CARD": "Aadhaar Card",
   "DRIVING LICENSE": "Driving License",
-  "PASSPORT": "Passport",
+  PASSPORT: "Passport",
   "VOTER ID": "Voter ID",
   "PAN CARD": "PAN Card",
 };
@@ -46,19 +46,17 @@ const ID_TYPE_API_TO_UI: Record<string, string> = {
 const ID_TYPE_UI_TO_API: Record<string, string> = {
   "Aadhaar Card": "AADHAAR CARD",
   "Driving License": "DRIVING LICENSE",
-  "Passport": "PASSPORT",
+  Passport: "PASSPORT",
   "Voter ID": "VOTER ID",
   "PAN Card": "PAN CARD",
 };
 
-
-
 export function IdProofSection({ idProofs, onChange }: IdProofSectionProps) {
   type IdStatus = "idle" | "invalid" | "valid";
-const normalizedIdProofs = idProofs.map((proof) => ({
-  ...proof,
-  type: ID_TYPE_API_TO_UI[proof.type] ?? proof.type ?? "",
-}));
+  const normalizedIdProofs = idProofs.map((proof) => ({
+    ...proof,
+    type: ID_TYPE_API_TO_UI[proof.type] ?? proof.type ?? "",
+  }));
   const [idStatusMap, setIdStatusMap] = useState<Record<number, IdStatus>>({});
   const setStatus = (index: number, status: IdStatus) => {
     setIdStatusMap((prev) => ({ ...prev, [index]: status }));
@@ -70,20 +68,19 @@ const normalizedIdProofs = idProofs.map((proof) => ({
     onChange([...idProofs, { type: "", idNumber: "", nameOnId: "" }]);
   };
 
- const updateIdProof = (index: number, updates: Partial<IdProof>) => {
-  const updated = [...idProofs];
+  const updateIdProof = (index: number, updates: Partial<IdProof>) => {
+    const updated = [...idProofs];
 
-  updated[index] = {
-    ...updated[index],
-    ...updates,
-    type: updates.type
-      ? ID_TYPE_UI_TO_API[updates.type] ?? updates.type
-      : updated[index].type,
+    updated[index] = {
+      ...updated[index],
+      ...updates,
+      type: updates.type
+        ? (ID_TYPE_UI_TO_API[updates.type] ?? updates.type)
+        : updated[index].type,
+    };
+
+    onChange(updated);
   };
-
-  onChange(updated);
-};
-
 
   const removeIdProof = (index: number) => {
     onChange(idProofs.filter((_, i) => i !== index));

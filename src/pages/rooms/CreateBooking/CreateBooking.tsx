@@ -34,7 +34,7 @@ export default function CreateBooking() {
     roomType: "",
     roomNumber: "",
     planCode: "",
-    
+
     finalRoomPrice: "",
     guestName: "",
     guestPhone: "",
@@ -312,8 +312,8 @@ export default function CreateBooking() {
         children: Number(formData.children),
 
         planCode: formData.planCode,
-         pricingMode: isSpecialPricing ? "SPECIAL" : "PLAN",
-  pricingType: isSpecialPricing ? "FINAL_INCLUSIVE" : "BASE_EXCLUSIVE",
+        pricingMode: isSpecialPricing ? "SPECIAL" : "PLAN",
+        pricingType: isSpecialPricing ? "FINAL_INCLUSIVE" : "BASE_EXCLUSIVE",
         finalRoomPrice: isSpecialPricing
           ? Number(formData.finalRoomPrice)
           : undefined,
@@ -567,7 +567,7 @@ export default function CreateBooking() {
                 roundOffEnabled: formData.roundOffEnabled,
                 advanceAmount: formData.advanceAmount,
                 advancePaymentMode: formData.advancePaymentMode,
-                finalRoomPrice :formData.finalRoomPrice,
+                finalRoomPrice: formData.finalRoomPrice,
               }}
               onFormChange={updateFormData}
             />
