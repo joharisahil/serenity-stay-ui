@@ -15,18 +15,14 @@ export function buildRoomInvoice(
      SAFE NIGHT CALCULATION
   =============================== */
   const calculateNights = (checkInISO: string, checkOutISO: string) => {
-    const inD = new Date(checkInISO);
-    const outD = new Date(checkOutISO);
+  const diff =
+    (new Date(checkOutISO).getTime() -
+      new Date(checkInISO).getTime()) /
+    (1000 * 60 * 60 * 24);
 
-    const inDate = new Date(inD.getFullYear(), inD.getMonth(), inD.getDate());
-    const outDate = new Date(outD.getFullYear(), outD.getMonth(), outD.getDate());
+  return Math.max(1, Math.ceil(diff));
+};
 
-    const diffDays = Math.round(
-      (outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    return Math.max(1, diffDays + 1);
-  };
 
   const nights = calculateNights(booking.checkIn, booking.checkOut);
 
@@ -463,20 +459,51 @@ export function buildCombinedInvoice(
   /* =========================
      NIGHTS (HOTEL CALENDAR RULE)
   ========================= */
-  const nights = calculateHotelNights(
-    booking.checkIn,
-    booking.checkOut
-  );
+  const calculateNights = (checkInISO: string, checkOutISO: string) => {
+  const diff =
+    (new Date(checkOutISO).getTime() -
+      new Date(checkInISO).getTime()) /
+    (1000 * 60 * 60 * 24);
+
+  return Math.max(1, Math.ceil(diff));
+};
+
+const nights = calculateNights(
+  booking.checkIn,
+  booking.checkOut
+);
+
+
+  
 
   /* =========================
      ROOM DISPLAY (NOT TOTAL)
   ========================= */
-  const perNightBase =
-    booking.pricingType === "FINAL_INCLUSIVE"
-      ? +(booking.finalRoomPrice / 1.05).toFixed(2)
-      : billingData.roomPrice;
+  // const perNightBase =
+  //   booking.pricingType === "FINAL_INCLUSIVE"
+  //     ? +(booking.finalRoomPrice / 1.05).toFixed(2)
+  //     : billingData.roomPrice;
 
-  const roomDisplayAmount = +(perNightBase * nights).toFixed(2);
+  // const roomDisplayAmount = +(perNightBase * nights).toFixed(2);
+let perNightBase = 0;
+
+if (booking.pricingType === "FINAL_INCLUSIVE") {
+  // Offer price (GST inclusive → extract base)
+  perNightBase = +(booking.finalRoomPrice / 1.05).toFixed(2);
+} else {
+  // Non-offer pricing → ALWAYS use plan rate
+  const [planCode, occupancy] = booking.planCode.split("_");
+
+  const plan = booking.room_id?.plans?.find(
+    (p: any) => p.code === planCode
+  );
+
+  perNightBase =
+    occupancy === "SINGLE"
+      ? plan?.singlePrice || 0
+      : plan?.doublePrice || 0;
+}
+const roomDisplayAmount = +(perNightBase * nights).toFixed(2);
 
   /* =========================
      EXTRA SERVICES (DISPLAY)

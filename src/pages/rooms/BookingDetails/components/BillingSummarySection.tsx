@@ -221,7 +221,7 @@ export function BillingSummarySection({
             <option value="UPI">UPI</option>
             <option value="CARD">Card</option>
             <option value="ONLINE">Online</option>
-            <option value="BANK_TRANSFER">Bank Transfer</option>
+            <option value="BANK TRANSFER">Bank Transfer</option>
           </select>
         )}
       </div>

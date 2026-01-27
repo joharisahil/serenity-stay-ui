@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Trash2 } from "lucide-react";
+import { Trash2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   updateGuestInfoApi,
@@ -18,6 +18,14 @@ import {
 } from "@/api/bookingApi";
 import { Booking } from "../BookingDetails.types";
 import { readablePlan } from "../utils/formatters";
+import {
+  validatePhoneNumber,
+  validateRequired,
+  validateGSTIN,
+  validateDocumentType,
+  validateDocumentNumber,
+  toUppercaseValue,
+} from "@/validators/validator";
 
 interface GuestInfoSectionProps {
   booking: Booking;
@@ -35,6 +43,26 @@ export function GuestInfoSection({
   const [guestForm, setGuestForm] = useState<any>({});
   const [guestIdsForm, setGuestIdsForm] = useState<any[]>([]);
   const [companyForm, setCompanyForm] = useState<any>({});
+  type FieldStatus = "idle" | "invalid" | "valid";
+
+  const [phoneStatus, setPhoneStatus] = useState<FieldStatus>("idle");
+  const [gstStatus, setGstStatus] = useState<FieldStatus>("idle");
+
+  const ID_TYPE_API_TO_UI: Record<string, string> = {
+    "AADHAAR CARD": "Aadhaar Card",
+    "DRIVING LICENSE": "Driving License",
+    PASSPORT: "Passport",
+    "VOTER ID": "Voter ID",
+    "PAN CARD": "PAN Card",
+  };
+
+  const ID_TYPE_UI_TO_API: Record<string, string> = {
+    "Aadhaar Card": "AADHAAR CARD",
+    "Driving License": "DRIVING LICENSE",
+    Passport: "PASSPORT",
+    "Voter ID": "VOTER ID",
+    "PAN Card": "PAN CARD",
+  };
 
   return (
     <>
@@ -153,7 +181,13 @@ export function GuestInfoSection({
               size="sm"
               variant="outline"
               onClick={() => {
-                setGuestIdsForm(booking.guestIds || []);
+                setGuestIdsForm(
+                  (booking.guestIds || []).map((id) => ({
+                    ...id,
+                    type: ID_TYPE_API_TO_UI[id.type] ?? "",
+                  })),
+                );
+
                 setEditGuestIdsOpen(true);
               }}
             >
@@ -227,19 +261,62 @@ export function GuestInfoSection({
               <Input
                 value={guestForm.guestName || ""}
                 onChange={(e) =>
-                  setGuestForm({ ...guestForm, guestName: e.target.value })
+                  setGuestForm({
+                    ...guestForm,
+                    guestName: e.target.value.toUpperCase(),
+                  })
                 }
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm font-medium">Phone</label>
-              <Input
-                value={guestForm.guestPhone || ""}
-                onChange={(e) =>
-                  setGuestForm({ ...guestForm, guestPhone: e.target.value })
-                }
-              />
+              {/* Invisible label to match layout */}
+              <label className="text-sm font-medium ">Phone</label>
+
+              <div className="relative">
+                <Input
+                  value={guestForm.guestPhone || ""}
+                  className={`pr-10 ${
+                    phoneStatus === "invalid"
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : phoneStatus === "valid"
+                        ? "border-green-500 focus-visible:ring-0"
+                        : ""
+                  }`}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "");
+                    setGuestForm({ ...guestForm, guestPhone: value });
+                    setPhoneStatus("idle");
+                  }}
+                  onBlur={(e) => {
+                    if (!e.target.value) {
+                      setPhoneStatus("idle");
+                    } else if (validatePhoneNumber(e.target.value)) {
+                      setPhoneStatus("valid");
+                    } else {
+                      setPhoneStatus("invalid");
+                    }
+                  }}
+                />
+
+                {phoneStatus === "invalid" && (
+                  <div className="absolute right-3 inset-y-0 flex items-center pointer-events-none">
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                  </div>
+                )}
+
+                {phoneStatus === "valid" && (
+                  <div className="absolute right-3 inset-y-0 flex items-center pointer-events-none">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  </div>
+                )}
+              </div>
+
+              {phoneStatus === "invalid" && (
+                <p className="text-xs text-red-500">
+                  Enter valid 10-digit mobile number
+                </p>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -247,7 +324,10 @@ export function GuestInfoSection({
               <Input
                 value={guestForm.guestCity || ""}
                 onChange={(e) =>
-                  setGuestForm({ ...guestForm, guestCity: e.target.value })
+                  setGuestForm({
+                    ...guestForm,
+                    guestCity: e.target.value.toUpperCase(),
+                  })
                 }
               />
             </div>
@@ -259,7 +339,7 @@ export function GuestInfoSection({
                 onChange={(e) =>
                   setGuestForm({
                     ...guestForm,
-                    guestNationality: e.target.value,
+                    guestNationality: e.target.value.toUpperCase(),
                   })
                 }
               />
@@ -296,7 +376,10 @@ export function GuestInfoSection({
             <Input
               value={guestForm.guestAddress || ""}
               onChange={(e) =>
-                setGuestForm({ ...guestForm, guestAddress: e.target.value })
+                setGuestForm({
+                  ...guestForm,
+                  guestAddress: e.target.value.toUpperCase,
+                })
               }
             />
           </div>
@@ -308,14 +391,15 @@ export function GuestInfoSection({
 
             <Button
               onClick={async () => {
-                try {
-                  await updateGuestInfoApi(booking._id, guestForm);
-                  toast.success("Guest information updated");
-                  onRefresh();
-                  setEditGuestOpen(false);
-                } catch {
-                  toast.error("Failed to update guest information");
+                if (phoneStatus !== "valid") {
+                  toast.error("Please enter a valid phone number");
+                  return;
                 }
+
+                await updateGuestInfoApi(booking._id, guestForm);
+                toast.success("Guest information updated");
+                onRefresh();
+                setEditGuestOpen(false);
               }}
             >
               Save Changes
@@ -387,7 +471,7 @@ export function GuestInfoSection({
                       size="icon"
                       onClick={() =>
                         setGuestIdsForm(
-                          guestIdsForm.filter((_, i) => i !== idx)
+                          guestIdsForm.filter((_, i) => i !== idx),
                         )
                       }
                     >
@@ -403,7 +487,14 @@ export function GuestInfoSection({
             <Button
               onClick={async () => {
                 try {
-                  await updateGuestIdsApi(booking._id, guestIdsForm);
+                  await updateGuestIdsApi(
+                    booking._id,
+                    guestIdsForm.map((id) => ({
+                      ...id,
+                      type: ID_TYPE_UI_TO_API[id.type],
+                    })),
+                  );
+
                   toast.success("Guest IDs updated");
                   onRefresh();
                   setEditGuestIdsOpen(false);
@@ -429,23 +520,66 @@ export function GuestInfoSection({
             placeholder="Company Name"
             value={companyForm.companyName || ""}
             onChange={(e) =>
-              setCompanyForm({ ...companyForm, companyName: e.target.value })
+              setCompanyForm({
+                ...companyForm,
+                companyName: e.target.value.toUpperCase(),
+              })
             }
           />
           <label className="text-sm font-medium">GSTIN</label>
-          <Input
-            placeholder="GSTIN"
-            value={companyForm.companyGSTIN || ""}
-            onChange={(e) =>
-              setCompanyForm({ ...companyForm, companyGSTIN: e.target.value })
-            }
-          />
+          <div className="space-y-1">
+            <div className="relative">
+              <Input
+                placeholder="GSTIN"
+                value={companyForm.companyGSTIN || ""}
+                className={`pr-10 ${
+                  gstStatus === "invalid"
+                    ? "border-red-500 focus-visible:ring-red-500"
+                    : gstStatus === "valid"
+                      ? "border-green-500 focus-visible:ring-green-500"
+                      : ""
+                }`}
+                onChange={(e) => {
+                  setCompanyForm({
+                    ...companyForm,
+                    companyGSTIN: e.target.value,
+                  });
+                  setGstStatus("idle");
+                }}
+                onBlur={(e) => {
+                  if (!e.target.value) {
+                    setGstStatus("idle");
+                  } else if (validateGSTIN(e.target.value)) {
+                    setGstStatus("valid");
+                  } else {
+                    setGstStatus("invalid");
+                  }
+                }}
+              />
+
+              {gstStatus === "invalid" && (
+                <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-red-500" />
+              )}
+
+              {gstStatus === "valid" && (
+                <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+              )}
+            </div>
+
+            {gstStatus === "invalid" && (
+              <p className="text-xs text-red-500">Invalid GSTIN format</p>
+            )}
+          </div>
+
           <label className="text-sm font-medium">Company Address</label>
           <Input
             placeholder="Company Address"
             value={companyForm.companyAddress || ""}
             onChange={(e) =>
-              setCompanyForm({ ...companyForm, companyAddress: e.target.value })
+              setCompanyForm({
+                ...companyForm,
+                companyAddress: e.target.value.toUpperCase(),
+              })
             }
           />
 
@@ -456,6 +590,11 @@ export function GuestInfoSection({
 
             <Button
               onClick={async () => {
+                if (gstStatus !== "valid") {
+                  toast.error("Please enter valid GSTIN");
+                  return;
+                }
+
                 await updateCompanyDetailsApi(booking._id, companyForm);
                 toast.success("Company / GST details updated");
                 onRefresh();
@@ -470,5 +609,3 @@ export function GuestInfoSection({
     </>
   );
 }
-
-

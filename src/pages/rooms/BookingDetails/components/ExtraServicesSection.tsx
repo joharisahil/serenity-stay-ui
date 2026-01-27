@@ -51,6 +51,35 @@ export function ExtraServicesSection({
   };
 
   const extras = booking.addedServices || [];
+  const validateServices = (services: any[]) => {
+  if (services.length === 0) {
+    toast.error("Please add at least one extra service.");
+    return false;
+  }
+
+  for (let i = 0; i < services.length; i++) {
+    const s = services[i];
+    const index = i + 1;
+
+    if (!s.name || !s.name.trim()) {
+      toast.error(`Service ${index}: Please enter a service name.`);
+      return false;
+    }
+
+    if (s.price === undefined || s.price === null || Number(s.price) <= 0) {
+      toast.error(`Service ${index}: Price must be greater than zero.`);
+      return false;
+    }
+
+    if (!Array.isArray(s.days) || s.days.length === 0) {
+      toast.error(`Service ${index}: Please select at least one day.`);
+      return false;
+    }
+  }
+
+  return true;
+};
+
 
   return (
     <>
@@ -239,20 +268,23 @@ export function ExtraServicesSection({
               + Add Service
             </Button>
 
-            <Button
-              onClick={async () => {
-                try {
-                  await updateBookingServicesApi(booking._id, servicesForm);
-                  toast.success("Extra services updated");
-                  setEditOpen(false);
-                  onRefresh();
-                } catch {
-                  toast.error("Failed to update services");
-                }
-              }}
-            >
-              Save
-            </Button>
+           <Button
+  onClick={async () => {
+    if (!validateServices(servicesForm)) return;
+
+    try {
+      await updateBookingServicesApi(booking._id, servicesForm);
+      toast.success("Extra services updated successfully.");
+      setEditOpen(false);
+      onRefresh();
+    } catch {
+      toast.error("Failed to update extra services.");
+    }
+  }}
+>
+  Save
+</Button>
+
           </DialogFooter>
         </DialogContent>
       </Dialog>
