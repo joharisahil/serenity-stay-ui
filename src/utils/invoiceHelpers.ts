@@ -1,4 +1,4 @@
-import { PLAN_NAMES } from './invoiceConstants';
+import { PLAN_NAMES } from "./invoiceConstants";
 
 export const fmt = (n?: number) =>
   (typeof n === "number" ? n : 0).toLocaleString("en-IN", {
@@ -10,17 +10,33 @@ export function buildGuestAndCompanySection(booking: any) {
 
   const nights = Math.max(
     1,
-    Math.ceil(
-      (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
-    )
+    Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)),
   );
 
   const stayDetailsSection = `
   <div class="section">
     <div class="section-title">Stay Details</div>
     <div class="info-grid">
-      <div><strong>Check-in:</strong> ${checkIn.toLocaleString("en-IN")}</div>
-      <div><strong>Check-out:</strong> ${checkOut.toLocaleString("en-IN")}</div>
+     <div><strong>Check-in:</strong> ${checkIn.toLocaleString("en-IN", {
+       timeZone: "Asia/Kolkata",
+       day: "2-digit",
+       month: "short",
+       year: "numeric",
+       hour: "2-digit",
+       minute: "2-digit",
+       hour12: true,
+     })}</div>
+
+<div><strong>Check-out:</strong> ${checkOut.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })}</div>
+
       <div><strong>Nights:</strong> ${nights}</div>
       <div><strong>Room:</strong> ${booking.room_id.number} (${booking.room_id.type})</div>
       <div><strong>Adults:</strong> ${booking.adults ?? 0}</div>
@@ -87,8 +103,7 @@ export const calcExtraServiceAmount = (s: any, nights: number) => {
   const qty = days.length;
   const base = (s.price || 0) * qty;
 
-  const gstEnabled =
-    s.gstEnabled === undefined ? true : Boolean(s.gstEnabled);
+  const gstEnabled = s.gstEnabled === undefined ? true : Boolean(s.gstEnabled);
 
   const gst = gstEnabled ? +(base * 0.05).toFixed(2) : 0;
 
@@ -109,7 +124,6 @@ export function readablePlan(planCode?: string) {
   return PLAN_NAMES[raw] || raw;
 }
 
-
 export function calculateHotelNights(checkInISO: string, checkOutISO: string) {
   const checkIn = new Date(checkInISO);
   const checkOut = new Date(checkOutISO);
@@ -117,17 +131,17 @@ export function calculateHotelNights(checkInISO: string, checkOutISO: string) {
   const inDate = new Date(
     checkIn.getFullYear(),
     checkIn.getMonth(),
-    checkIn.getDate()
+    checkIn.getDate(),
   );
 
   const outDate = new Date(
     checkOut.getFullYear(),
     checkOut.getMonth(),
-    checkOut.getDate()
+    checkOut.getDate(),
   );
 
   const diffDays = Math.round(
-    (outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24)
+    (outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   // Hotel rule: inclusive of both dates
