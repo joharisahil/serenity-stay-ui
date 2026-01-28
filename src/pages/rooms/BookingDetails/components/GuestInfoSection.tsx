@@ -74,6 +74,7 @@ export function GuestInfoSection({
             size="sm"
             variant="outline"
             onClick={() => {
+              const phone = booking.guestPhone;
               setGuestForm({
                 guestName: booking.guestName,
                 guestPhone: booking.guestPhone,
@@ -83,6 +84,11 @@ export function GuestInfoSection({
                 adults: booking.adults,
                 children: booking.children,
               });
+              if (phone && validatePhoneNumber(phone)) {
+                setPhoneStatus("valid");
+              } else {
+                setPhoneStatus("idle");
+              }
               setEditGuestOpen(true);
             }}
           >
@@ -249,7 +255,17 @@ export function GuestInfoSection({
       )}
 
       {/* ===================== EDIT GUEST DIALOG ===================== */}
-      <Dialog open={editGuestOpen} onOpenChange={setEditGuestOpen}>
+      <Dialog
+        open={editGuestOpen}
+        onOpenChange={(open) => {
+          setEditGuestOpen(open);
+
+          // reset validation state when dialog closes
+          if (!open) {
+            setPhoneStatus("idle");
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Guest Information</DialogTitle>
@@ -378,7 +394,7 @@ export function GuestInfoSection({
               onChange={(e) =>
                 setGuestForm({
                   ...guestForm,
-                  guestAddress: e.target.value.toUpperCase,
+                  guestAddress: e.target.value.toUpperCase(),
                 })
               }
             />
