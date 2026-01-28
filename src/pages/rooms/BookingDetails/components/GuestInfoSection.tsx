@@ -526,7 +526,15 @@ export function GuestInfoSection({
       </Dialog>
 
       {/* ===================== COMPANY DIALOG ===================== */}
-      <Dialog open={editCompanyOpen} onOpenChange={setEditCompanyOpen}>
+      <Dialog
+        open={editCompanyOpen}
+        onOpenChange={(open) => {
+          setEditCompanyOpen(open);
+          if (!open) {
+            setGstStatus("idle");
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Company / GST Details</DialogTitle>
