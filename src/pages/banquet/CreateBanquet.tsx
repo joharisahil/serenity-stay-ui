@@ -2,7 +2,7 @@ import { Layout } from "@/components/layout/Layout";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-
+import { Button } from "@/components/ui/button";
 import {
   getAvailableHallsApi,
   createBanquetBookingApi,
@@ -202,20 +202,23 @@ export default function CreateBanquet() {
             setPayments={setPayments}
           />
 
-          <div className="flex justify-end gap-4">
-            <button
-              className="border px-4 py-2 rounded"
-              onClick={() => navigate("/banquet")}
-            >
-              Cancel
-            </button>
-            <button
-              className="bg-black text-white px-4 py-2 rounded"
-              onClick={submitBooking}
-            >
-              Create Booking
-            </button>
-          </div>
+          <div className="flex flex-col sm:flex-row justify-end gap-4">
+  <Button
+    variant="outline"
+    onClick={() => navigate("/banquet")}
+    className="w-full sm:w-auto"
+  >
+    Cancel
+  </Button>
+
+  <Button
+    onClick={submitBooking}
+    className="w-full sm:w-auto"
+  >
+    Create Booking
+  </Button>
+</div>
+
         </div>
 
         {/* RIGHT – BILLING SUMMARY */}
