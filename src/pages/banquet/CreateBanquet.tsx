@@ -105,10 +105,10 @@ export default function CreateBanquet() {
     planId: "",
     gstEnabled: false,
     discount: {
-    type: "FLAT",
-    value: 0,
-    reason: "",
-  },
+      type: "FLAT",
+      value: 0,
+      reason: "",
+    },
   });
 
   /* ---------- DATA ---------- */
@@ -203,21 +203,21 @@ export default function CreateBanquet() {
           />
 
           <div className="flex flex-col sm:flex-row justify-end gap-4">
-  <Button
-    variant="outline"
-    onClick={() => navigate("/banquet")}
-    className="w-full sm:w-auto"
-  >
-    Cancel
-  </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/banquet")}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
 
-  <Button
-    onClick={submitBooking}
-    className="w-full sm:w-auto"
-  >
-    Create Booking
-  </Button>
-</div>
+            <Button
+              onClick={submitBooking}
+              className="w-full sm:w-auto"
+            >
+              Create Booking
+            </Button>
+          </div>
 
         </div>
 
