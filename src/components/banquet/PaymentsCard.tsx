@@ -31,7 +31,7 @@ export default function PaymentsCard({ payments, setPayments }: any) {
 
   return (
     <Card>
-      <CardHeader className="flex justify-between items-center">
+      <CardHeader className="flex justify-between">
         <CardTitle>Advance Payments</CardTitle>
         <Button size="sm" onClick={addPayment}>
           <Plus className="mr-1 h-4 w-4" />
