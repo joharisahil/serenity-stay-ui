@@ -156,7 +156,7 @@ const App = () => (
              <ProtectedRoute><Plans /></ProtectedRoute> 
             } />
 
-            <Route path="/banquet/:id/proforma" element={
+            <Route path="/banquet/:bookingId/proforma" element={
               <ProtectedRoute><ProformaInvoice /></ProtectedRoute>
             } />
             <Route path="/banquet/:id/invoice" element={ 

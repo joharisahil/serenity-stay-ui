@@ -255,22 +255,22 @@ export default function BanquetDetails() {
   };
 
   const cancelBooking = async () => {
-  if (!bookingId) return;
+    if (!bookingId) return;
 
-  const ok = window.confirm(
-    "Are you sure you want to cancel this booking? This action cannot be undone."
-  );
+    const ok = window.confirm(
+      "Are you sure you want to cancel this booking? This action cannot be undone."
+    );
 
-  if (!ok) return;
+    if (!ok) return;
 
-  try {
-    await cancelBanquetBookingApi(bookingId);
-    toast.success("Booking cancelled successfully");
-    navigate("/banquet");
-  } catch (err: any) {
-    toast.error(err?.message || "Failed to cancel booking");
-  }
-};
+    try {
+      await cancelBanquetBookingApi(bookingId);
+      toast.success("Booking cancelled successfully");
+      navigate("/banquet");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to cancel booking");
+    }
+  };
 
 
   /* ================= UI ================= */
@@ -578,41 +578,121 @@ export default function BanquetDetails() {
           </Card>
 
           {/* ACTIONS */}
-          <div className="flex justify-end gap-4">
-            <Button onClick={() => navigate(`/banquet/${bookingId}/proforma`)}>
+          {/* <Button onClick={() => navigate(`/banquet/${bookingId}/invoice`)}>
+              Final Invoice
+            </Button> */}
+          {/* ACTIONS */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end sm:gap-4">
+            <Button
+              variant="destructive"
+              onClick={cancelBooking}
+              className="w-full sm:w-auto"
+            >
+              Cancel Booking
+            </Button>
+
+            <Button
+              onClick={() => navigate(`/banquet/${bookingId}/proforma`)}
+              className="w-full sm:w-auto"
+            >
               Proforma Invoice
             </Button>
-            <Button onClick={() => navigate(`/banquet/${bookingId}/invoice`)}>
-              Final Invoice
-            </Button>
+
             <Button
-            variant="destructive"
-            onClick={cancelBooking}
+              onClick={saveBooking}
+              className="w-full sm:w-auto"
             >
-            Cancel Booking
-            </Button>
-            <Button onClick={saveBooking}>
               <Save className="mr-2 h-4 w-4" />
               Save Changes
             </Button>
           </div>
+
         </div>
 
         {/* RIGHT SUMMARY */}
         <div className="lg:col-span-4">
-          <Card className="sticky top-24">
-            <CardHeader><CardTitle>Billing Summary</CardTitle></CardHeader>
-            <CardContent className="space-y-1 text-sm">
-              <p>Food: ₹{foodAmount}</p>
-              <p>Hall: ₹{hallAmount}</p>
-              <p>Services: ₹{servicesAmount}</p>
-              <p>Discount: -₹{discountAmount}</p>
-              <p>GST: ₹{gstAmount}</p>
-              <p className="font-semibold">Total: ₹{totalAmount}</p>
-              <p>Paid: ₹{totalPaid}</p>
-              <p className="font-bold text-red-600">Balance: ₹{balance}</p>
+          <Card className="sticky top-24 border shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold">
+                Billing Summary
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent className="space-y-4 text-sm">
+
+              {/* CHARGES */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase">
+                  Charges
+                </p>
+
+                <div className="flex justify-between">
+                  <span>Food Charges</span>
+                  <span>₹{foodAmount}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span>Hall Charges</span>
+                  <span>₹{hallAmount}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span>Additional Services</span>
+                  <span>₹{servicesAmount}</span>
+                </div>
+              </div>
+
+              <hr />
+
+              {/* DEDUCTIONS */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase">
+                  Deductions
+                </p>
+
+                <div className="flex justify-between text-red-600">
+                  <span>Discount</span>
+                  <span>- ₹{discountAmount}</span>
+                </div>
+              </div>
+
+              <hr />
+
+              {/* TAX */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase">
+                  Tax
+                </p>
+
+                <div className="flex justify-between">
+                  <span>GST (18%)</span>
+                  <span>₹{gstAmount}</span>
+                </div>
+              </div>
+
+              <hr />
+
+              {/* TOTAL */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-base font-semibold">
+                  <span>Total Amount</span>
+                  <span>₹{totalAmount}</span>
+                </div>
+
+                <div className="flex justify-between text-green-600">
+                  <span>Amount Paid</span>
+                  <span>₹{totalPaid}</span>
+                </div>
+
+                <div className="flex justify-between text-lg font-bold text-red-600 border-t pt-2">
+                  <span>Balance Due</span>
+                  <span>₹{balance}</span>
+                </div>
+              </div>
+
             </CardContent>
           </Card>
+
         </div>
       </div>
     </Layout>
