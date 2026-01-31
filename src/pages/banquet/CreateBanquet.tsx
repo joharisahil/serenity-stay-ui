@@ -1,209 +1,237 @@
 import { Layout } from "@/components/layout/Layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  getAvailableHallsApi,
+  createBanquetBookingApi,
+} from "@/api/banquetBookingApi";
+import { getPlansApi } from "@/api/banquetPlanApi";
+
+import BookingHeader from "@/components/banquet/BookingHeader";
+import CustomerEventCard from "@/components/banquet/CustomerEventCard";
+import DateTimeCard from "@/components/banquet/DateTimeCard";
+import HallSelectionCard from "@/components/banquet/HallSelectionCard";
+import PricingModeCard from "@/components/banquet/PricingModeCard";
+import PlanSelectionCard from "@/components/banquet/PlanSelectionCard";
+import ServicesCard from "@/components/banquet/ServicesCard";
+import PaymentsCard from "@/components/banquet/PaymentsCard";
+import BillingSummary from "@/components/banquet/BillingSummary";
+
+/* ================= TYPES ================= */
+
+export type PricingMode = "PLAN" | "CUSTOM_FOOD" | "HALL_ONLY";
+
+export type Hall = {
+  _id: string;
+  name: string;
+  capacity: number;
+  pricePerDay: number;
+};
+
+export type Plan = {
+  _id: string;
+  name: string;
+  ratePerPerson: number;
+};
+
+export type Service = {
+  name: string;
+  amount: number;
+  chargeable: boolean;
+};
+
+export type Payment = {
+  type: "ADVANCE";
+  amount: number;
+  mode: string;
+  date: string;
+};
+
+export type Discount = {
+  type: "PERCENT" | "FLAT";
+  value: number;
+  reason?: string;
+};
+
+type CreateBanquetForm = {
+  customerName: string;
+  customerPhone: string;
+  eventType: string;
+  notes: string;
+
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+
+  hallId: string;
+  isHallComplimentary: boolean;
+
+  guestsCount: number;
+  pricingMode: PricingMode;
+  customFoodAmount: number;
+
+  planId: string;
+
+  // ✅ REQUIRED
+  discount?: Discount;
+  gstEnabled: boolean;
+};
+
+/* ================= PAGE ================= */
 
 export default function CreateBanquet() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+
+  /* ---------- FORM STATE ---------- */
+  const [form, setForm] = useState<CreateBanquetForm>({
     customerName: "",
-    mobile: "",
+    customerPhone: "",
     eventType: "",
-    hall: "",
-    date: "",
-    time: "",
-    guests: "",
-    packageType: "",
-    advance: "",
     notes: "",
+
+    eventDate: "",
+    startTime: "",
+    endTime: "",
+
+    hallId: "",
+    isHallComplimentary: false,
+
+    guestsCount: 0,
+    pricingMode: "PLAN",
+    customFoodAmount: 0,
+
+    planId: "",
+    gstEnabled: false,
+    discount: {
+      type: "FLAT",
+      value: 0,
+      reason: "",
+    },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Banquet booking created successfully!");
-    navigate("/banquet");
+  /* ---------- DATA ---------- */
+  const [availableHalls, setAvailableHalls] = useState<Hall[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+
+  /* ================= LOAD AVAILABLE HALLS ================= */
+  useEffect(() => {
+    if (!form.eventDate || !form.startTime || !form.endTime) return;
+
+    getAvailableHallsApi({
+      date: form.eventDate,
+      startTime: form.startTime,
+      endTime: form.endTime,
+    })
+      .then(res => setAvailableHalls(res.halls))
+      .catch(() => toast.error("Failed to load available halls"));
+  }, [form.eventDate, form.startTime, form.endTime]);
+
+  /* ================= LOAD PLANS ================= */
+  useEffect(() => {
+    if (form.pricingMode !== "PLAN") {
+      setSelectedPlan(null);
+      setForm(f => ({ ...f, planId: "" }));
+      return;
+    }
+
+    getPlansApi()
+      .then(res => setPlans(res.plans.filter((p: any) => p.isActive)))
+      .catch(() => toast.error("Failed to load plans"));
+  }, [form.pricingMode]);
+
+  /* ================= SUBMIT ================= */
+  const submitBooking = async () => {
+    try {
+      await createBanquetBookingApi({
+        ...form,
+        services,
+        payments,
+        discount: form.discount?.value ? form.discount : undefined,
+      });
+
+      toast.success("Banquet booking created");
+      navigate("/banquet");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to create booking");
+    }
   };
+
+  /* ================= UI ================= */
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/banquet")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Create Banquet Booking</h1>
-            <p className="text-muted-foreground">Fill in the event details</p>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Customer Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customerName">Customer Name *</Label>
-                  <Input
-                    id="customerName"
-                    required
-                    value={formData.customerName}
-                    onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mobile">Mobile Number *</Label>
-                  <Input
-                    id="mobile"
-                    type="tel"
-                    required
-                    value={formData.mobile}
-                    onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+        {/* LEFT – FORM */}
+        <div className="lg:col-span-8 space-y-6">
+          <BookingHeader />
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Event Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="eventType">Event Type *</Label>
-                  <Select value={formData.eventType} onValueChange={(value) => setFormData({ ...formData, eventType: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select event type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="wedding">Wedding</SelectItem>
-                      <SelectItem value="conference">Conference</SelectItem>
-                      <SelectItem value="birthday">Birthday Party</SelectItem>
-                      <SelectItem value="corporate">Corporate Event</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="guests">Number of Guests *</Label>
-                  <Input
-                    id="guests"
-                    type="number"
-                    min="1"
-                    required
-                    value={formData.guests}
-                    onChange={(e) => setFormData({ ...formData, guests: e.target.value })}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+          <CustomerEventCard form={form} setForm={setForm} />
+          <DateTimeCard form={form} setForm={setForm} />
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Hall Selection</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="hall">Select Hall *</Label>
-                  <Select value={formData.hall} onValueChange={(value) => setFormData({ ...formData, hall: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select hall" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="grand">Grand Hall - 500 capacity</SelectItem>
-                      <SelectItem value="pearl">Pearl Hall - 200 capacity</SelectItem>
-                      <SelectItem value="diamond">Diamond Hall - 100 capacity</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="packageType">Package Type *</Label>
-                  <Select value={formData.packageType} onValueChange={(value) => setFormData({ ...formData, packageType: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select package" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="basic">Basic - ₹500/person</SelectItem>
-                      <SelectItem value="premium">Premium - ₹800/person</SelectItem>
-                      <SelectItem value="luxury">Luxury - ₹1,200/person</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
+          <HallSelectionCard
+            form={form}
+            setForm={setForm}
+            halls={availableHalls}
+          />
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Date & Time</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="date">Event Date *</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    required
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="time">Event Time *</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    required
-                    value={formData.time}
-                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="advance">Advance Payment</Label>
-                  <Input
-                    id="advance"
-                    type="number"
-                    min="0"
-                    value={formData.advance}
-                    onChange={(e) => setFormData({ ...formData, advance: e.target.value })}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+          <PricingModeCard form={form} setForm={setForm} />
 
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Additional Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  placeholder="Special requirements, menu preferences, decoration notes..."
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={4}
-                />
-              </CardContent>
-            </Card>
-          </div>
+          {form.pricingMode === "PLAN" && (
+            <PlanSelectionCard
+              plans={plans}
+              form={form}
+              setForm={setForm}
+              selectedPlan={selectedPlan}
+              setSelectedPlan={setSelectedPlan}
+            />
+          )}
 
-          <div className="mt-6 flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => navigate("/banquet")}>
+          <ServicesCard
+            services={services}
+            setServices={setServices}
+          />
+
+          <PaymentsCard
+            payments={payments}
+            setPayments={setPayments}
+          />
+
+          <div className="flex flex-col sm:flex-row justify-end gap-4">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/banquet")}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button type="submit">
-              <Save className="mr-2 h-4 w-4" />
+
+            <Button
+              onClick={submitBooking}
+              className="w-full sm:w-auto"
+            >
               Create Booking
             </Button>
           </div>
-        </form>
+
+        </div>
+
+        {/* RIGHT – BILLING SUMMARY */}
+        <div className="lg:col-span-4">
+          <BillingSummary
+            form={form}
+            setForm={setForm}
+            selectedPlan={selectedPlan}
+            halls={availableHalls}
+            services={services}
+            payments={payments}
+          />
+        </div>
       </div>
     </Layout>
   );

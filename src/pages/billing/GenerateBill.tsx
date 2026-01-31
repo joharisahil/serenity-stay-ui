@@ -37,6 +37,26 @@ type Order = {
 };
 
 /* ---------------- COMPONENT ---------------- */
+// const Spinner = () => (
+//   <div className="flex justify-center py-10">
+//     <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+//   </div>
+// );
+
+const OrderSkeleton = () => (
+  <Card className="p-4 space-y-3 animate-pulse">
+    {[1, 2, 3].map(i => (
+      <div key={i} className="flex justify-between items-center">
+        <div className="space-y-2">
+          <div className="h-4 w-32 bg-gray-200 rounded" />
+          <div className="h-3 w-20 bg-gray-200 rounded" />
+        </div>
+        <div className="h-4 w-12 bg-gray-200 rounded" />
+      </div>
+    ))}
+  </Card>
+);
+
 
 export default function GenerateBill() {
   const { tableId } = useParams<{ tableId: string }>();
@@ -228,12 +248,12 @@ ${hotel?.gstNumber ? `<div style="text-align:center">GSTIN: ${hotel.gstNumber}</
 <div><b>Guest:</b> ${bill.customerName || "N/A"}</div>
 <div><b>Phone:</b> ${bill.customerPhone || "N/A"}</div>
 ${bill.customerCompanyName
-  ? `<div><b>Company:</b> ${bill.customerCompanyName}</div>`
-  : ""}
+        ? `<div><b>Company:</b> ${bill.customerCompanyName}</div>`
+        : ""}
 
 ${bill.customerCompanyGSTIN
-  ? `<div><b>Company GSTIN:</b> ${bill.customerCompanyGSTIN}</div>`
-  : ""}
+        ? `<div><b>Company GSTIN:</b> ${bill.customerCompanyGSTIN}</div>`
+        : ""}
 <div><b>Table:</b> ${tableName}</div>
 
 <hr/>
@@ -389,24 +409,60 @@ ${buildHtml("CAPTAIN COPY")}
           <Card className="lg:col-span-2">
             <CardHeader><CardTitle>Orders</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              {orders.map(o => (
-                <Card key={o._id} className="p-4">
-                  {o.items.map((i, idx) => (
-                    <div key={idx} className="flex justify-between items-center">
-                      <div>
-                        {i.name} ({i.size})
-                        <div className="flex gap-2 mt-1">
-                          <Button size="sm" onClick={() => updateItemQty(o._id, idx, -1)}>-</Button>
-                          <span>{i.qty}</span>
-                          <Button size="sm" onClick={() => updateItemQty(o._id, idx, 1)}>+</Button>
+
+              {/* LOADING STATE */}
+              {loadingOrders && (
+                <>
+                  {/* <Spinner /> */}
+                  <OrderSkeleton />
+                  {/* <OrderSkeleton /> */}
+                </>
+              )}
+
+              {/* EMPTY STATE */}
+              {!loadingOrders && orders.length === 0 && (
+                <p className="text-center text-muted-foreground py-6">
+                  No orders added yet
+                </p>
+              )}
+
+              {/* ORDERS */}
+              {!loadingOrders &&
+                orders.map(o => (
+                  <Card key={o._id} className="p-4 space-y-3">
+                    {o.items.map((i, idx) => (
+                      <div key={idx} className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">
+                            {i.name} ({i.size})
+                          </p>
+                          <div className="flex gap-2 mt-1 items-center">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateItemQty(o._id, idx, -1)}
+                            >
+                              −
+                            </Button>
+                            <span className="min-w-[20px] text-center">{i.qty}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateItemQty(o._id, idx, 1)}
+                            >
+                              +
+                            </Button>
+                          </div>
                         </div>
+                        <span className="font-semibold">
+                          ₹{i.totalPrice.toFixed(2)}
+                        </span>
                       </div>
-                      <span>₹{i.totalPrice.toFixed(2)}</span>
-                    </div>
-                  ))}
-                </Card>
-              ))}
+                    ))}
+                  </Card>
+                ))}
             </CardContent>
+
           </Card>
 
           {/* SUMMARY */}
@@ -500,22 +556,22 @@ ${buildHtml("CAPTAIN COPY")}
                 <Label>GST</Label>
                 <div className="flex items-center justify-between text-sm">
                   <label className="flex items-center gap-2">
-                    <input
+                    {/* <input
                       type="checkbox"
                       checked={applyCGST}
                       onChange={(e) => setApplyCGST(e.target.checked)}
-                    />
+                    /> */}
                     CGST (2.5%)
                   </label>
                   <span>₹{cgst.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <label className="flex items-center gap-2">
-                    <input
+                    {/* <input
                       type="checkbox"
                       checked={applySGST}
                       onChange={(e) => setApplySGST(e.target.checked)}
-                    />
+                    /> */}
                     SGST (2.5%)
                   </label>
                   <span>₹{sgst.toFixed(2)}</span>
