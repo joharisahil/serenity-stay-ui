@@ -1,17 +1,13 @@
 import { Layout } from "@/components/layout/Layout";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 import {
   createHallApi,
@@ -52,7 +48,7 @@ export default function Halls() {
           capacity: h.capacity || 0,
           pricePerDay: h.pricePerDay || 0,
           isActive: h.isActive !== false,
-        }))
+        })),
       );
     } catch {
       toast.error("Failed to load halls");
@@ -105,6 +101,7 @@ export default function Halls() {
       setLoading(false);
     }
   };
+  const navigate = useNavigate();
 
   const removeHall = async (id: string) => {
     if (!confirm("Are you sure you want to delete this hall?")) return;
@@ -124,14 +121,26 @@ export default function Halls() {
     <Layout>
       <div className="space-y-6">
         {/* HEADER */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Banquet Halls</h1>
-            <p className="text-muted-foreground">
-              Define halls, capacity & base charges
-            </p>
+        <div className="flex justify-between items-start">
+          {/* LEFT: Back + Title */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/banquet")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+
+            <div>
+              <h1 className="text-3xl font-bold">Banquet Halls</h1>
+              <p className="text-muted-foreground">
+                Define halls, capacity & base charges
+              </p>
+            </div>
           </div>
 
+          {/* RIGHT: Action */}
           <Button onClick={addHall}>
             <Plus className="mr-2 h-4 w-4" />
             Add Hall

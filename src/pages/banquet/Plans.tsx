@@ -1,14 +1,10 @@
 import { Layout } from "@/components/layout/Layout";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useNavigate } from "react-router-dom";
 import {
   Select,
   SelectTrigger,
@@ -16,7 +12,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -93,7 +89,7 @@ export default function Plans() {
             quantity: i.allowedQty,
             menuItemIds: i.allowedMenuItems || [],
           })),
-        }))
+        })),
       );
     } catch {
       toast.error("Failed to load plans");
@@ -104,11 +100,11 @@ export default function Plans() {
     const items = await searchMenuItemsApi("");
     setMenuItems(
       items.filter(
-        (i: MenuItem) =>
-          i.category_id === categoryId && i.isVeg === isVeg
-      )
+        (i: MenuItem) => i.category_id === categoryId && i.isVeg === isVeg,
+      ),
     );
   };
+  const navigate = useNavigate();
 
   /* ================= PLAN ACTIONS ================= */
 
@@ -172,16 +168,30 @@ export default function Plans() {
     <Layout>
       <div className="space-y-6">
         {/* HEADER */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Banquet Plans</h1>
-            <p className="text-muted-foreground">
-              Define food packages & allowed menu items
-            </p>
+
+        <div className="flex justify-between items-start">
+          {/* LEFT: Back + Title */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/banquet")}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+
+            <div>
+              <h1 className="text-3xl font-bold">Banquet Plans</h1>
+              <p className="text-muted-foreground">
+                Define food packages & allowed menu items
+              </p>
+            </div>
           </div>
 
+          {/* RIGHT: Action */}
           <Button onClick={addPlan}>
-            <Plus className="mr-2 h-4 w-4" /> Add Plan
+            <Plus className="mr-2 h-4 w-4" />
+            Add Plan
           </Button>
         </div>
 
@@ -343,7 +353,7 @@ export default function Plans() {
                           onChange={(e) => {
                             const c = [...plans];
                             c[planIndex].items[itemIndex].quantity = Number(
-                              e.target.value
+                              e.target.value,
                             );
                             setPlans(c);
                           }}
@@ -395,8 +405,7 @@ export default function Plans() {
                           ))}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Customer can choose up to{" "}
-                          <b>{item.quantity}</b> items
+                          Customer can choose up to <b>{item.quantity}</b> items
                         </p>
                       </div>
                     )}

@@ -1,10 +1,5 @@
 import { Layout } from "@/components/layout/Layout";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, ArrowLeft, Save } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Save , CheckCircle, AlertCircle} from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -103,7 +98,7 @@ export default function BanquetDetails() {
     if (!bookingId) return;
 
     getBanquetBookingByIdApi(bookingId)
-      .then(res => {
+      .then((res) => {
         const b = res.booking ?? res;
 
         setForm({
@@ -136,7 +131,7 @@ export default function BanquetDetails() {
           (b.payments || []).map((p: any) => ({
             ...p,
             date: new Date(p.date).toISOString().slice(0, 10),
-          }))
+          })),
         );
       })
       .catch(() => toast.error("Failed to load booking"))
@@ -148,7 +143,7 @@ export default function BanquetDetails() {
   useEffect(() => {
     if (!form || form.pricingMode !== "PLAN") return;
 
-    getPlansApi().then(res => {
+    getPlansApi().then((res) => {
       const active = res.plans.filter((p: any) => p.isActive);
       setPlans(active);
       setSelectedPlan(active.find((p: any) => p._id === form.planId) || null);
@@ -164,13 +159,10 @@ export default function BanquetDetails() {
       date: form.eventDate,
       startTime: form.startTime,
       endTime: form.endTime,
-    }).then(res => {
+    }).then((res) => {
       let halls = res.halls || [];
 
-      if (
-        currentHall &&
-        !halls.some((h: Hall) => h._id === currentHall._id)
-      ) {
+      if (currentHall && !halls.some((h: Hall) => h._id === currentHall._id)) {
         halls.unshift(currentHall);
       }
 
@@ -190,7 +182,7 @@ export default function BanquetDetails() {
     );
   }
 
-  const hall = availableHalls.find(h => h._id === form.hallId);
+  const hall = availableHalls.find((h) => h._id === form.hallId);
 
   const foodAmount =
     form.pricingMode === "PLAN" && selectedPlan
@@ -199,11 +191,10 @@ export default function BanquetDetails() {
         ? form.customFoodAmount
         : 0;
 
-  const hallAmount =
-    hall && !hall.isComplimentary ? hall.pricePerDay : 0;
+  const hallAmount = hall && !hall.isComplimentary ? hall.pricePerDay : 0;
 
   const servicesAmount = services
-    .filter(s => s.chargeable)
+    .filter((s) => s.chargeable)
     .reduce((sum, s) => sum + s.amount, 0);
 
   const subTotal = foodAmount + hallAmount + servicesAmount;
@@ -221,12 +212,12 @@ export default function BanquetDetails() {
   const balance = totalAmount - totalPaid;
 
   const paymentStatus =
-    totalPaid === 0 ? "DUE" :
-      totalPaid < totalAmount ? "PARTIAL" : "PAID";
+    totalPaid === 0 ? "DUE" : totalPaid < totalAmount ? "PARTIAL" : "PAID";
 
   /* ================= SAVE ================= */
 
-  const addService = () => setServices([...services, { name: "", amount: 0, chargeable: true }]);
+  const addService = () =>
+    setServices([...services, { name: "", amount: 0, chargeable: true }]);
   const addPayment = (type: "ADVANCE" | "FINAL") =>
     setPayments([
       ...payments,
@@ -258,7 +249,7 @@ export default function BanquetDetails() {
     if (!bookingId) return;
 
     const ok = window.confirm(
-      "Are you sure you want to cancel this booking? This action cannot be undone."
+      "Are you sure you want to cancel this booking? This action cannot be undone.",
     );
 
     if (!ok) return;
@@ -271,21 +262,25 @@ export default function BanquetDetails() {
       toast.error(err?.message || "Failed to cancel booking");
     }
   };
-
+  const isValidIndianMobile = (mobile: string) => {
+    return /^[6-9]\d{9}$/.test(mobile);
+  };
 
   /* ================= UI ================= */
 
   return (
     <Layout>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
         {/* LEFT FORM */}
         <div className="lg:col-span-8 space-y-6">
-
           {/* HEADER */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/banquet")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/banquet")}
+              >
                 <ArrowLeft />
               </Button>
               <h1 className="text-3xl font-bold">Edit Banquet Booking</h1>
@@ -306,18 +301,72 @@ export default function BanquetDetails() {
 
           {/* CUSTOMER */}
           <Card>
-            <CardHeader><CardTitle>Customer & Event</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Customer & Event</CardTitle>
+            </CardHeader>
+
             <CardContent className="grid md:grid-cols-4 gap-4">
-              <Input value={form.customerName}
-                onChange={e => setForm({ ...form, customerName: e.target.value })} />
-              <Input value={form.mobile}
-                onChange={e => setForm({ ...form, mobile: e.target.value })} />
-              <Input value={form.eventType}
-                onChange={e => setForm({ ...form, eventType: e.target.value })} />
-              <Input type="number" value={form.guests}
-                onChange={e => setForm({ ...form, guests: Number(e.target.value) })} />
+              {/* Customer Name */}
+              <Input
+                placeholder="Customer Name"
+                value={form.customerName}
+                onChange={(e) =>
+                  setForm({ ...form, customerName: e.target.value })
+                }
+              />
+
+              {/* Mobile Number with Validation */}
+          <div className="relative">
+  <Input
+    placeholder="10-digit mobile"
+    value={form.mobile}
+    maxLength={10}
+    inputMode="numeric"
+    className={`pr-10 ${
+      form.mobile.length > 0 &&
+      (isValidIndianMobile(form.mobile)
+        ? "border-green-500"
+        : "border-red-500")
+    }`}
+    onChange={(e) => {
+      const value = e.target.value.replace(/\D/g, "");
+      setForm({ ...form, mobile: value });
+    }}
+  />
+
+  {form.mobile.length > 0 && (
+    <span className="absolute right-3 top-1/2 -translate-y-1/2">
+      {isValidIndianMobile(form.mobile) ? (
+        <CheckCircle className="h-4 w-4 text-green-600" />
+      ) : (
+        <AlertCircle className="h-4 w-4 text-red-600" />
+      )}
+    </span>
+  )}
+</div>
+
+
+              {/* Event Type */}
+              <Input
+                placeholder="Event Type"
+                value={form.eventType}
+                onChange={(e) =>
+                  setForm({ ...form, eventType: e.target.value })
+                }
+              />
+
+              {/* Guests */}
+              <Input
+                type="number"
+                placeholder="Guests"
+                value={form.guests}
+                onChange={(e) =>
+                  setForm({ ...form, guests: Number(e.target.value) })
+                }
+              />
             </CardContent>
           </Card>
+
           {/* NOTES */}
           <Card>
             <CardHeader>
@@ -327,41 +376,55 @@ export default function BanquetDetails() {
               <Textarea
                 placeholder="Add internal notes (e.g. welcome drinks, special instructions)"
                 value={form.notes}
-                onChange={e =>
-                  setForm({ ...form, notes: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 rows={3}
               />
             </CardContent>
           </Card>
 
-
           {/* DATE & TIME */}
           <Card>
-            <CardHeader><CardTitle>Date & Time</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Date & Time</CardTitle>
+            </CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-4">
-              <Input type="date" value={form.eventDate}
-                onChange={e => setForm({ ...form, eventDate: e.target.value })} />
-              <Input type="time" value={form.startTime}
-                onChange={e => setForm({ ...form, startTime: e.target.value })} />
-              <Input type="time" value={form.endTime}
-                onChange={e => setForm({ ...form, endTime: e.target.value })} />
+              <Input
+                type="date"
+                value={form.eventDate}
+                onChange={(e) =>
+                  setForm({ ...form, eventDate: e.target.value })
+                }
+              />
+              <Input
+                type="time"
+                value={form.startTime}
+                onChange={(e) =>
+                  setForm({ ...form, startTime: e.target.value })
+                }
+              />
+              <Input
+                type="time"
+                value={form.endTime}
+                onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+              />
             </CardContent>
           </Card>
 
           {/* HALL */}
           <Card>
-            <CardHeader><CardTitle>Hall</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Hall</CardTitle>
+            </CardHeader>
             <CardContent>
               <Select
                 value={form.hallId}
-                onValueChange={v => setForm({ ...form, hallId: v })}
+                onValueChange={(v) => setForm({ ...form, hallId: v })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select Hall" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableHalls.map(h => (
+                  {availableHalls.map((h) => (
                     <SelectItem key={h._id} value={h._id}>
                       {h.name} – ₹{h.pricePerDay}
                     </SelectItem>
@@ -373,15 +436,19 @@ export default function BanquetDetails() {
 
           {/* PRICING */}
           <Card>
-            <CardHeader><CardTitle>Pricing</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Pricing</CardTitle>
+            </CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-4">
               <Select
                 value={form.pricingMode}
-                onValueChange={v =>
+                onValueChange={(v) =>
                   setForm({ ...form, pricingMode: v as any })
                 }
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PLAN">Plan</SelectItem>
                   <SelectItem value="CUSTOM_FOOD">Custom Food</SelectItem>
@@ -392,11 +459,13 @@ export default function BanquetDetails() {
               {form.pricingMode === "PLAN" && (
                 <Select
                   value={form.planId}
-                  onValueChange={v => setForm({ ...form, planId: v })}
+                  onValueChange={(v) => setForm({ ...form, planId: v })}
                 >
-                  <SelectTrigger><SelectValue placeholder="Select Plan" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Plan" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {plans.map(p => (
+                    {plans.map((p) => (
                       <SelectItem key={p._id} value={p._id}>
                         {p.name} – ₹{p.ratePerPerson}/person
                       </SelectItem>
@@ -410,8 +479,11 @@ export default function BanquetDetails() {
                   type="number"
                   placeholder="Custom Food Amount"
                   value={form.customFoodAmount}
-                  onChange={e =>
-                    setForm({ ...form, customFoodAmount: Number(e.target.value) })
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      customFoodAmount: Number(e.target.value),
+                    })
                   }
                 />
               )}
@@ -429,34 +501,46 @@ export default function BanquetDetails() {
             <CardContent className="space-y-3">
               {services.map((s, i) => (
                 <div key={i} className="grid grid-cols-4 gap-2">
-                  <Input value={s.name}
-                    onChange={e => {
+                  <Input
+                    value={s.name}
+                    onChange={(e) => {
                       const c = [...services];
                       c[i].name = e.target.value;
                       setServices(c);
-                    }} />
-                  <Input type="number" value={s.amount}
-                    onChange={e => {
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    value={s.amount}
+                    onChange={(e) => {
                       const c = [...services];
                       c[i].amount = Number(e.target.value);
                       setServices(c);
-                    }} />
+                    }}
+                  />
                   <Select
                     value={s.chargeable ? "yes" : "no"}
-                    onValueChange={v => {
+                    onValueChange={(v) => {
                       const c = [...services];
                       c[i].chargeable = v === "yes";
                       setServices(c);
                     }}
                   >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="yes">Chargeable</SelectItem>
                       <SelectItem value="no">Free</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant="destructive" size="icon"
-                    onClick={() => setServices(services.filter((_, idx) => idx !== i))}>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={() =>
+                      setServices(services.filter((_, idx) => idx !== i))
+                    }
+                  >
                     <Trash2 />
                   </Button>
                 </div>
@@ -487,7 +571,7 @@ export default function BanquetDetails() {
                   <Input
                     type="number"
                     value={p.amount}
-                    onChange={e => {
+                    onChange={(e) => {
                       const c = [...payments];
                       c[i].amount = Number(e.target.value);
                       setPayments(c);
@@ -497,7 +581,7 @@ export default function BanquetDetails() {
                   {/* ✅ PAYMENT MODE DROPDOWN */}
                   <Select
                     value={p.mode || "CASH"}
-                    onValueChange={v => {
+                    onValueChange={(v) => {
                       const c = [...payments];
                       c[i].mode = v;
                       setPayments(c);
@@ -518,7 +602,7 @@ export default function BanquetDetails() {
                   <Input
                     type="date"
                     value={p.date}
-                    onChange={e => {
+                    onChange={(e) => {
                       const c = [...payments];
                       c[i].date = e.target.value;
                       setPayments(c);
@@ -541,15 +625,22 @@ export default function BanquetDetails() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Discount & GST</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Discount & GST</CardTitle>
+            </CardHeader>
             <CardContent className="grid grid-cols-3 gap-3">
               <Select
                 value={form.discount.type}
-                onValueChange={v =>
-                  setForm({ ...form, discount: { ...form.discount, type: v as any } })
+                onValueChange={(v) =>
+                  setForm({
+                    ...form,
+                    discount: { ...form.discount, type: v as any },
+                  })
                 }
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PERCENT">Percent</SelectItem>
                   <SelectItem value="FLAT">Flat</SelectItem>
@@ -559,10 +650,13 @@ export default function BanquetDetails() {
               <Input
                 type="number"
                 value={form.discount.value}
-                onChange={e =>
+                onChange={(e) =>
                   setForm({
                     ...form,
-                    discount: { ...form.discount, value: Number(e.target.value) },
+                    discount: {
+                      ...form.discount,
+                      value: Number(e.target.value),
+                    },
                   })
                 }
               />
@@ -571,7 +665,7 @@ export default function BanquetDetails() {
                 <span>GST</span>
                 <Switch
                   checked={form.gstEnabled}
-                  onCheckedChange={v => setForm({ ...form, gstEnabled: v })}
+                  onCheckedChange={(v) => setForm({ ...form, gstEnabled: v })}
                 />
               </div>
             </CardContent>
@@ -598,15 +692,11 @@ export default function BanquetDetails() {
               Proforma Invoice
             </Button>
 
-            <Button
-              onClick={saveBooking}
-              className="w-full sm:w-auto"
-            >
+            <Button onClick={saveBooking} className="w-full sm:w-auto">
               <Save className="mr-2 h-4 w-4" />
               Save Changes
             </Button>
           </div>
-
         </div>
 
         {/* RIGHT SUMMARY */}
@@ -619,7 +709,6 @@ export default function BanquetDetails() {
             </CardHeader>
 
             <CardContent className="space-y-4 text-sm">
-
               {/* CHARGES */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">
@@ -689,10 +778,8 @@ export default function BanquetDetails() {
                   <span>₹{balance}</span>
                 </div>
               </div>
-
             </CardContent>
           </Card>
-
         </div>
       </div>
     </Layout>
