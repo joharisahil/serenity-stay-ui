@@ -1,28 +1,28 @@
 import { invoiceStyles } from "./invoiceConstants";
-import { fmt, calcExtraServiceAmount,buildGuestAndCompanySection, readablePlan ,calculateHotelNights } from "./invoiceHelpers";
+import {
+  fmt,
 
+  buildGuestAndCompanySection,
 
-
+} from "./invoiceHelpers";
 
 export function buildRoomInvoice(
   booking: any,
   hotel: any,
   billingData: any,
   finalPaymentReceived: boolean,
-  finalPaymentMode: string
+  finalPaymentMode: string,
 ) {
   /* ===============================
      SAFE NIGHT CALCULATION
   =============================== */
   const calculateNights = (checkInISO: string, checkOutISO: string) => {
-  const diff =
-    (new Date(checkOutISO).getTime() -
-      new Date(checkInISO).getTime()) /
-    (1000 * 60 * 60 * 24);
+    const diff =
+      (new Date(checkOutISO).getTime() - new Date(checkInISO).getTime()) /
+      (1000 * 60 * 60 * 24);
 
-  return Math.max(1, Math.ceil(diff));
-};
-
+    return Math.max(1, Math.ceil(diff));
+  };
 
   const nights = calculateNights(booking.checkIn, booking.checkOut);
 
@@ -38,9 +38,7 @@ export function buildRoomInvoice(
     const plan = booking.room_id?.plans?.find((p: any) => p.code === planCode);
 
     displayRoomRate =
-      occupancy === "SINGLE"
-        ? plan?.singlePrice || 0
-        : plan?.doublePrice || 0;
+      occupancy === "SINGLE" ? plan?.singlePrice || 0 : plan?.doublePrice || 0;
   }
 
   const roomDisplayAmount = +(displayRoomRate * nights).toFixed(2);
@@ -91,11 +89,7 @@ export function buildRoomInvoice(
 
 <div class="invoice-container">
 
-  ${
-    finalPaymentReceived
-      ? `<div class="paid-stamp">PAID</div>`
-      : ""
-  }
+  ${finalPaymentReceived ? `<div class="paid-stamp">PAID</div>` : ""}
 
   <div class="header">
     <h1>${hotel.name}</h1>
@@ -223,18 +217,13 @@ export function buildRoomInvoice(
 `;
 }
 
-
-
-
-
-
 export function buildFoodInvoice(
   booking: any,
   hotel: any,
   billingData: any, // kept for compatibility (not used for totals)
   roomOrders: any[],
   finalPaymentReceived: boolean,
-  finalPaymentMode: string
+  finalPaymentMode: string,
 ) {
   /* ===============================
      FOOD ITEMS + SUBTOTAL
@@ -259,7 +248,7 @@ export function buildFoodInvoice(
             </tr>
           `;
         })
-        .join("")
+        .join(""),
     )
     .join("");
 
@@ -353,8 +342,8 @@ export function buildFoodInvoice(
       <div><strong>Name:</strong> ${booking.guestName}</div>
       <div><strong>Phone:</strong> ${booking.guestPhone}</div>
       <div><strong>Room:</strong> ${booking.room_id.number} (${
-    booking.room_id.type
-  })</div>
+        booking.room_id.type
+      })</div>
     </div>
   </div>
 
@@ -454,27 +443,20 @@ export function buildCombinedInvoice(
   billingData: any,
   roomOrders: any[],
   finalPaymentReceived: boolean,
-  finalPaymentMode: string
+  finalPaymentMode: string,
 ) {
   /* =========================
      NIGHTS (HOTEL CALENDAR RULE)
   ========================= */
   const calculateNights = (checkInISO: string, checkOutISO: string) => {
-  const diff =
-    (new Date(checkOutISO).getTime() -
-      new Date(checkInISO).getTime()) /
-    (1000 * 60 * 60 * 24);
+    const diff =
+      (new Date(checkOutISO).getTime() - new Date(checkInISO).getTime()) /
+      (1000 * 60 * 60 * 24);
 
-  return Math.max(1, Math.ceil(diff));
-};
+    return Math.max(1, Math.ceil(diff));
+  };
 
-const nights = calculateNights(
-  booking.checkIn,
-  booking.checkOut
-);
-
-
-  
+  const nights = calculateNights(booking.checkIn, booking.checkOut);
 
   /* =========================
      ROOM DISPLAY (NOT TOTAL)
@@ -485,25 +467,21 @@ const nights = calculateNights(
   //     : billingData.roomPrice;
 
   // const roomDisplayAmount = +(perNightBase * nights).toFixed(2);
-let perNightBase = 0;
+  let perNightBase = 0;
 
-if (booking.pricingType === "FINAL_INCLUSIVE") {
-  // Offer price (GST inclusive → extract base)
-  perNightBase = +(booking.finalRoomPrice / 1.05).toFixed(2);
-} else {
-  // Non-offer pricing → ALWAYS use plan rate
-  const [planCode, occupancy] = booking.planCode.split("_");
+  if (booking.pricingType === "FINAL_INCLUSIVE") {
+    // Offer price (GST inclusive → extract base)
+    perNightBase = +(booking.finalRoomPrice / 1.05).toFixed(2);
+  } else {
+    // Non-offer pricing → ALWAYS use plan rate
+    const [planCode, occupancy] = booking.planCode.split("_");
 
-  const plan = booking.room_id?.plans?.find(
-    (p: any) => p.code === planCode
-  );
+    const plan = booking.room_id?.plans?.find((p: any) => p.code === planCode);
 
-  perNightBase =
-    occupancy === "SINGLE"
-      ? plan?.singlePrice || 0
-      : plan?.doublePrice || 0;
-}
-const roomDisplayAmount = +(perNightBase * nights).toFixed(2);
+    perNightBase =
+      occupancy === "SINGLE" ? plan?.singlePrice || 0 : plan?.doublePrice || 0;
+  }
+  const roomDisplayAmount = +(perNightBase * nights).toFixed(2);
 
   /* =========================
      EXTRA SERVICES (DISPLAY)
@@ -537,7 +515,7 @@ const roomDisplayAmount = +(perNightBase * nights).toFixed(2);
   ========================= */
   let foodRows = "";
 
-  roomOrders.forEach(order => {
+  roomOrders.forEach((order) => {
     order.items.forEach((item: any) => {
       foodRows += `
         <tr>
@@ -576,11 +554,7 @@ const roomDisplayAmount = +(perNightBase * nights).toFixed(2);
 
 <div class="invoice-container">
 
-  ${
-    finalPaymentReceived
-      ? `<div class="paid-stamp">PAID</div>`
-      : ""
-  }
+  ${finalPaymentReceived ? `<div class="paid-stamp">PAID</div>` : ""}
 
   <div class="header">
     <h1>${hotel.name}</h1>
@@ -747,6 +721,539 @@ const roomDisplayAmount = +(perNightBase * nights).toFixed(2);
 `;
 }
 
+export function buildCombinedInvoice_old(invoice: any) {
+  const fmt = (n: any) => Number(n || 0).toFixed(2);
+  const guest = invoice.guest;
+  const company = invoice.company;
+  const stay = invoice.stay;
+  /* =========================
+     EXTRA SERVICES
+  ========================= */
+  let extrasRows = "";
+
+  invoice.extraServices.forEach((s: any) => {
+    extrasRows += `
+      <tr>
+        <td>
+          ${s.name}
+          ${
+            s.gstEnabled
+              ? `<span class="gst-badge">GST 5%</span>`
+              : `<span class="gst-badge gst-exempt">GST Exempt</span>`
+          }
+        </td>
+        <td class="text-center">${s.days} day${s.days > 1 ? "s" : ""}</td>
+        <td class="text-right">₹${fmt(s.price)}</td>
+        <td class="text-right">₹${fmt(s.total)}</td>
+      </tr>
+    `;
+  });
+
+  /* =========================
+     FOOD ROWS
+  ========================= */
+  let foodRows = "";
+
+  invoice.food.orders.forEach((order: any) => {
+    order.items.forEach((item: any) => {
+      foodRows += `
+        <tr>
+          <td>${item.name}</td>
+          <td class="text-center">${item.qty}</td>
+          <td class="text-right">₹${fmt(
+            item.unitPrice ?? item.totalPrice / item.qty,
+          )}</td>
+          <td class="text-right">₹${fmt(item.totalPrice)}</td>
+        </tr>
+      `;
+    });
+  });
+  const formatDateTime = (iso?: string) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const guestAndCompanySection = `
+  <!-- GUEST INFORMATION -->
+  <div class="section">
+    <div class="section-title">Guest Information</div>
+
+    <div class="info-grid">
+      <div><strong>Name:</strong> ${guest.name}</div>
+      <div><strong>Phone:</strong> ${guest.phone}</div>
+      ${guest.city ? `<div><strong>City:</strong> ${guest.city}</div>` : ""}
+      ${
+        guest.nationality
+          ? `<div><strong>Nationality:</strong> ${guest.nationality}</div>`
+          : ""
+      }
+      ${
+        guest.address
+          ? `<div><strong>Address:</strong> ${guest.address}</div>`
+          : ""
+      }
+    </div>
+
+   ${
+     guest.ids?.length
+       ? `
+  <div style="margin-top:8px">
+    <strong>ID Proof:</strong>
+    <div style="margin-top:4px">
+      ${guest.ids
+        .map(
+          (id: any) => `
+        <div style="font-size:13px; margin-bottom:4px;">
+          <strong>${id.type}:</strong> ${id.idNumber}
+          ${id.nameOnId ? `(${id.nameOnId})` : ""}
+        </div>
+      `,
+        )
+        .join("")}
+    </div>
+  </div>
+`
+       : ""
+   }
+
+      
+  </div>
+
+  <!-- STAY DETAILS -->
+  <div class="section">
+    <div class="section-title">Stay Details</div>
+
+    <div class="info-grid">
+      <div><strong>Check-in:</strong> ${formatDateTime(stay.checkIn)}</div>
+      <div><strong>Check-out:</strong> ${formatDateTime(stay.checkOut)}</div>
+      <div><strong>Nights:</strong> ${stay.nights}</div>
+      <div><strong>Room:</strong> ${stay.roomNumber} (${stay.roomType})</div>
+    </div>
+  </div>
+
+  ${
+    company
+      ? `
+  <!-- COMPANY DETAILS -->
+  <div class="section">
+    <div class="section-title">Company / Billing Details</div>
+
+    <div class="company-box">
+      <div class="info-item">
+        <strong>Company Name:</strong> ${company.name}
+      </div>
+      ${
+        company.gstin
+          ? `<div class="info-item"><strong>GSTIN:</strong> ${company.gstin}</div>`
+          : ""
+      }
+      ${
+        company.address
+          ? `<div class="info-item"><strong>Address:</strong> ${company.address}</div>`
+          : ""
+      }
+    </div>
+  </div>
+  `
+      : ""
+  }
+`;
+
+  /* =========================
+     HTML
+  ========================= */
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Tax Invoice</title>
+  ${invoiceStyles}
+</head>
+
+<body>
+
+<div class="invoice-container">
 
 
+  ${
+    invoice.payments.finalPaymentReceived
+      ? `<div class="paid-stamp">PAID</div>`
+      : ""
+  }
 
+  <div class="header">
+    <h1>${invoice.hotel.name}</h1>
+    <p>${invoice.hotel.address}</p>
+    <p>Phone: ${invoice.hotel.phone}</p>
+    <p><strong>GSTIN:</strong> ${invoice.hotel.gstNumber}</p>
+    <p class="title">ROOM TAX INVOICE</p>
+  </div>
+  
+
+  ${guestAndCompanySection}
+
+
+  <!-- ROOM + EXTRAS -->
+  <div class="section">
+    <div class="section-title">Room Charges</div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th class="text-center">Qty</th>
+          <th class="text-right">Rate</th>
+          <th class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr>
+          <td>
+            Room Charges <span class="gst-badge">GST 5%</span>
+          </td>
+          <td class="text-center">
+            ${invoice.stay.nights} night${invoice.stay.nights > 1 ? "s" : ""}
+          </td>
+          <td class="text-right">₹${fmt(invoice.stay.roomRate)}</td>
+          <td class="text-right">₹${fmt(invoice.stay.stayAmount)}</td>
+        </tr>
+
+        ${extrasRows}
+
+        <tr class="bold">
+          <td colspan="3" style="text-align:right;">Room Taxable Value</td>
+          <td class="text-right">₹${fmt(invoice.roomTax.taxable)}</td>
+        </tr>
+
+        <tr>
+          <td colspan="3" style="text-align:right;">CGST (2.5%)</td>
+          <td class="text-right">₹${fmt(invoice.roomTax.cgst)}</td>
+        </tr>
+
+        <tr>
+          <td colspan="3" style="text-align:right;">SGST (2.5%)</td>
+          <td class="text-right">₹${fmt(invoice.roomTax.sgst)}</td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  ${
+    foodRows
+      ? `
+  <div class="section">
+    <div class="section-title">Food / Room Service</div>
+    <table class="table">
+      <tbody>
+        ${foodRows}
+        <tr>
+          <td colspan="3" style="text-align:right;">Food Net Total</td>
+          <td class="text-right">₹${fmt(invoice.food.totals.total)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>`
+      : ""
+  }
+
+  <div class="section">
+    <div class="section-title">Final Summary</div>
+
+    <div class="total-row">
+      <span>Room Net Total:</span>
+      <span>₹${fmt(invoice.roomTax.roomNet)}</span>
+    </div>
+
+    <div class="total-row">
+      <span>Food Net Total:</span>
+      <span>₹${fmt(invoice.food.totals.total)}</span>
+    </div>
+
+    <div class="total-row grand-total">
+      <span>Grand Total:</span>
+      <span>₹${fmt(invoice.totals.grandTotal)}</span>
+    </div>
+
+    <div class="total-row">
+      <span>Advance Paid:</span>
+      <span>₹${fmt(invoice.payments.advancePaid)}</span>
+    </div>
+
+    ${
+      invoice.payments.finalPaymentReceived
+        ? `<div class="total-row paid">
+             <span>Final Payment Received (${invoice.payments.finalPaymentMode}):</span>
+             <span>₹${fmt(invoice.payments.finalPaymentAmount)}</span>
+           </div>`
+        : `<div class="total-row due">
+             <span>Balance Due:</span>
+             <span>₹${fmt(invoice.payments.balanceDue)}</span>
+           </div>`
+    }
+  </div>
+
+  <div class="footer">
+    <p>Thank you for choosing ${invoice.hotel.name}!</p>
+    <div class="signature">FRONT OFFICE MANAGER</div>
+  </div>
+
+</div>
+</body>
+</html>
+`;
+}
+
+export function buildRoomInvoice_old(invoice: any) {
+  const fmt = (n?: number) =>
+    (typeof n === "number" ? n : 0).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+  const guest = invoice.guest;
+  const company = invoice.company;
+  const stay = invoice.stay;
+  const hotel = invoice.hotel;
+
+  /* ===============================
+     EXTRA SERVICES (DISPLAY)
+  =============================== */
+  let extrasRows = "";
+
+  invoice.extraServices.forEach((s: any) => {
+    extrasRows += `
+      <tr>
+        <td>
+          ${s.name}
+          ${
+            s.gstEnabled
+              ? `<span class="gst-badge">GST 5%</span>`
+              : `<span class="gst-badge gst-exempt">GST Exempt</span>`
+          }
+        </td>
+        <td class="text-center">${s.days} day${s.days > 1 ? "s" : ""}</td>
+        <td class="text-right">₹${fmt(s.price)}</td>
+        <td class="text-right">₹${fmt(s.total)}</td>
+      </tr>
+    `;
+  });
+
+  /* ===============================
+     DATE FORMATTER
+  =============================== */
+  const formatDateTime = (iso?: string) =>
+    iso
+      ? new Date(iso).toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })
+      : "—";
+
+  /* ===============================
+     GUEST + STAY + COMPANY (STYLED)
+  =============================== */
+  const guestAndCompanySection = `
+  <div class="section">
+    <div class="section-title">Guest Information</div>
+
+    <div class="info-grid">
+      <div><strong>Name:</strong> ${guest.name}</div>
+      <div><strong>Phone:</strong> ${guest.phone}</div>
+      ${guest.city ? `<div><strong>City:</strong> ${guest.city}</div>` : ""}
+      ${
+        guest.nationality
+          ? `<div><strong>Nationality:</strong> ${guest.nationality}</div>`
+          : ""
+      }
+      ${
+        guest.address
+          ? `<div><strong>Address:</strong> ${guest.address}</div>`
+          : ""
+      }
+    </div>
+
+    ${
+      guest.ids?.length
+        ? `
+  <div style="margin-top:8px">
+    <strong>ID Proof:</strong>
+    <div style="margin-top:4px">
+      ${guest.ids
+        .map(
+          (id: any) => `
+        <div style="font-size:13px; margin-bottom:4px;">
+          <strong>${id.type}:</strong> ${id.idNumber}
+          ${id.nameOnId ? `(${id.nameOnId})` : ""}
+        </div>
+      `,
+        )
+        .join("")}
+    </div>
+  </div>`
+        : ""
+    }
+
+
+  <div class="section">
+    <div class="section-title">Stay Details</div>
+
+    <div class="info-grid">
+      <div><strong>Check-in:</strong> ${formatDateTime(stay.checkIn)}</div>
+      <div><strong>Check-out:</strong> ${formatDateTime(stay.checkOut)}</div>
+      <div><strong>Nights:</strong> ${stay.nights}</div>
+      <div><strong>Room:</strong> ${stay.roomNumber} (${stay.roomType})</div>
+    </div>
+  </div>
+
+  ${
+    company
+      ? `
+  <div class="section">
+    <div class="section-title">Company / Billing Details</div>
+
+    <div class="company-box">
+      <div class="info-item"><strong>Company Name:</strong> ${company.name}</div>
+      ${
+        company.gstin
+          ? `<div class="info-item"><strong>GSTIN:</strong> ${company.gstin}</div>`
+          : ""
+      }
+      ${
+        company.address
+          ? `<div class="info-item"><strong>Address:</strong> ${company.address}</div>`
+          : ""
+      }
+    </div>
+  </div>`
+      : ""
+  }
+  `;
+
+  /* ===============================
+     HTML
+  =============================== */
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Room Invoice</title>
+  ${invoiceStyles}
+</head>
+<body>
+
+<div class="invoice-container">
+
+  ${
+    invoice.payments.finalPaymentReceived
+      ? `<div class="paid-stamp">PAID</div>`
+      : ""
+  }
+
+  <div class="header">
+    <h1>${hotel.name}</h1>
+    <p>${hotel.address}</p>
+    <p>Phone: ${hotel.phone}</p>
+    <p><strong>GSTIN:</strong> ${hotel.gstNumber}</p>
+    <p class="title">ROOM TAX INVOICE</p>
+  </div>
+
+  ${guestAndCompanySection}
+
+  <!-- ================= BILLING DETAILS ================= -->
+  <div class="section">
+    <div class="section-title">Billing Details</div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th class="text-center">Quantity</th>
+          <th class="text-right">Rate</th>
+          <th class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr>
+          <td>Room Charges <span class="gst-badge">GST 5%</span></td>
+          <td class="text-center">${stay.nights} night${stay.nights > 1 ? "s" : ""}</td>
+          <td class="text-right">₹${fmt(stay.roomRate)}</td>
+          <td class="text-right">₹${fmt(stay.stayAmount)}</td>
+        </tr>
+
+        ${extrasRows}
+
+        <tr style="font-weight:bold;">
+          <td colspan="3" style="text-align:right;">Taxable Value</td>
+          <td class="text-right">₹${fmt(invoice.roomTax.taxable)}</td>
+        </tr>
+
+        <tr>
+          <td colspan="3" style="text-align:right;">CGST (2.5%)</td>
+          <td class="text-right">₹${fmt(invoice.roomTax.cgst)}</td>
+        </tr>
+
+        <tr>
+          <td colspan="3" style="text-align:right;">SGST (2.5%)</td>
+          <td class="text-right">₹${fmt(invoice.roomTax.sgst)}</td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ================= FINAL SUMMARY ================= -->
+  <div class="section">
+    <div class="section-title">Final Summary</div>
+
+    <div class="total-row grand-total">
+      <span>Room Grand Total:</span>
+      <span>₹${fmt(invoice.roomTax.roomNet)}</span>
+    </div>
+
+    <div class="total-row">
+      <span>Advance Paid:</span>
+      <span>₹${fmt(invoice.payments.advancePaid)}</span>
+    </div>
+
+    ${
+      invoice.payments.finalPaymentReceived
+        ? `
+      <div class="total-row paid">
+        <span>Final Payment Received (${invoice.payments.finalPaymentMode}):</span>
+        <span>₹${fmt(invoice.payments.finalPaymentAmount)}</span>
+      </div>`
+        : `
+      <div class="total-row due">
+        <span>Balance Due:</span>
+        <span>₹${fmt(invoice.payments.balanceDue)}</span>
+      </div>`
+    }
+  </div>
+
+  <div class="footer">
+    <p>Thank you for choosing ${hotel.name}!</p>
+  </div>
+
+</div>
+</body>
+</html>
+`;
+}

@@ -9,11 +9,7 @@ import { toast } from "sonner";
 
 import { getBillByIdApi, getRoomBillByIdApi } from "@/api/billApi";
 
-import {
-  buildRoomInvoice,
-  buildFoodInvoice,
-  buildCombinedInvoice,
-} from "@/utils/printInvoice";
+import { buildRoomInvoice, buildFoodInvoice } from "@/utils/printInvoice";
 
 import {
   Dialog,
@@ -22,6 +18,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { mapRoomInvoice } from "@/utils/mapInvoice";
+import {
+  buildCombinedInvoice_old,
+  buildRoomInvoice_old,
+} from "@/utils/invoiceBuilders";
 
 const formatLocal = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", {
@@ -246,11 +247,29 @@ export default function ViewBillPage() {
   const bookingInfo = bill.bookingInfo;
 
   // Transform fullInvoice to match the format expected by print functions
+  // ---------- helpers ----------
+  // ---------- helpers ----------
+  const safe = (n: any) => Number(n) || 0;
+
+  // ---------- derive from BACKEND LEGACY FIELDS ----------
+  const totalTaxable = full ? safe(full.taxable ?? full.stayAmount) : 0;
+
+  const cgst = full ? safe(full.cgst ?? full.stayCGST) : 0;
+
+  const sgst = full ? safe(full.sgst ?? full.staySGST) : 0;
+
+  const totalGST = cgst + sgst;
+  const roomNet = totalTaxable + totalGST;
+
+  // ---------- basic stay data ----------
+  const nights = full ? full.stayNights : 0;
+  const roomPrice = full ? full.roomRate : 0;
+  const roomStayTotal = full ? full.stayAmount : 0;
+  //0nly used in food orders
   const transformedBooking = full
     ? {
         ...full,
 
-        // ✅ REQUIRED by invoice logic
         pricingType: full.pricingType ?? "NORMAL",
 
         finalRoomPrice:
@@ -259,22 +278,35 @@ export default function ViewBillPage() {
 
         planCode: full.planCode,
 
-        // 🔑 fake room_id.plans so logic keeps working
         room_id: {
           ...(full.room_id || {}),
           plans: full.room_id?.plans || [
             {
               code: full.planCode?.split("_")[0],
-              singlePrice: full.roomRate,
-              doublePrice: full.roomRate,
+              singlePrice: roomPrice,
+              doublePrice: roomPrice,
             },
           ],
         },
 
-        // Backend truth for totals (unchanged)
-        taxable: full.stayAmount,
-        cgst: full.stayCGST,
-        sgst: full.staySGST,
+        // 👇 legacy fields expected by invoice
+        stayAmount: full.stayAmount,
+
+        stayCGST: cgst,
+        staySGST: sgst,
+        stayGST: totalGST,
+
+        roomGross: roomNet,
+        roomNet: roomNet,
+        totalAmount: roomNet,
+
+        // backend truth
+        taxable: full.taxable,
+        cgst: full.cgst,
+        sgst: full.sgst,
+        grandTotal: roomNet,
+
+        addedServices: full.extraServices || [],
 
         foodTotals: {
           subtotal: full.foodSubtotalRaw,
@@ -285,8 +317,6 @@ export default function ViewBillPage() {
         discount: full.discountPercent,
         discountAmount: full.discountAmount,
 
-        addedServices: full.extraServices || [],
-
         advancePaid: full.advancePaid,
         balanceDue: full.balanceDue,
 
@@ -296,31 +326,32 @@ export default function ViewBillPage() {
     : null;
 
   // Calculate billing data for display (matching the logic from BookingDetails)
-  const nights = full ? full.stayNights : 0;
-  const roomPrice = full ? full.roomRate : 0;
-  const roomStayTotal = full ? full.stayAmount : 0;
 
   const billingData = full
     ? {
         nights,
         roomPrice,
         roomStayTotal,
-        roomBase: full.roomGross - full.stayCGST - full.staySGST,
-        roomCGST: full.stayCGST,
-        roomSGST: full.staySGST,
-        roomGross: full.roomGross,
-        roomDiscountAmount: full.discountAmount,
-        roomNet: full.roomNet,
-        foodSubtotalRaw: full.foodSubtotalRaw,
-        foodDiscountAmount: full.foodDiscountAmount,
-        foodSubtotalAfterDiscount: full.foodSubtotalAfterDiscount,
-        foodCGST: full.foodCGST,
-        foodSGST: full.foodSGST,
-        foodTotal: full.foodTotal,
-        grandTotal: full.grandTotal,
-        balance: full.balanceDue,
+
+        roomBase: totalTaxable,
+        roomCGST: cgst,
+        roomSGST: sgst,
+        roomGross: roomNet,
+        roomNet: roomNet,
+
+        foodSubtotalRaw: safe(full.foodSubtotalRaw),
+        foodDiscountAmount: safe(full.foodDiscountAmount),
+        foodSubtotalAfterDiscount: safe(full.foodSubtotalAfterDiscount),
+        foodCGST: safe(full.foodCGST),
+        foodSGST: safe(full.foodSGST),
+        foodTotal: safe(full.foodTotal),
+
+        grandTotal: roomNet,
+        balance: safe(full.balanceDue),
       }
     : null;
+
+  const mappedInvoice = isRoom ? mapRoomInvoice(bill) : null;
 
   return (
     <Layout>
@@ -676,16 +707,8 @@ export default function ViewBillPage() {
               <Button
                 className="w-full"
                 onClick={() => {
-                  openPrintWindow(
-                    buildRoomInvoice(
-                      transformedBooking,
-                      hotel,
-                      billingData,
-                      full.finalPaymentReceived || false,
-                      full.finalPaymentMode ||
-                        transformedBooking.advancePaymentMode,
-                    ),
-                  );
+                  openPrintWindow(buildRoomInvoice_old(mappedInvoice));
+
                   setInvoiceModal(false);
                 }}
               >
@@ -716,17 +739,8 @@ export default function ViewBillPage() {
               <Button
                 className="w-full"
                 onClick={() => {
-                  openPrintWindow(
-                    buildCombinedInvoice(
-                      transformedBooking,
-                      hotel,
-                      billingData,
-                      full.foodOrders || [],
-                      full.finalPaymentReceived || false,
-                      full.finalPaymentMode ||
-                        transformedBooking.advancePaymentMode,
-                    ),
-                  );
+                  openPrintWindow(buildCombinedInvoice_old(mappedInvoice));
+
                   setInvoiceModal(false);
                 }}
               >
