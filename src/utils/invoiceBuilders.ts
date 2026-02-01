@@ -1,10 +1,5 @@
 import { invoiceStyles } from "./invoiceConstants";
-import {
-  fmt,
-
-  buildGuestAndCompanySection,
-
-} from "./invoiceHelpers";
+import { fmt, buildGuestAndCompanySection } from "./invoiceHelpers";
 
 export function buildRoomInvoice(
   booking: any,
@@ -53,13 +48,24 @@ export function buildRoomInvoice(
     const amount = +(Number(s.price || 0) * qty).toFixed(2);
 
     extrasRows += `
-      <tr>
-        <td>${s.name} <span class="gst-badge">GST 5%</span></td>
-        <td class="text-center">${qty} day${qty > 1 ? "s" : ""}</td>
-        <td class="text-right">₹${fmt(s.price)}</td>
-        <td class="text-right">₹${fmt(amount)}</td>
-      </tr>
-    `;
+  <tr>
+    <td>
+      ${s.name}
+      ${
+        s.gstEnabled
+          ? booking.pricingType === "FINAL_INCLUSIVE"
+            ? `<span class="gst-badge">GST Included</span>`
+            : `<span class="gst-badge">GST 5%</span>`
+          : ""
+      }
+    </td>
+
+    <td class="text-center">${qty} day${qty > 1 ? "s" : ""}</td>
+    <td class="text-right">₹${fmt(s.price)}</td>
+    <td class="text-right">₹${fmt(amount)}</td>
+  </tr>
+`;
+
   });
 
   /* ===============================
@@ -144,10 +150,17 @@ export function buildRoomInvoice(
             : ""
         }
 
-        <tr style="font-weight:bold;">
-          <td colspan="3" style="text-align:right;">Taxable Value</td>
-          <td class="text-right">₹${fmt(taxableValue)}</td>
-        </tr>
+        ${
+  booking.pricingType !== "FINAL_INCLUSIVE"
+    ? `
+<tr style="font-weight:bold;">
+  <td colspan="3" style="text-align:right;">Taxable Value</td>
+  <td class="text-right">₹${fmt(taxableValue)}</td>
+</tr>
+`
+    : ""
+}
+
 
         <tr>
           <td colspan="3" style="text-align:right;">CGST (2.5%)</td>
@@ -494,7 +507,11 @@ export function buildCombinedInvoice(
 
     extrasRows += `
       <tr>
-        <td>${s.name} <span class="gst-badge">GST 5%</span></td>
+       <td>
+  ${s.name}
+  ${s.gstEnabled ? `<span class="gst-badge">GST 5%</span>` : ""}
+</td>
+
         <td class="text-center">${qty} day${qty > 1 ? "s" : ""}</td>
         <td class="text-right">₹${fmt(s.price)}</td>
         <td class="text-right">₹${fmt(amount)}</td>
@@ -583,7 +600,9 @@ export function buildCombinedInvoice(
 
         <tr>
           <td>
-            Room Charges <span class="gst-badge">GST 5%</span><br/>
+            Room Charges
+${booking.gstEnabled ? `<span class="gst-badge">GST 5%</span>` : ""}
+
             ${
               booking.pricingType === "FINAL_INCLUSIVE"
                 ? "<small>(Offer Price – GST Inclusive)</small>"
@@ -609,10 +628,17 @@ export function buildCombinedInvoice(
             : ""
         }
 
-        <tr style="font-weight:bold;">
-          <td colspan="3" style="text-align:right;">Room Taxable Value</td>
-          <td class="text-right">₹${fmt(roomTaxable)}</td>
-        </tr>
+        ${
+  booking.gstEnabled && booking.pricingType !== "FINAL_INCLUSIVE"
+    ? `
+<tr style="font-weight:bold;">
+  <td colspan="3" style="text-align:right;">Taxable Value</td>
+  <td class="text-right">₹${fmt(roomTaxable)}</td>
+</tr>
+`
+    : ""
+}
+
 
         <tr>
           <td colspan="3" style="text-align:right;">CGST (2.5%)</td>

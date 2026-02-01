@@ -271,9 +271,15 @@ export default function CreateBooking() {
   const updateFormData = (updates: Partial<typeof formData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
   };
+  const advanceExceedsTotal =
+    Number(formData.advanceAmount || 0) > summary.grandTotal;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (Number(formData.advanceAmount || 0) > summary.grandTotal) {
+      toast.error("Advance amount cannot exceed total bill");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -365,7 +371,11 @@ export default function CreateBooking() {
           </div>
         </div>
 
-        <Button type="submit" form="booking-form" disabled={loading}>
+        <Button
+          type="submit"
+          form="booking-form"
+          disabled={loading || advanceExceedsTotal}
+        >
           {loading ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
