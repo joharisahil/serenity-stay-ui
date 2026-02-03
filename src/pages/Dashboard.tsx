@@ -32,6 +32,8 @@ import {
 } from "recharts";
 
 import { getRevenueSummaryApi } from "@/api/dashboardApi";
+import { downloadSummaryApi } from "@/api/dashboardApi";
+import { downloadCSV } from "@/utils/downloadCsv";
 
 /* ------------------------------------------------------------------ */
 /* TYPES                                                              */
@@ -122,6 +124,18 @@ export default function Dashboard() {
       ]
     : [];
 
+     const handleDownload = async (type: "ALL" | "ROOM" | "RESTAURANT") => {
+  try {
+    const res = await downloadSummaryApi(revenueRange.toUpperCase(), type);
+    downloadCSV(
+      res.rows,
+      `${type}_SUMMARY_${revenueRange}.csv`
+    );
+  } catch (e) {
+    console.error("Download failed", e);
+  }
+};  
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -169,6 +183,18 @@ export default function Dashboard() {
               ))}
             </div>
           </CardHeader>
+            <div className="flex gap-2">
+  <Button size="sm" onClick={() => handleDownload("ALL")}>
+    Download All
+  </Button>
+  <Button size="sm" variant="outline" onClick={() => handleDownload("ROOM")}>
+    Room Summary
+  </Button>
+  <Button size="sm" variant="outline" onClick={() => handleDownload("RESTAURANT")}>
+    Restaurant Summary
+  </Button>
+</div>
+
 
           <CardContent>
             {loadingRevenue ? (

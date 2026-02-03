@@ -10,3 +10,10 @@ export const getRevenueSummaryApi = async (range: string) => {
   );
   return res.data;
 };
+
+export const downloadSummaryApi = async (range: string, type: string) => {
+  const res = await api.get(
+    `/dashboard/download-summary?range=${range}&type=${type}`
+  );
+  return res.data;
+};
