@@ -124,3 +124,18 @@ export const getRoomPlansApi = async (roomId: string) => {
     const res = await api.get(`/rooms/plans/${roomId}`);
     return res.data.plans;
 };
+
+
+/* ----------------------------
+   ROOM CALENDAR (V2)
+   - GET /rooms/calendar/view?from=YYYY-MM-DD&to=YYYY-MM-DD
+   - Returns { success, bookings }
+-----------------------------*/
+export const getRoomCalendarApi = async (
+  from: string,
+  to: string
+) => {
+  const params = new URLSearchParams({ from, to });
+  const res = await api.get(`/rooms/calendar/view?${params.toString()}`);
+  return res.data;
+};
