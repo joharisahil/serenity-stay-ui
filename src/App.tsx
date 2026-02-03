@@ -11,8 +11,14 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import RoomList from "./pages/rooms/RoomList";
 import ManageRooms from "./pages/rooms/ManageRooms";
-import CreateBooking from "./pages/rooms/CreateBooking";
-import BookingDetails from "./pages/rooms/BookingDetails";
+
+
+
+//import CreateBooking from "./pages/rooms/CreateBooking";
+
+import CreateBooking from "./pages/rooms/CreateBooking/CreateBooking";
+
+import BookingDetails from "./pages/rooms/BookingDetails/BookingDetails";
 import BanquetCalendar from "./pages/banquet/BanquetCalendar";
 import CreateBanquet from "./pages/banquet/CreateBanquet";
 import BanquetDetails from "./pages/banquet/BanquetDetails";
@@ -37,10 +43,6 @@ import OldBillsList from "./pages/billing/OldBillsList";
 import ViewBillPage from "./pages/billing/ViewBillPage";
 import RoomBillingList from "./pages/billing/RoomBillingList";
 import CreateRestaurantBill from "./pages/billing/CreateRestaurantBill";
-import Halls from "./pages/banquet/Halls";
-import Plans from "./pages/banquet/Plans";
-import ProformaInvoice from "./pages/banquet/ProformaInvoice";
-import FinalInvoice from "./pages/banquet/FinalInvoice";
 
 const queryClient = new QueryClient();
 
@@ -146,21 +148,6 @@ const App = () => (
 
             <Route path="/banquet/:bookingId" element={
               <ProtectedRoute><BanquetDetails /></ProtectedRoute>
-            } />
-
-            <Route path="/banquet/halls" element={
-             <ProtectedRoute><Halls /></ProtectedRoute>
-            } />
-
-            <Route path="/banquet/plans" element={
-             <ProtectedRoute><Plans /></ProtectedRoute> 
-            } />
-
-            <Route path="/banquet/:bookingId/proforma" element={
-              <ProtectedRoute><ProformaInvoice /></ProtectedRoute>
-            } />
-            <Route path="/banquet/:id/invoice" element={ 
-              <ProtectedRoute><FinalInvoice /></ProtectedRoute>
             } />
 
             {/* Menu Routes */}

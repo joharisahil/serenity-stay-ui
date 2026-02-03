@@ -9,11 +9,7 @@ import { toast } from "sonner";
 
 import { getBillByIdApi, getRoomBillByIdApi } from "@/api/billApi";
 
-import {
-  buildRoomInvoice,
-  buildFoodInvoice,
-  buildCombinedInvoice,
-} from "@/utils/printInvoice";
+import { buildRoomInvoice, buildFoodInvoice } from "@/utils/printInvoice";
 
 import {
   Dialog,
@@ -22,8 +18,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { mapRoomInvoice } from "@/utils/mapInvoice";
+import {
+  buildCombinedInvoice_old,
+  buildRoomInvoice_old,
+} from "@/utils/invoiceBuilders";
 
-  const formatLocal = (iso: string) =>
+const formatLocal = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
     dateStyle: "medium",
@@ -43,7 +44,7 @@ const openPrintWindow = (html: string) => {
     try {
       win.focus();
       win.print();
-    } catch { }
+    } catch {}
   }, 300);
 };
 
@@ -120,32 +121,44 @@ const buildRestaurantThermalBill = (bill: any, hotel?: any) => {
   <div><b>Customer</b></div>
   <div class="small">${bill.customerName || "N/A"}</div>
   <div class="small">${bill.customerPhone || ""}</div>
-  ${bill.customerCompanyName
+  ${
+    bill.customerCompanyName
       ? `<div class="small">Company: ${bill.customerCompanyName}</div>`
-      : ""}
+      : ""
+  }
 
-  ${bill.customerCompanyGSTIN
+  ${
+    bill.customerCompanyGSTIN
       ? `<div class="small">GSTIN: ${bill.customerCompanyGSTIN}</div>`
-      : ""}
+      : ""
+  }
 
   <div class="line"></div>
 
   <!-- ITEMS -->
-  ${items.map((it: any) => `
+  ${items
+    .map(
+      (it: any) => `
     <div class="row">
       <span>${it.name} x ${it.qty}</span>
       <span>₹${it.totalPrice}</span>
     </div>
-  `).join("")}
+  `,
+    )
+    .join("")}
 
   <div class="line"></div>
 
   <!-- TOTALS -->
   <div class="row"><span>Subtotal</span><span>₹${bill.subtotal}</span></div>
 
-  ${bill.discount > 0 ? `
+  ${
+    bill.discount > 0
+      ? `
     <div class="row"><span>Discount</span><span>-₹${bill.discount}</span></div>
-  ` : ""}
+  `
+      : ""
+  }
 
   <div class="row"><span>CGST (2.5%)</span><span>₹${(bill.gst / 2).toFixed(2)}</span></div>
   <div class="row"><span>SGST (2.5%)</span><span>₹${(bill.gst / 2).toFixed(2)}</span></div>
@@ -159,15 +172,20 @@ const buildRestaurantThermalBill = (bill: any, hotel?: any) => {
   <!-- PAYMENTS -->
   <div><b>Payment</b></div>
 
-  ${Array.isArray(bill.payments) && bill.payments.length > 0
-      ? bill.payments.map((p: any) => `
+  ${
+    Array.isArray(bill.payments) && bill.payments.length > 0
+      ? bill.payments
+          .map(
+            (p: any) => `
           <div class="row">
             <span>${p.mode}</span>
             <span>₹${p.amount}</span>
           </div>
-        `).join("")
+        `,
+          )
+          .join("")
       : `<div class="row"><span>${bill.paymentMode}</span><span>₹${bill.finalAmount}</span></div>`
-    }
+  }
 
   <div class="row bold"><span>Paid</span><span>₹${totalPaid}</span></div>
 
@@ -229,43 +247,111 @@ export default function ViewBillPage() {
   const bookingInfo = bill.bookingInfo;
 
   // Transform fullInvoice to match the format expected by print functions
-  const transformedBooking = full ? {
-    ...full,
-    // Map discountPercent to discount for compatibility
-    discount: full.discountPercent || 0,
-    foodDiscount: full.foodDiscountPercent || 0,
-    // Ensure advancePaymentMode exists
-    advancePaymentMode: full.advancePaymentMode || bookingInfo?.advancePaymentMode || "N/A",
-    // Ensure all necessary fields exist
-    gstEnabled: full.gstEnabled !== undefined ? full.gstEnabled : true,
-    foodGSTEnabled: full.foodGSTEnabled !== undefined ? full.foodGSTEnabled : true,
-    addedServices: full.extraServices || [],
-  } : null;
+  // ---------- helpers ----------
+  // ---------- helpers ----------
+  const safe = (n: any) => Number(n) || 0;
 
-  // Calculate billing data for display (matching the logic from BookingDetails)
+  // ---------- derive from BACKEND LEGACY FIELDS ----------
+  const totalTaxable = full ? safe(full.taxable ?? full.stayAmount) : 0;
+
+  const cgst = full ? safe(full.cgst ?? full.stayCGST) : 0;
+
+  const sgst = full ? safe(full.sgst ?? full.staySGST) : 0;
+
+  const totalGST = cgst + sgst;
+  const roomNet = totalTaxable + totalGST;
+
+  // ---------- basic stay data ----------
   const nights = full ? full.stayNights : 0;
   const roomPrice = full ? full.roomRate : 0;
   const roomStayTotal = full ? full.stayAmount : 0;
+  //0nly used in food orders
+  const transformedBooking = full
+    ? {
+        ...full,
 
-  const billingData = full ? {
-    nights,
-    roomPrice,
-    roomStayTotal,
-    roomBase: full.roomGross - full.stayCGST - full.staySGST,
-    roomCGST: full.stayCGST,
-    roomSGST: full.staySGST,
-    roomGross: full.roomGross,
-    roomDiscountAmount: full.discountAmount,
-    roomNet: full.roomNet,
-    foodSubtotalRaw: full.foodSubtotalRaw,
-    foodDiscountAmount: full.foodDiscountAmount,
-    foodSubtotalAfterDiscount: full.foodSubtotalAfterDiscount,
-    foodCGST: full.foodCGST,
-    foodSGST: full.foodSGST,
-    foodTotal: full.foodTotal,
-    grandTotal: full.grandTotal,
-    balance: full.balanceDue,
-  } : null;
+        pricingType: full.pricingType ?? "NORMAL",
+
+        finalRoomPrice:
+          full.finalRoomPrice ??
+          (typeof full.roomGross === "number" ? full.roomGross : undefined),
+
+        planCode: full.planCode,
+
+        room_id: {
+          ...(full.room_id || {}),
+          plans: full.room_id?.plans || [
+            {
+              code: full.planCode?.split("_")[0],
+              singlePrice: roomPrice,
+              doublePrice: roomPrice,
+            },
+          ],
+        },
+
+        // 👇 legacy fields expected by invoice
+        stayAmount: full.stayAmount,
+
+        stayCGST: cgst,
+        staySGST: sgst,
+        stayGST: totalGST,
+
+        roomGross: roomNet,
+        roomNet: roomNet,
+        totalAmount: roomNet,
+
+        // backend truth
+        taxable: full.taxable,
+        cgst: full.cgst,
+        sgst: full.sgst,
+        grandTotal: roomNet,
+
+        addedServices: full.extraServices || [],
+
+        foodTotals: {
+          subtotal: full.foodSubtotalRaw,
+          gst: full.foodGST,
+          total: full.foodTotal,
+        },
+
+        discount: full.discountPercent,
+        discountAmount: full.discountAmount,
+
+        advancePaid: full.advancePaid,
+        balanceDue: full.balanceDue,
+
+        finalPaymentReceived: full.finalPaymentReceived,
+        finalPaymentMode: full.finalPaymentMode,
+      }
+    : null;
+
+  // Calculate billing data for display (matching the logic from BookingDetails)
+
+  const billingData = full
+    ? {
+        nights,
+        roomPrice,
+        roomStayTotal,
+
+        roomBase: totalTaxable,
+        roomCGST: cgst,
+        roomSGST: sgst,
+        roomGross: roomNet,
+        roomNet: roomNet,
+
+        foodSubtotalRaw: safe(full.foodSubtotalRaw),
+        foodDiscountAmount: safe(full.foodDiscountAmount),
+        foodSubtotalAfterDiscount: safe(full.foodSubtotalAfterDiscount),
+        foodCGST: safe(full.foodCGST),
+        foodSGST: safe(full.foodSGST),
+        foodTotal: safe(full.foodTotal),
+
+        grandTotal: roomNet,
+        balance: safe(full.balanceDue),
+      }
+    : null;
+
+  const mappedInvoice = isRoom ? mapRoomInvoice(bill) : null;
 
   return (
     <Layout>
@@ -273,7 +359,11 @@ export default function ViewBillPage() {
         {/* HEADER */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/old-bills")}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/old-bills")}
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
 
@@ -288,7 +378,9 @@ export default function ViewBillPage() {
           {!isRoom && (
             <Button
               variant="outline"
-              onClick={() => openPrintWindow(buildRestaurantThermalBill(bill, hotel))}
+              onClick={() =>
+                openPrintWindow(buildRestaurantThermalBill(bill, hotel))
+              }
             >
               <Printer className="mr-2 h-4 w-4" />
               Print Bill
@@ -306,16 +398,26 @@ export default function ViewBillPage() {
         {/* RESTAURANT BILL */}
         {!isRoom && (
           <Card>
-            <CardHeader><CardTitle>Restaurant Bill</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Restaurant Bill</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
-              <p><b>Customer Name:</b> {bill.customerName || "N/A"}</p>
-              <p><b>Customer Phone:</b> {bill.customerPhone || "N/A"}</p>
+              <p>
+                <b>Customer Name:</b> {bill.customerName || "N/A"}
+              </p>
+              <p>
+                <b>Customer Phone:</b> {bill.customerPhone || "N/A"}
+              </p>
               {bill.customerCompanyName && (
-                <p><b>Company:</b> {bill.customerCompanyName}</p>
+                <p>
+                  <b>Company:</b> {bill.customerCompanyName}
+                </p>
               )}
 
               {bill.customerCompanyGSTIN && (
-                <p><b>GSTIN:</b> {bill.customerCompanyGSTIN}</p>
+                <p>
+                  <b>GSTIN:</b> {bill.customerCompanyGSTIN}
+                </p>
               )}
 
               {/* ITEMS */}
@@ -323,10 +425,12 @@ export default function ViewBillPage() {
                 {bill.orders?.flatMap((o: any) =>
                   o.items.map((it: any, i: number) => (
                     <div key={i} className="flex justify-between text-sm">
-                      <span>{it.name} × {it.qty}</span>
+                      <span>
+                        {it.name} × {it.qty}
+                      </span>
                       <span>₹{it.totalPrice}</span>
                     </div>
-                  ))
+                  )),
                 )}
               </div>
 
@@ -376,9 +480,10 @@ export default function ViewBillPage() {
                     <div className="flex justify-between font-bold border-t pt-1">
                       <span>Total Paid</span>
                       <span>
-                        ₹{bill.payments.reduce(
+                        ₹
+                        {bill.payments.reduce(
                           (sum: number, p: any) => sum + Number(p.amount || 0),
-                          0
+                          0,
                         )}
                       </span>
                     </div>
@@ -405,17 +510,54 @@ export default function ViewBillPage() {
               {/* GUEST INFO */}
               <div>
                 <p className="font-semibold mb-1">Guest Information</p>
-                <p><b>Name:</b> {full.guestName}</p>
-                <p><b>Phone:</b> {full.guestPhone}</p>
+                <p>
+                  <b>Name:</b> {full.guestName}
+                </p>
+                <p>
+                  <b>Phone:</b> {full.guestPhone}
+                </p>
               </div>
+              {full.guestIds?.length > 0 && (
+                <div className="mt-3">
+                  <p className="font-semibold mb-1">Guest ID Details</p>
+
+                  <div className="space-y-1 text-sm">
+                    {full.guestIds.map((id: any, i: number) => (
+                      <div key={i}>
+                        <span className="font-medium">{id.type}</span>
+                        <span> : </span>
+                        <span>{id.idNumber}</span>
+
+                        {id.nameOnId && (
+                          <>
+                            <span className="mx-1"></span>
+                            <span className="font-medium">Name on ID</span>
+                            <span> : </span>
+                            <span>{id.nameOnId}</span>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* STAY INFO */}
               <div>
                 <p className="font-semibold mb-1">Stay Details</p>
-                <p><b>Room:</b> {full.room_id?.number || full.roomNumber} ({full.room_id?.type || full.roomType})</p>
-                <p><b>Check-in:</b> {formatLocal(full.checkIn)}</p>
-                <p><b>Check-out:</b> {formatLocal(full.actualCheckoutTime)}</p>
-                <p><b>Nights:</b> {full.stayNights}</p>
+                <p>
+                  <b>Room:</b> {full.room_id?.number || full.roomNumber} (
+                  {full.room_id?.type || full.roomType})
+                </p>
+                <p>
+                  <b>Check-in:</b> {formatLocal(full.checkIn)}
+                </p>
+                <p>
+                  <b>Check-out:</b> {formatLocal(full.actualCheckoutTime)}
+                </p>
+                <p>
+                  <b>Nights:</b> {full.stayNights}
+                </p>
               </div>
 
               {/* ROOM CHARGES */}
@@ -449,7 +591,10 @@ export default function ViewBillPage() {
                     const amount = s.price * daysCount;
 
                     return (
-                      <div key={i} className="flex justify-between items-center text-sm">
+                      <div
+                        key={i}
+                        className="flex justify-between items-center text-sm"
+                      >
                         <div className="flex flex-col">
                           <span>
                             {s.name} × {daysCount}
@@ -512,7 +657,11 @@ export default function ViewBillPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Advance Mode</span>
-                  <span>{full.advancePaymentMode || bookingInfo?.advancePaymentMode || "N/A"}</span>
+                  <span>
+                    {full.advancePaymentMode ||
+                      bookingInfo?.advancePaymentMode ||
+                      "N/A"}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Balance Due</span>
@@ -541,7 +690,6 @@ export default function ViewBillPage() {
                   <span>₹{full.totalAmount}</span>
                 </div>
               </div>
-
             </CardContent>
           </Card>
         )}
@@ -559,15 +707,8 @@ export default function ViewBillPage() {
               <Button
                 className="w-full"
                 onClick={() => {
-                  openPrintWindow(
-                    buildRoomInvoice(
-                      transformedBooking,
-                      hotel,
-                      billingData,
-                      full.finalPaymentReceived || false,
-                      full.finalPaymentMode || transformedBooking.advancePaymentMode
-                    )
-                  );
+                  openPrintWindow(buildRoomInvoice_old(mappedInvoice));
+
                   setInvoiceModal(false);
                 }}
               >
@@ -585,8 +726,9 @@ export default function ViewBillPage() {
                       billingData,
                       full.foodOrders,
                       full.finalPaymentReceived || false,
-                      full.finalPaymentMode || transformedBooking.advancePaymentMode
-                    )
+                      full.finalPaymentMode ||
+                        transformedBooking.advancePaymentMode,
+                    ),
                   );
                   setInvoiceModal(false);
                 }}
@@ -597,16 +739,8 @@ export default function ViewBillPage() {
               <Button
                 className="w-full"
                 onClick={() => {
-                  openPrintWindow(
-                    buildCombinedInvoice(
-                      transformedBooking,
-                      hotel,
-                      billingData,
-                      full.foodOrders || [],
-                      full.finalPaymentReceived || false,
-                      full.finalPaymentMode || transformedBooking.advancePaymentMode
-                    )
-                  );
+                  openPrintWindow(buildCombinedInvoice_old(mappedInvoice));
+
                   setInvoiceModal(false);
                 }}
               >
