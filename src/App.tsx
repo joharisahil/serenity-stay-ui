@@ -43,6 +43,11 @@ import OldBillsList from "./pages/billing/OldBillsList";
 import ViewBillPage from "./pages/billing/ViewBillPage";
 import RoomBillingList from "./pages/billing/RoomBillingList";
 import CreateRestaurantBill from "./pages/billing/CreateRestaurantBill";
+import Halls from "./pages/banquet/Halls";
+import Plans from "./pages/banquet/Plans";
+import ProformaInvoice from "./pages/banquet/ProformaInvoice";
+import FinalInvoice from "./pages/banquet/FinalInvoice";
+
 
 const queryClient = new QueryClient();
 
@@ -148,6 +153,21 @@ const App = () => (
 
             <Route path="/banquet/:bookingId" element={
               <ProtectedRoute><BanquetDetails /></ProtectedRoute>
+            } />
+
+            <Route path="/banquet/halls" element={
+             <ProtectedRoute><Halls /></ProtectedRoute>
+            } />
+
+            <Route path="/banquet/plans" element={
+             <ProtectedRoute><Plans /></ProtectedRoute> 
+            } />
+
+            <Route path="/banquet/:bookingId/proforma" element={
+              <ProtectedRoute><ProformaInvoice /></ProtectedRoute>
+            } />
+            <Route path="/banquet/:id/invoice" element={ 
+              <ProtectedRoute><FinalInvoice /></ProtectedRoute>
             } />
 
             {/* Menu Routes */}
