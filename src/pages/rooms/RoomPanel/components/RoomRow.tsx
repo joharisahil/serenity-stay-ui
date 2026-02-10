@@ -13,6 +13,9 @@ interface RoomRowProps {
   onCellClick: (roomId: string, dateStr: string) => void;
   onBookingClick: (booking: Booking) => void;
   selectedBookingId?: string;
+
+  hideCalendarCells?: boolean;
+  onlyCalendarCells?: boolean;
 }
 
 /* ================= STATUS STYLES ================= */
@@ -40,88 +43,94 @@ export function RoomRow({
   onCellClick,
   onBookingClick,
   selectedBookingId,
+  hideCalendarCells,
+  onlyCalendarCells,
 }: RoomRowProps) {
   const roomStatus = room.status || "AVAILABLE";
+  const rowWidth = calendarDays.length * cellWidth;
 
   return (
-    <div className="flex border-b border-border/50 hover:bg-muted/30 transition-colors">
-      {/* ================= ROOM INFO (STICKY) ================= */}
-      <div
-        className={cn(
-          "sticky left-0 z-10 flex items-center gap-3 px-4 py-3",
-          "min-w-[180px] w-[180px] border-r bg-card",
-          "shadow-[2px_0_8px_-2px_rgba(0,0,0,0.08)]"
-        )}
-      >
+    <div className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+      
+      {/* ================= LEFT: ROOM INFO ================= */}
+      {!onlyCalendarCells && (
+        <div className="w-[180px] min-w-[180px] px-4 py-3 flex items-center gap-3 bg-card">
+          <div
+            className={cn(
+              "h-10 w-10 rounded-lg flex items-center justify-center font-bold text-sm",
+              statusBgClass[roomStatus]
+            )}
+          >
+            {room.number}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm truncate">
+                {room.type}
+              </span>
+              <div
+                className={cn(
+                  "h-2 w-2 rounded-full shrink-0",
+                  statusDotClass[roomStatus]
+                )}
+              />
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              Floor {room.floor ?? "-"}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= RIGHT: CALENDAR CELLS ================= */}
+      {!hideCalendarCells && (
         <div
-          className={cn(
-            "h-10 w-10 rounded-lg flex items-center justify-center font-bold text-sm",
-            statusBgClass[roomStatus]
-          )}
+          className="relative"
+          style={{
+            width: `${rowWidth}px`,
+            minWidth: `${rowWidth}px`,
+          }}
         >
-          {room.number}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm truncate">
-              {room.type}
-            </span>
-            <div
-              className={cn(
-                "h-2 w-2 rounded-full shrink-0",
-                statusDotClass[roomStatus]
-              )}
-            />
+          {/* Empty grid cells */}
+          <div className="flex">
+            {calendarDays.map((day) => (
+              <div
+                key={day.dateStr}
+                onClick={() => onCellClick(room._id, day.dateStr)}
+                className={cn(
+                  "h-14 border-r border-border/30 cursor-pointer transition-colors",
+                  "hover:bg-calendar-cell-hover",
+                  day.isToday && "bg-calendar-today",
+                  day.isWeekend && !day.isToday && "bg-calendar-weekend"
+                )}
+                style={{
+                  width: `${cellWidth}px`,
+                  minWidth: `${cellWidth}px`,
+                }}
+              />
+            ))}
           </div>
 
-          <div className="text-xs text-muted-foreground">
-            Floor {room.floor ?? "-"}
+          {/* ================= BOOKING BLOCKS OVERLAY ================= */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="relative h-full pointer-events-auto">
+              {room.bookings.map((booking) => (
+                <BookingBlock
+                  key={booking._id}
+                  booking={booking}
+                  calendarStart={calendarDays[0].date}
+                  cellWidth={cellWidth}
+                  totalDays={calendarDays.length}
+                  onClick={onBookingClick}
+                  isSelected={selectedBookingId === booking._id}
+                />
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* ================= CALENDAR CELLS ================= */}
-      <div className="flex-1 relative">
-        {/* Empty grid cells */}
-        <div className="flex">
-          {calendarDays.map((day) => (
-            <div
-              key={day.dateStr}
-              onClick={() => onCellClick(room._id, day.dateStr)}
-              className={cn(
-                "h-14 border-r border-border/30 cursor-pointer transition-colors",
-                "hover:bg-calendar-cell-hover",
-                day.isToday && "bg-calendar-today",
-                day.isWeekend && !day.isToday && "bg-calendar-weekend"
-              )}
-              style={{
-                width: `${cellWidth}px`,
-                minWidth: `${cellWidth}px`,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* ================= BOOKING BLOCKS OVERLAY ================= */}
-        {/* BOOKING BLOCKS OVERLAY */}
-<div className="absolute inset-0 pointer-events-none">
-  <div className="relative h-full pointer-events-auto">
-    {room.bookings.map((booking) => (
-      <BookingBlock
-        key={booking._id}
-        booking={booking}
-        calendarStart={calendarDays[0].date}
-        cellWidth={cellWidth}
-        totalDays={calendarDays.length}   // 🔴 REQUIRED
-        onClick={onBookingClick}
-        isSelected={selectedBookingId === booking._id}
-      />
-    ))}
-  </div>
-</div>
-
-      </div>
+      )}
     </div>
   );
 }

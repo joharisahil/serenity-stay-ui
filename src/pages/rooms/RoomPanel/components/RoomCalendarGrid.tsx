@@ -53,91 +53,85 @@ export function RoomCalendarGrid({
     );
   }
 
-  return (
-    <div className="bg-card rounded-xl border shadow-premium overflow-hidden">
-      <div className="overflow-x-auto calendar-scroll">
+return (
+  <div className="bg-card rounded-xl border shadow-premium overflow-hidden">
+    <div className="calendar-wrapper">
+      
+      {/* ================= LEFT: ROOMS ================= */}
+      <div className="rooms-column">
+        {/* Empty header spacer (aligns with date header height) */}
+        <div className="h-[64px] border-b bg-calendar-header flex items-center px-4">
+          <span className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+            Rooms
+          </span>
+        </div>
+
+        {/* Room rows */}
+        {rooms.map((room) => (
+          <RoomRow
+            key={room._id}
+            room={room}
+            calendarDays={calendarDays}
+            cellWidth={CELL_WIDTH}
+            onCellClick={onCellClick}
+            onBookingClick={onBookingClick}
+            selectedBookingId={selectedBookingId}
+            hideCalendarCells   // 👈 IMPORTANT (explained below)
+          />
+        ))}
+      </div>
+
+      {/* ================= RIGHT: CALENDAR ================= */}
+      <div className="calendar-scroll">
         <div
+          className="calendar-grid"
           style={{
-            minWidth: `${180 + calendarDays.length * CELL_WIDTH}px`,
+            minWidth: `${calendarDays.length * CELL_WIDTH}px`,
           }}
         >
           {/* ================= HEADER ================= */}
-          <div className="flex border-b-2 border-border bg-calendar-header sticky top-0 z-20">
-            {/* Room Header */}
-            <div
-              className={cn(
-                "sticky left-0 z-30 flex items-center px-4 py-3",
-                "min-w-[180px] w-[180px] border-r bg-calendar-header",
-                "shadow-[2px_0_8px_-2px_rgba(0,0,0,0.08)]"
-              )}
-            >
-              <span className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-                Rooms
-              </span>
-            </div>
-
-            {/* Date Headers */}
-            <div className="flex">
-              {calendarDays.map((day) => (
-                <div
-                  key={day.dateStr}
-                  className={cn(
-                    "flex flex-col items-center justify-center py-2 border-r border-border/30",
-                    day.isToday && "bg-calendar-today",
-                    day.isWeekend && !day.isToday && "bg-calendar-weekend"
-                  )}
-                  style={{
-                    width: `${CELL_WIDTH}px`,
-                    minWidth: `${CELL_WIDTH}px`,
-                  }}
-                >
-                  <span
-                    className={cn(
-                      "text-xs font-medium uppercase",
-                      day.isToday
-                        ? "text-accent"
-                        : "text-muted-foreground",
-                      day.isWeekend && "text-muted-foreground/70"
-                    )}
-                  >
-                    {day.dayOfWeek}
-                  </span>
-
-                  <span
-                    className={cn(
-                      "text-lg font-bold",
-                      day.isToday && "text-accent"
-                    )}
-                  >
-                    {day.dayNumber}
-                  </span>
-
-                  {day.dayNumber === 1 && (
-                    <span className="text-[10px] text-muted-foreground uppercase">
-                      {day.monthShort}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ================= ROWS ================= */}
-          <div>
-            {rooms.map((room) => (
-              <RoomRow
-                key={room._id}
-                room={room}
-                calendarDays={calendarDays}
-                cellWidth={CELL_WIDTH}
-                onCellClick={onCellClick}
-                onBookingClick={onBookingClick}
-                selectedBookingId={selectedBookingId}
-              />
+          <div className="calendar-header flex border-b-2 border-border bg-calendar-header sticky top-0 z-20">
+            {calendarDays.map((day) => (
+              <div
+                key={day.dateStr}
+                className={cn(
+                  "flex flex-col items-center justify-center py-2 border-r border-border/30",
+                  day.isToday && "bg-calendar-today",
+                  day.isWeekend && !day.isToday && "bg-calendar-weekend"
+                )}
+                style={{
+                  width: `${CELL_WIDTH}px`,
+                  minWidth: `${CELL_WIDTH}px`,
+                }}
+              >
+                <span className="text-xs font-medium uppercase">
+                  {day.dayOfWeek}
+                </span>
+                <span className="text-lg font-bold">
+                  {day.dayNumber}
+                </span>
+              </div>
             ))}
           </div>
+
+          {/* ================= CALENDAR ROWS ================= */}
+          {rooms.map((room) => (
+            <RoomRow
+              key={room._id}
+              room={room}
+              calendarDays={calendarDays}
+              cellWidth={CELL_WIDTH}
+              onCellClick={onCellClick}
+              onBookingClick={onBookingClick}
+              selectedBookingId={selectedBookingId}
+              onlyCalendarCells   // 👈 IMPORTANT
+            />
+          ))}
         </div>
       </div>
+
     </div>
-  );
+  </div>
+);
+
 }

@@ -250,3 +250,27 @@ export const deleteAdvancePaymentApi = async (bookingId, advanceId) => {
   const response = await api.delete(`/room-bookings/${bookingId}/advances/${advanceId}`);
   return response.data;
 };
+export const resolveBookingApi = async (params: {
+  bookingId?: string;
+  roomId?: string;
+  date?: string;
+}) => {
+  console.trace("🚨 resolveBookingApi CALLED", params);
+
+  const { bookingId, roomId, date } = params;
+
+  let url = "";
+  let query: Record<string, string> = {};
+
+  if (bookingId) {
+    url = `/room-bookings/resolve/${bookingId}`;
+  } else if (roomId) {
+    url = `/room-bookings/resolve/room/${roomId}`;
+    if (date) query.date = date;
+  } else {
+    throw new Error("Either bookingId or roomId is required");
+  }
+
+  const res = await api.get(url, { params: query });
+  return res.data.booking;
+};

@@ -1,12 +1,11 @@
-import { useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 import {
-  getAvailableRoomsApi,
   addAdvancePaymentApi,
   deleteAdvancePaymentApi,
 } from "@/api/bookingApi";
@@ -29,11 +28,16 @@ import { toast } from "react-hot-toast";
 export default function BookingDetails() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { roomId } = useParams();
 
-  const passedBookingId = location.state?.bookingId || null;
-  const selectedCheckIn = location.state?.selectedCheckIn || null;
-  const selectedCheckOut = location.state?.selectedCheckOut || null;
+  // 🔑 ONLY SOURCE OF TRUTH
+  const passedBookingId = location.state?.bookingId;
+
+  // 🔒 Safety guard
+  useEffect(() => {
+    if (!passedBookingId) {
+      navigate("/rooms");
+    }
+  }, [passedBookingId, navigate]);
 
   const [pageRefreshing, setPageRefreshing] = useState(false);
   const [finalPaymentReceived, setFinalPaymentReceived] = useState(false);
@@ -44,19 +48,13 @@ export default function BookingDetails() {
   const {
     booking,
     roomOrders,
-    setRoomOrders,
     roomOrderSummary,
-    setRoomOrderSummary,
     hotel,
     availableRooms,
-    setAvailableRooms,
     loading,
     refreshBooking,
   } = useBooking({
-    roomId,
-    passedBookingId,
-    selectedCheckIn,
-    selectedCheckOut,
+    bookingId: passedBookingId, // 🔥 ONLY THIS
   });
 
   /* ================= ADVANCE PAYMENTS ================= */
@@ -73,7 +71,7 @@ export default function BookingDetails() {
     if (!booking?._id) return;
     setPageRefreshing(true);
     try {
-      await refreshBooking(booking._id);
+      await refreshBooking();
     } finally {
       setPageRefreshing(false);
     }
@@ -85,11 +83,15 @@ export default function BookingDetails() {
       await addAdvancePaymentApi(booking._id, advances[index]);
       toast.success("Advance deposited");
       setAdvances([]);
-      await refreshBooking(booking._id);
+      await refreshBooking();
     } catch (e: any) {
       toast.error(e?.response?.data?.message ?? "Failed to deposit advance");
     }
   };
+  const handleCancelAdvance = (index: number) => {
+  setAdvances((prev) => prev.filter((_, i) => i !== index));
+};
+
 
   const handleDeleteAdvance = async (advanceId: string) => {
     if (!booking?._id) return;
@@ -97,26 +99,9 @@ export default function BookingDetails() {
       await deleteAdvancePaymentApi(booking._id, advanceId);
       toast.success("Advance deleted");
       setAdvances([]);
-      await refreshBooking(booking._id);
+      await refreshBooking();
     } catch (e: any) {
       toast.error(e?.response?.data?.message ?? "Failed to delete advance");
-    }
-  };
-  const handleCancelAdvance = (index: number) => {
-  setAdvances((prev) => prev.filter((_, i) => i !== index));
-};
-
-  /* ================= AVAILABLE ROOMS ================= */
-
-  const loadAvailableRooms = async () => {
-    if (!booking?.room_id?.type) return;
-    try {
-      const rooms = await getAvailableRoomsApi(booking.room_id.type);
-      setAvailableRooms(
-        rooms.filter((r: any) => r._id !== booking.room_id._id)
-      );
-    } catch {
-      setAvailableRooms([]);
     }
   };
 
@@ -161,7 +146,7 @@ export default function BookingDetails() {
     return (
       <Layout>
         <div className="text-center py-24">
-          <h1 className="text-xl font-bold">No active booking</h1>
+          <h1 className="text-xl font-bold">No booking found</h1>
           <Button className="mt-4" onClick={() => navigate("/rooms")}>
             Back to Rooms
           </Button>
@@ -180,7 +165,6 @@ export default function BookingDetails() {
         </div>
       )}
 
-      {/* ===== HEADER ===== */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate("/rooms")}>
@@ -196,65 +180,53 @@ export default function BookingDetails() {
         <Badge className="bg-room-occupied text-white">Occupied</Badge>
       </div>
 
-      {/* ===== ERP TWO-COLUMN GRID ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* LEFT — OPERATIONS */}
         <div className="lg:col-span-8 space-y-6">
           <GuestInfoSection booking={booking} onRefresh={refreshBooking} />
-
           <StayDetailsSection
             booking={booking}
             billingData={billingData}
             onRefresh={hardRefreshPage}
           />
-
           <ExtraServicesSection
             booking={booking}
             onRefresh={hardRefreshPage}
           />
-
           <RoomChargesSection
             booking={booking}
             billingData={billingData}
             onRefresh={hardRefreshPage}
           />
-
           <FoodBillingSection
             booking={booking}
             roomOrders={roomOrders}
-            setRoomOrders={setRoomOrders}
             roomOrderSummary={roomOrderSummary}
-            setRoomOrderSummary={setRoomOrderSummary}
             onRefresh={hardRefreshPage}
           />
-
           <AdvancePaymentsSection
-            advances={advances}
-            totalAdvance={totalAdvance}
-            onAddAdvance={addAdvance}
-            onUpdateAdvance={updateAdvance}
-            onDepositAdvance={handleDepositAdvance}
-            onDeleteAdvance={handleDeleteAdvance}
-            onCancelAdvance={handleCancelAdvance}
-          />
+  advances={advances}
+  totalAdvance={totalAdvance}
+  onAddAdvance={addAdvance}
+  onUpdateAdvance={updateAdvance}
+  onDepositAdvance={handleDepositAdvance}
+  onDeleteAdvance={handleDeleteAdvance}
+  onCancelAdvance={handleCancelAdvance} // ✅ REQUIRED
+/>
 
         </div>
 
-        {/* RIGHT — FINANCE */}
         <div className="lg:col-span-4">
-          <div className="sticky top-20 space-y-6">
-            <BillingSummarySection
-              booking={booking}
-              billingData={billingData}
-              totalAdvance={booking.advancePaid}
-              finalPaymentReceived={finalPaymentReceived}
-              finalPaymentMode={finalPaymentMode}
-              onFinalPaymentReceivedChange={setFinalPaymentReceived}
-              onFinalPaymentModeChange={setFinalPaymentMode}
-              onRefresh={hardRefreshPage}
-            />
-            
+          <BillingSummarySection
+            booking={booking}
+            billingData={billingData}
+            totalAdvance={booking.advancePaid}
+            finalPaymentReceived={finalPaymentReceived}
+            finalPaymentMode={finalPaymentMode}
+            onFinalPaymentReceivedChange={setFinalPaymentReceived}
+            onFinalPaymentModeChange={setFinalPaymentMode}
+            onRefresh={hardRefreshPage}
+          />
+
           <ActionButtons
             booking={booking}
             billingData={billingData}
@@ -263,15 +235,13 @@ export default function BookingDetails() {
             availableRooms={availableRooms}
             finalPaymentReceived={finalPaymentReceived}
             finalPaymentMode={finalPaymentMode}
-            onLoadAvailableRooms={loadAvailableRooms}
           />
-          </div>
         </div>
-
       </div>
     </Layout>
   );
 }
+
 
 /*old ui*/
 
