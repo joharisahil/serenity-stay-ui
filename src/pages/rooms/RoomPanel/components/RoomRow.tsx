@@ -50,15 +50,14 @@ export function RoomRow({
   const rowWidth = calendarDays.length * cellWidth;
 
   return (
-    <div className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-      
+    <div className="flex h-14 border-b border-border/50 hover:bg-muted/30 transition-colors">
       {/* ================= LEFT: ROOM INFO ================= */}
       {!onlyCalendarCells && (
-        <div className="w-[180px] min-w-[180px] px-4 py-3 flex items-center gap-3 bg-card">
+        <div className="w-[180px] min-w-[180px] h-14 px-4 flex items-center gap-3 bg-card">
           <div
             className={cn(
               "h-10 w-10 rounded-lg flex items-center justify-center font-bold text-sm",
-              statusBgClass[roomStatus]
+              statusBgClass[roomStatus],
             )}
           >
             {room.number}
@@ -66,13 +65,11 @@ export function RoomRow({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-sm truncate">
-                {room.type}
-              </span>
+              <span className="font-medium text-sm truncate">{room.type}</span>
               <div
                 className={cn(
                   "h-2 w-2 rounded-full shrink-0",
-                  statusDotClass[roomStatus]
+                  statusDotClass[roomStatus],
                 )}
               />
             </div>
@@ -87,7 +84,7 @@ export function RoomRow({
       {/* ================= RIGHT: CALENDAR CELLS ================= */}
       {!hideCalendarCells && (
         <div
-          className="relative"
+          className="relative h-14"
           style={{
             width: `${rowWidth}px`,
             minWidth: `${rowWidth}px`,
@@ -103,7 +100,7 @@ export function RoomRow({
                   "h-14 border-r border-border/30 cursor-pointer transition-colors",
                   "hover:bg-calendar-cell-hover",
                   day.isToday && "bg-calendar-today",
-                  day.isWeekend && !day.isToday && "bg-calendar-weekend"
+                  day.isWeekend && !day.isToday && "bg-calendar-weekend",
                 )}
                 style={{
                   width: `${cellWidth}px`,

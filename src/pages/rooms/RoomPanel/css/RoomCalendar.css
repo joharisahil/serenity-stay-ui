@@ -1,39 +1,26 @@
-/* ===== Room Calendar Layout ===== */
-
 .calendar-wrapper {
   display: flex;
-  height: calc(100vh - 160px); /* adjust if header size changes */
-  overflow: hidden;
+  width: 100%;
+
 }
 
-/* LEFT: Rooms column */
 .rooms-column {
-  width: 260px;
-  min-width: 260px;
-  background: #ffffff;
-  border-right: 1px solid #e5e7eb;
-  overflow-y: auto;
+  width: 180px;
+  min-width: 180px;
   flex-shrink: 0;
-  z-index: 2;
+  border-right: 1px solid hsl(var(--border));
 }
 
-/* RIGHT: Scrollable calendar */
 .calendar-scroll {
   flex: 1;
-  overflow-x: auto;
+  overflow-x: auto;   
+  overflow-y: visible;
+}
+
+
+.calendar-body-scroll {
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
-  position: relative;
-}
-
-/* Calendar grid width depends on days */
-.calendar-grid {
-  min-width: 1600px;
-}
-
-/* Sticky date header */
-.calendar-header {
-  position: sticky;
-  top: 0;
-  background: #ffffff;
-  z-index: 3;
+  height: 100%;
 }

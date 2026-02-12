@@ -53,68 +53,19 @@ export function RoomCalendarGrid({
     );
   }
 
-return (
-  <div className="bg-card rounded-xl border shadow-premium overflow-hidden">
-    <div className="calendar-wrapper">
-      
-      {/* ================= LEFT: ROOMS ================= */}
-      <div className="rooms-column">
-        {/* Empty header spacer (aligns with date header height) */}
-        <div className="h-[64px] border-b bg-calendar-header flex items-center px-4">
-          <span className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-            Rooms
-          </span>
-        </div>
-
-        {/* Room rows */}
-        {rooms.map((room) => (
-          <RoomRow
-            key={room._id}
-            room={room}
-            calendarDays={calendarDays}
-            cellWidth={CELL_WIDTH}
-            onCellClick={onCellClick}
-            onBookingClick={onBookingClick}
-            selectedBookingId={selectedBookingId}
-            hideCalendarCells   // 👈 IMPORTANT (explained below)
-          />
-        ))}
-      </div>
-
-      {/* ================= RIGHT: CALENDAR ================= */}
-      <div className="calendar-scroll">
-        <div
-          className="calendar-grid"
-          style={{
-            minWidth: `${calendarDays.length * CELL_WIDTH}px`,
-          }}
-        >
-          {/* ================= HEADER ================= */}
-          <div className="calendar-header flex border-b-2 border-border bg-calendar-header sticky top-0 z-20">
-            {calendarDays.map((day) => (
-              <div
-                key={day.dateStr}
-                className={cn(
-                  "flex flex-col items-center justify-center py-2 border-r border-border/30",
-                  day.isToday && "bg-calendar-today",
-                  day.isWeekend && !day.isToday && "bg-calendar-weekend"
-                )}
-                style={{
-                  width: `${CELL_WIDTH}px`,
-                  minWidth: `${CELL_WIDTH}px`,
-                }}
-              >
-                <span className="text-xs font-medium uppercase">
-                  {day.dayOfWeek}
-                </span>
-                <span className="text-lg font-bold">
-                  {day.dayNumber}
-                </span>
-              </div>
-            ))}
+  return (
+    <div className="bg-card rounded-xl border shadow-premium">
+      <div className="flex w-full">
+        {/* ================= LEFT: ROOMS ================= */}
+        <div className="w-[180px] min-w-[180px] border-r">
+          {/* Header */}
+          <div className="h-[64px] border-b bg-calendar-header flex items-center px-4">
+            <span className="font-semibold text-sm text-muted-foreground uppercase">
+              Rooms
+            </span>
           </div>
 
-          {/* ================= CALENDAR ROWS ================= */}
+          {/* Room rows (NO SCROLL HERE) */}
           {rooms.map((room) => (
             <RoomRow
               key={room._id}
@@ -124,14 +75,48 @@ return (
               onCellClick={onCellClick}
               onBookingClick={onBookingClick}
               selectedBookingId={selectedBookingId}
-              onlyCalendarCells   // 👈 IMPORTANT
+              hideCalendarCells
             />
           ))}
         </div>
+
+        {/* ================= RIGHT: CALENDAR ================= */}
+        <div className="flex-1 overflow-x-auto overflow-y-hidden">
+          <div style={{ minWidth: calendarDays.length * CELL_WIDTH }}>
+            {/* Header */}
+            <div className="flex h-[64px] border-b bg-calendar-header sticky top-0 z-10">
+              {calendarDays.map((day) => (
+                <div
+                  key={day.dateStr}
+                  className={cn(
+                    "flex flex-col items-center justify-center border-r",
+                    day.isToday && "bg-calendar-today",
+                    day.isWeekend && !day.isToday && "bg-calendar-weekend",
+                  )}
+                  style={{ width: CELL_WIDTH }}
+                >
+                  <span className="text-xs uppercase">{day.dayOfWeek}</span>
+                  <span className="text-lg font-bold">{day.dayNumber}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar rows ( */}
+            {rooms.map((room) => (
+              <RoomRow
+                key={room._id}
+                room={room}
+                calendarDays={calendarDays}
+                cellWidth={CELL_WIDTH}
+                onCellClick={onCellClick}
+                onBookingClick={onBookingClick}
+                selectedBookingId={selectedBookingId}
+                onlyCalendarCells
+              />
+            ))}
+          </div>
+        </div>
       </div>
-
     </div>
-  </div>
-);
-
+  );
 }

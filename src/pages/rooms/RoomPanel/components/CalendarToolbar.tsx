@@ -4,6 +4,7 @@ import {
   ChevronRight,
   Calendar,
   Plus,
+  Lock,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -43,6 +44,7 @@ interface CalendarToolbarProps {
   onNavigateNext: () => void;
   onDateChange: (date: Date) => void;
   onNewBooking: () => void;
+  onBlockRooms: () => void;
 }
 
 /* ================= OPTIONS ================= */
@@ -76,6 +78,7 @@ export function CalendarToolbar({
   onNavigateNext,
   onDateChange,
   onNewBooking,
+  onBlockRooms,
 }: CalendarToolbarProps) {
   const activeFilterCount = [
     filters.status !== "all",
@@ -93,9 +96,7 @@ export function CalendarToolbar({
             <Calendar className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Room Calendar
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight">Room Calendar</h1>
             <p className="text-sm text-muted-foreground">
               Manage bookings and room availability
             </p>
@@ -144,6 +145,14 @@ export function CalendarToolbar({
             Today
           </Button>
 
+          <Button
+            className="bg-gray-600 text-white hover:bg-gray-700 border border-gray-700"
+            onClick={onBlockRooms}
+          >
+            <Lock className="h-4 w-4 mr-2" />
+            Block Rooms
+          </Button>
+
           <Button onClick={onNewBooking} className="shadow-premium">
             <Plus className="mr-2 h-4 w-4" />
             New Booking
@@ -159,9 +168,7 @@ export function CalendarToolbar({
           <Input
             placeholder="Search room number or type..."
             value={filters.search}
-            onChange={(e) =>
-              onFiltersChange({ search: e.target.value })
-            }
+            onChange={(e) => onFiltersChange({ search: e.target.value })}
             className="pl-9 bg-card"
           />
         </div>
@@ -280,7 +287,7 @@ export function CalendarToolbar({
           )}
         </div>
       </div>
-       {/* Status Legend */}
+      {/* Status Legend */}
       <div className="flex flex-wrap items-center gap-4 text-xs">
         <span className="text-muted-foreground font-medium">Status:</span>
         <div className="flex items-center gap-1.5">
@@ -323,7 +330,7 @@ export function CalendarToolbar({
           <div className="h-3 w-3 rounded-sm bg-source-banquet" />
           <span>Banquet</span>
         </div>
-        </div>
+      </div>
     </div>
   );
 }

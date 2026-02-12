@@ -274,3 +274,44 @@ export const resolveBookingApi = async (params: {
   const res = await api.get(url, { params: query });
   return res.data.booking;
 };
+
+/* ----------------------------
+   BLOCK SELECTED ROOMS
+   - POST /room-bookings/block-selected
+-----------------------------*/
+export const blockSelectedRoomsApi = async (data: {
+  roomIds: string[];
+  checkIn: string;
+  checkOut: string;
+  reason?: string;
+}) => {
+  const res = await tryRequest(
+    () => api.post("/room-bookings/block-selected", data)
+  );
+
+  return res.data;
+};
+
+/* ----------------------------
+   CONVERT BLOCK TO BOOKING
+   - PATCH /room-bookings/:id/convert
+-----------------------------*/
+export const convertBlockToBookingApi = async (
+  bookingId: string,
+  payload: any
+) => {
+  const res = await tryRequest(
+    () => api.patch(`/room-bookings/${bookingId}/convert`, payload)
+  );
+
+  return res.data;
+};
+
+/*Unblock the selected rooms */
+export const unblockRoomApi = async (bookingId: string) => {
+  const res = await tryRequest(() =>
+    api.patch(`/room-bookings/unblock/${bookingId}`)
+  );
+
+  return res.data;
+};

@@ -1,12 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useState } from "react";
 
 import { Layout } from "@/components/layout/Layout";
 import { CalendarToolbar } from "./components/CalendarToolbar";
 import { RoomCalendarGrid } from "./components/RoomCalendarGrid";
 import { BookingSidePanel } from "./components/BookingSidePanel";
 import { CellActionsPanel } from "./components/CellActionsPanel";
-
+import { BlockRoomsModal } from "./components/BlockRoomsModal";
 import { useRoomCalendar } from "./hooks/useRoomCalendar";
 import type { Booking } from "./hooks/useRoomCalendar";
 
@@ -31,7 +32,9 @@ export default function RoomCalendar() {
     selectBooking,
     selectCell,
     clearSelection,
+    refreshData,
   } = useRoomCalendar();
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
 
   /* ================= SELECTED ROOM ================= */
 
@@ -41,38 +44,38 @@ export default function RoomCalendar() {
 
   /* ================= BOOKING SIDE PANEL ACTIONS ================= */
 
-  const handleBookingAction = (action: string, booking: Booking) => {
-    switch (action) {
-      case "check-in":
-        toast.success(`Checking in ${booking.guestName || "Guest"}…`);
-        clearSelection();
-        break;
+  // const handleBookingAction = (action: string, booking: Booking) => {
+  //   switch (action) {
+  //     case "check-in":
+  //       toast.success(`Checking in ${booking.guestName || "Guest"}…`);
+  //       clearSelection();
+  //       break;
 
-      case "check-out":
-        toast.success(`Checking out ${booking.guestName || "Guest"}…`);
-        clearSelection();
-        break;
+  //     case "check-out":
+  //       toast.success(`Checking out ${booking.guestName || "Guest"}…`);
+  //       clearSelection();
+  //       break;
 
-      case "edit":
-        navigate(`/rooms/bookings/${booking._id}/edit`);
-        break;
+  //     case "edit":
+  //       navigate(`/rooms/bookings/${booking._id}/edit`);
+  //       break;
 
-      case "extend":
-        toast.info("Extend stay – coming soon");
-        break;
+  //     case "extend":
+  //       toast.info("Extend stay – coming soon");
+  //       break;
 
-      case "change-room":
-        toast.info("Change room – coming soon");
-        break;
+  //     case "change-room":
+  //       toast.info("Change room – coming soon");
+  //       break;
 
-      case "cancel":
-        toast.warning("Cancel booking – coming soon");
-        break;
+  //     case "cancel":
+  //       toast.warning("Cancel booking – coming soon");
+  //       break;
 
-      default:
-        break;
-    }
-  };
+  //     default:
+  //       break;
+  //   }
+  // };
 
   return (
     <Layout>
@@ -89,6 +92,7 @@ export default function RoomCalendar() {
           onNavigateNext={navigateNext}
           onDateChange={setStartDate}
           onNewBooking={() => navigate("/rooms/bookings/create")}
+          onBlockRooms={() => setIsBlockModalOpen(true)}
         />
 
         {/* ================= CALENDAR GRID ================= */}
@@ -106,7 +110,7 @@ export default function RoomCalendar() {
           booking={selectedBooking}
           isOpen={!!selectedBooking}
           onClose={clearSelection}
-          onAction={handleBookingAction}
+          refetch={refreshData}
         />
 
         {/* ================= CELL ACTIONS PANEL ================= */}
@@ -126,20 +130,16 @@ export default function RoomCalendar() {
                 });
                 clearSelection();
               }}
-              onBlockRoom={(roomId, dateStr) => {
-                toast.info(
-                  `Block room ${selectedRoom?.number} on ${dateStr} – coming soon`
-                );
-                clearSelection();
-              }}
-              onMaintenance={(roomId, dateStr) => {
-                toast.info(
-                  `Maintenance for room ${selectedRoom?.number} on ${dateStr} – coming soon`
-                );
-                clearSelection();
-              }}
             />
           </div>
+        )}
+        {isBlockModalOpen && (
+          <BlockRoomsModal
+            isOpen={isBlockModalOpen}
+            onClose={() => setIsBlockModalOpen(false)}
+            rooms={filteredRooms} // 🔥 THIS IS KEY
+            onSuccess={refreshData} // optional but recommended
+          />
         )}
       </div>
     </Layout>

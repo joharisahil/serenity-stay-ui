@@ -15,10 +15,7 @@ interface BookingBlockProps {
 
 /* ================= SOURCE STYLES ================= */
 
-const sourceConfig: Record<
-  BookingSource,
-  { bg: string; label: string }
-> = {
+const sourceConfig: Record<BookingSource, { bg: string; label: string }> = {
   WALK_IN: { bg: "bg-source-walkin", label: "Walk-in" },
   OTA: { bg: "bg-source-ota", label: "OTA" },
   BANQUET: { bg: "bg-source-banquet", label: "Banquet" },
@@ -32,17 +29,14 @@ function calculateBookingPosition(
   checkOut: string,
   calendarStart: Date,
   cellWidth: number,
-  totalDays: number
+  totalDays: number,
 ) {
   const start = startOfDay(calendarStart);
   const inDate = startOfDay(new Date(checkIn));
   const outDate = startOfDay(new Date(checkOut));
 
   const startOffset = differenceInCalendarDays(inDate, start);
-  const nights = Math.max(
-    1,
-    differenceInCalendarDays(outDate, inDate)
-  );
+  const nights = Math.max(1, differenceInCalendarDays(outDate, inDate));
 
   const rawLeft = startOffset * cellWidth;
   const rawWidth = nights * cellWidth;
@@ -76,19 +70,18 @@ export function BookingBlock({
     booking.checkOut,
     calendarStart,
     cellWidth,
-    totalDays
+    totalDays,
   );
 
   // ❌ Completely outside view
   if (width <= 0) return null;
-const sourceRaw = booking.source ?? "WALK_IN";
+  const sourceRaw = booking.source ?? "WALK_IN";
 
-// 🔒 HARD SAFETY: fallback if unknown value
-const source: BookingSource =
-  sourceRaw in sourceConfig ? sourceRaw : "WALK_IN";
+  // 🔒 HARD SAFETY: fallback if unknown value
+  const source: BookingSource =
+    sourceRaw in sourceConfig ? sourceRaw : "WALK_IN";
 
-const config = sourceConfig[source];
-
+  const config = sourceConfig[source];
 
   const isCompact = width < 110;
   const isVeryCompact = width < 70;
@@ -103,11 +96,13 @@ const config = sourceConfig[source];
         "absolute top-1 bottom-1 rounded-lg cursor-pointer",
         "flex items-center gap-2 px-3 overflow-hidden",
         "text-white shadow-booking border border-white/20",
-        config.bg,
-        isSelected &&
-          "ring-2 ring-accent ring-offset-1 z-20 scale-[1.02]",
-        booking.status === "BLOCKED" && "opacity-80",
-        booking.status === "MAINTENANCE" && "opacity-90"
+        booking.status === "BLOCKED"
+          ? "bg-slate-600"
+          : booking.status === "MAINTENANCE"
+            ? "bg-orange-500"
+            : config.bg,
+
+        isSelected && "ring-2 ring-accent ring-offset-1 z-20 scale-[1.02]",
       )}
       style={{
         left: `${left}px`,
@@ -133,9 +128,7 @@ const config = sourceConfig[source];
       )}
 
       {!isVeryCompact && (
-        <span className="text-xs opacity-80 shrink-0">
-          {nights}N
-        </span>
+        <span className="text-xs opacity-80 shrink-0">{nights}N</span>
       )}
     </div>
   );
