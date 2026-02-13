@@ -43,6 +43,17 @@ interface BookingSidePanelProps {
   onClose: () => void;
   refetch?: () => void;
 }
+const formatToIST = (dateString: string) => {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(dateString));
+};
 
 /* ================= CONFIG ================= */
 
@@ -96,11 +107,13 @@ export function BookingSidePanel({
 
   const nights = Math.max(
     1,
-    differenceInCalendarDays(
-      parseISO(booking.checkOut),
-      parseISO(booking.checkIn),
+    Math.ceil(
+      (new Date(booking.checkOut).getTime() -
+        new Date(booking.checkIn).getTime()) /
+        (1000 * 60 * 60 * 24),
     ),
   );
+
   const handleUnblock = async () => {
     if (!booking?._id) return;
 
@@ -202,7 +215,7 @@ export function BookingSidePanel({
                         Check-in
                       </span>
                       <span className="font-medium">
-                        {format(parseISO(booking.checkIn), "dd MMM yyyy")}
+                        {formatToIST(booking.checkIn)}
                       </span>
                     </div>
 
@@ -211,7 +224,7 @@ export function BookingSidePanel({
                         Check-out
                       </span>
                       <span className="font-medium">
-                        {format(parseISO(booking.checkOut), "dd MMM yyyy")}
+                        {formatToIST(booking.checkOut)}
                       </span>
                     </div>
 
@@ -287,7 +300,7 @@ export function BookingSidePanel({
                         </span>
                       </div>
                       <span className="font-medium">
-                        {format(parseISO(booking.checkIn), "dd MMM yyyy")}
+                        {formatToIST(booking.checkIn)}
                       </span>
                     </div>
 
@@ -299,7 +312,7 @@ export function BookingSidePanel({
                         </span>
                       </div>
                       <span className="font-medium">
-                        {format(parseISO(booking.checkOut), "dd MMM yyyy")}
+                        {formatToIST(booking.checkOut)}
                       </span>
                     </div>
 
@@ -353,43 +366,38 @@ export function BookingSidePanel({
           <div className="border-t p-4 bg-background">
             {isBlocked ? (
               <div className="space-y-2">
-              <AlertDialog>
-  <AlertDialogTrigger asChild>
-    <Button
-      variant="outline"
-      className="w-full"
-      disabled={isUnblocking}
-    >
-      {isUnblocking ? "Unblocking..." : "Unblock Room"}
-    </Button>
-  </AlertDialogTrigger>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      disabled={isUnblocking}
+                    >
+                      {isUnblocking ? "Unblocking..." : "Unblock Room"}
+                    </Button>
+                  </AlertDialogTrigger>
 
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>
-        Unblock this room?
-      </AlertDialogTitle>
-      <AlertDialogDescription>
-        This will remove the block and make the room available
-        for booking. This action cannot be undone.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Unblock this room?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove the block and make the room available
+                        for booking. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
 
-    <AlertDialogFooter>
-      <AlertDialogCancel>
-        Cancel
-      </AlertDialogCancel>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
 
-      <AlertDialogAction
-        onClick={handleUnblock}
-        className="bg-slate-700 hover:bg-slate-800 text-white"
-      >
-        Confirm Unblock
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
-
+                      <AlertDialogAction
+                        onClick={handleUnblock}
+                        className="bg-slate-700 hover:bg-slate-800 text-white"
+                      >
+                        Confirm Unblock
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
 
                 <Button
                   className="w-full"
