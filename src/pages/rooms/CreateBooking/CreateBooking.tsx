@@ -244,13 +244,14 @@ export default function CreateBooking() {
     }
 
     let gstTotal = 0;
-    if (formData.gstEnabled === "true") {
-      gstTotal += isSpecialPricing
-        ? roomGSTFromRoom
-        : +(discountedRoomBase * 0.05).toFixed(2);
 
-      gstTotal += +(discountedExtrasGST * 0.05).toFixed(2);
-    }
+if (formData.gstEnabled === "true") {
+  // 🔥 ALWAYS calculate GST on discounted base
+  gstTotal += +(discountedRoomBase * 0.05).toFixed(2);
+
+  gstTotal += +(discountedExtrasGST * 0.05).toFixed(2);
+}
+
 
     const cgst = +(gstTotal / 2).toFixed(2);
     const sgst = +(gstTotal / 2).toFixed(2);

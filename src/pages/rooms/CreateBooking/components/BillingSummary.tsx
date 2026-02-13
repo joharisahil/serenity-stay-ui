@@ -66,8 +66,8 @@ export function BillingSummary({
   const [advanceStatus, setAdvanceStatus] = useState<FieldStatus>("idle");
   const [specialPriceStatus, setSpecialPriceStatus] =
     useState<FieldStatus>("idle");
-const advanceExceedsTotal =
-  Number(formData.advanceAmount || 0) > summary.grandTotal;
+  const advanceExceedsTotal =
+    Number(formData.advanceAmount || 0) > summary.grandTotal;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -357,14 +357,13 @@ const advanceExceedsTotal =
               Advance Received
             </Label>
             <Input
-  type="number"
-  placeholder="0"
-  className={`h-9 text-sm ${
-    advanceExceedsTotal || advanceStatus === "invalid"
-      ? "border-red-500 focus-visible:ring-red-500"
-      : ""
-  }`}
-
+              type="number"
+              placeholder="0"
+              className={`h-9 text-sm ${
+                advanceExceedsTotal || advanceStatus === "invalid"
+                  ? "border-red-500 focus-visible:ring-red-500"
+                  : ""
+              }`}
               value={formData.advanceAmount}
               onChange={(e) => {
                 onFormChange({ advanceAmount: e.target.value });

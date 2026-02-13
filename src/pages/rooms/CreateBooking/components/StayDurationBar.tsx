@@ -66,7 +66,7 @@ export function StayDurationBar({
   let dateErrorMessage = "";
 
   if (isCheckInPast) {
-    dateErrorMessage = "Check-in date cannot be in the past.";
+    dateErrorMessage = "Check-in date are in the past.";
   } else if (isCheckOutPast) {
     dateErrorMessage = "Check-out date cannot be in the past.";
   } else if (isDateOrderInvalid) {
@@ -77,13 +77,9 @@ export function StayDurationBar({
      Safe Formatting
   ================================ */
 
-  const checkInFormatted = isCheckInPast
-    ? { date: "—", time: "—" }
-    : formatDateTime(checkIn);
+  const checkInFormatted =  formatDateTime(checkIn);
 
-  const checkOutFormatted = isCheckOutPast
-    ? { date: "—", time: "—" }
-    : formatDateTime(checkOut);
+  const checkOutFormatted = formatDateTime(checkOut);
 
   /* ===============================
      Nights Safety
