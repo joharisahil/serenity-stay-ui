@@ -8,7 +8,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import {
   addAdvancePaymentApi,
   deleteAdvancePaymentApi,
-  getAvailableRoomsApi ,
+  
 } from "@/api/bookingApi";
 
 import { GuestInfoSection } from "./components/GuestInfoSection";
@@ -24,7 +24,8 @@ import { getNights } from "./utils/getNights";
 import { useBooking } from "./hooks/useBooking";
 import { useAdvancePayments } from "./hooks/useAdvancePayments";
 
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
+
 
 export default function BookingDetails() {
   const navigate = useNavigate();
@@ -82,17 +83,41 @@ export default function BookingDetails() {
     }
   };
 
-  const handleDepositAdvance = async (index: number) => {
-    if (!booking?._id) return;
-    try {
-      await addAdvancePaymentApi(booking._id, advances[index]);
-      toast.success("Advance deposited");
-      setAdvances([]);
-      await refreshBooking();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message ?? "Failed to deposit advance");
+ const handleDepositAdvance = async (index: number) => {
+  if (!booking?._id) return;
+
+  const adv = advances[index];
+
+  try {
+    await addAdvancePaymentApi(booking._id, adv);
+
+    toast.success(
+      `₹${adv.amount.toLocaleString("en-IN")} advance deposited successfully`
+    );
+
+    setAdvances([]);
+    await refreshBooking();
+
+  } catch (e: any) {
+    const backendMessage = e?.response?.data?.message;
+
+    // Specific business rule handling
+    if (backendMessage?.includes("Advance cannot exceed remaining balance")) {
+      const remaining = booking.balanceDue ?? 0;
+
+      toast.error(
+        `Deposit exceeds remaining balance.
+Remaining: ₹${remaining.toLocaleString("en-IN")}
+Entered: ₹${adv.amount.toLocaleString("en-IN")}`
+      );
+    } else {
+      toast.error(
+        backendMessage || "Unable to deposit advance. Please try again."
+      );
     }
-  };
+  }
+};
+
   const handleCancelAdvance = (index: number) => {
   setAdvances((prev) => prev.filter((_, i) => i !== index));
 };
