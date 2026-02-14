@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,6 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import {
   addAdvancePaymentApi,
   deleteAdvancePaymentApi,
-  
 } from "@/api/bookingApi";
 
 import { GuestInfoSection } from "./components/GuestInfoSection";
@@ -26,20 +25,9 @@ import { useAdvancePayments } from "./hooks/useAdvancePayments";
 
 import { toast } from "sonner";
 
-
 export default function BookingDetails() {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // 🔑 ONLY SOURCE OF TRUTH
-  const passedBookingId = location.state?.bookingId;
-
-  // 🔒 Safety guard
-  useEffect(() => {
-    if (!passedBookingId) {
-      navigate("/rooms");
-    }
-  }, [passedBookingId, navigate]);
+  const { bookingId } = useParams();
 
   const [pageRefreshing, setPageRefreshing] = useState(false);
   const [finalPaymentReceived, setFinalPaymentReceived] = useState(false);
@@ -57,21 +45,13 @@ export default function BookingDetails() {
     refreshBooking,
     loadAvailableRooms,
   } = useBooking({
-    bookingId: passedBookingId, // 🔥 ONLY THIS
+    bookingId: bookingId!,
   });
-
-
-
 
   /* ================= ADVANCE PAYMENTS ================= */
 
-  const {
-    advances,
-    setAdvances,
-    addAdvance,
-    updateAdvance,
-    totalAdvance,
-  } = useAdvancePayments(booking?.advances || []);
+  const { advances, setAdvances, addAdvance, updateAdvance, totalAdvance } =
+    useAdvancePayments(booking?.advances || []);
 
   const hardRefreshPage = async () => {
     if (!booking?._id) return;
@@ -83,45 +63,43 @@ export default function BookingDetails() {
     }
   };
 
- const handleDepositAdvance = async (index: number) => {
-  if (!booking?._id) return;
+  const handleDepositAdvance = async (index: number) => {
+    if (!booking?._id) return;
 
-  const adv = advances[index];
+    const adv = advances[index];
 
-  try {
-    await addAdvancePaymentApi(booking._id, adv);
+    try {
+      await addAdvancePaymentApi(booking._id, adv);
 
-    toast.success(
-      `₹${adv.amount.toLocaleString("en-IN")} advance deposited successfully`
-    );
+      toast.success(
+        `₹${adv.amount.toLocaleString("en-IN")} advance deposited successfully`,
+      );
 
-    setAdvances([]);
-    await refreshBooking();
+      setAdvances([]);
+      await refreshBooking();
+    } catch (e: any) {
+      const backendMessage = e?.response?.data?.message;
 
-  } catch (e: any) {
-    const backendMessage = e?.response?.data?.message;
+      // Specific business rule handling
+      if (backendMessage?.includes("Advance cannot exceed remaining balance")) {
+        const remaining = booking.balanceDue ?? 0;
 
-    // Specific business rule handling
-    if (backendMessage?.includes("Advance cannot exceed remaining balance")) {
-      const remaining = booking.balanceDue ?? 0;
-
-      toast.error(
-        `Deposit exceeds remaining balance.
+        toast.error(
+          `Deposit exceeds remaining balance.
 Remaining: ₹${remaining.toLocaleString("en-IN")}
-Entered: ₹${adv.amount.toLocaleString("en-IN")}`
-      );
-    } else {
-      toast.error(
-        backendMessage || "Unable to deposit advance. Please try again."
-      );
+Entered: ₹${adv.amount.toLocaleString("en-IN")}`,
+        );
+      } else {
+        toast.error(
+          backendMessage || "Unable to deposit advance. Please try again.",
+        );
+      }
     }
-  }
-};
+  };
 
   const handleCancelAdvance = (index: number) => {
-  setAdvances((prev) => prev.filter((_, i) => i !== index));
-};
-
+    setAdvances((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleDeleteAdvance = async (advanceId: string) => {
     if (!booking?._id) return;
@@ -197,7 +175,11 @@ Entered: ₹${adv.amount.toLocaleString("en-IN")}`
 
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/rooms")}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/rooms")}
+          >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -218,10 +200,7 @@ Entered: ₹${adv.amount.toLocaleString("en-IN")}`
             billingData={billingData}
             onRefresh={hardRefreshPage}
           />
-          <ExtraServicesSection
-            booking={booking}
-            onRefresh={hardRefreshPage}
-          />
+          <ExtraServicesSection booking={booking} onRefresh={hardRefreshPage} />
           <RoomChargesSection
             booking={booking}
             billingData={billingData}
@@ -234,15 +213,14 @@ Entered: ₹${adv.amount.toLocaleString("en-IN")}`
             onRefresh={hardRefreshPage}
           />
           <AdvancePaymentsSection
-  advances={advances}
-  totalAdvance={totalAdvance}
-  onAddAdvance={addAdvance}
-  onUpdateAdvance={updateAdvance}
-  onDepositAdvance={handleDepositAdvance}
-  onDeleteAdvance={handleDeleteAdvance}
-  onCancelAdvance={handleCancelAdvance} // ✅ REQUIRED
-/>
-
+            advances={advances}
+            totalAdvance={totalAdvance}
+            onAddAdvance={addAdvance}
+            onUpdateAdvance={updateAdvance}
+            onDepositAdvance={handleDepositAdvance}
+            onDeleteAdvance={handleDeleteAdvance}
+            onCancelAdvance={handleCancelAdvance} 
+          />
         </div>
 
         <div className="lg:col-span-4">
@@ -272,7 +250,6 @@ Entered: ₹${adv.amount.toLocaleString("en-IN")}`
     </Layout>
   );
 }
-
 
 /*old ui*/
 

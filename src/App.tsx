@@ -100,7 +100,7 @@ const App = () => (
             {/* Legacy redirects */}
             <Route path="/rooms" element={<ProtectedRoute><RoomCalendar /></ProtectedRoute>} />
             {/* <Route path="/rooms//bookings/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} /> */}
-            <Route path="/rooms/bookings/:roomId" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
+            <Route path="/rooms/bookings/:bookingId" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
             <Route path="/rooms/bills" element={<ProtectedRoute><RoomBillingList /></ProtectedRoute>} />
             {/* Room Routes
             <Route path="/rooms" element={
