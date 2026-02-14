@@ -39,6 +39,26 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+         room: {
+      available: "hsl(var(--room-available))",
+      occupied: "hsl(var(--room-occupied))",
+      cleaning: "hsl(var(--room-cleaning))",
+      maintenance: "hsl(var(--room-maintenance))",
+      blocked: "hsl(var(--room-blocked))",
+    },
+
+    source: {
+      walkin: "hsl(var(--source-walkin))",
+      ota: "hsl(var(--source-ota))",
+      banquet: "hsl(var(--source-banquet))",
+      corporate: "hsl(var(--source-corporate))",
+    },
+
+    calendar: {
+      today: "hsl(var(--calendar-today))",
+      weekend: "hsl(var(--calendar-weekend))",
+      "cell-hover": "hsl(var(--calendar-cell-hover))",
+    },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",

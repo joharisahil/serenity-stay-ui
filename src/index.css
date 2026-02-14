@@ -58,6 +58,23 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 180 50% 40%;
     --sidebar-ring: 40 90% 50%;
+    /* ===== ROOM STATUS COLORS ===== */
+  --room-available: 142 76% 36%;
+  --room-occupied: 221 83% 53%;
+  --room-cleaning: 48 96% 53%;
+  --room-maintenance: 0 84% 60%;
+  --room-blocked: 0 0% 45%;
+
+  /* ===== BOOKING SOURCE COLORS ===== */
+  --source-walkin: 217 91% 60%;
+  --source-ota: 262 83% 58%;
+  --source-banquet: 24 95% 53%;
+  --source-corporate: 162 73% 46%;
+
+  /* ===== CALENDAR ===== */
+  --calendar-today: 217 91% 95%;
+  --calendar-weekend: 0 0% 97%;
+  --calendar-cell-hover: 217 91% 97%;
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(180 55% 45%), hsl(180 65% 35%));

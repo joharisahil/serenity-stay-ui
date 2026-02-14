@@ -1,4 +1,4 @@
-import { Check, DoorOpen, Users, Utensils } from "lucide-react";
+import { Check, DoorOpen, Utensils } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -33,6 +33,13 @@ interface RoomSelectorProps {
   onRoomTypeChange: (value: string) => void;
   onRoomChange: (value: string) => void;
   onPlanChange: (value: string) => void;
+
+  // ✅ NEW
+  isConvertMode?: boolean;
+  convertRoom?: {
+    number: string;
+    type: string;
+  };
 }
 
 export function RoomSelector({
@@ -46,20 +53,9 @@ export function RoomSelector({
   onRoomTypeChange,
   onRoomChange,
   onPlanChange,
+  isConvertMode = false,
+  convertRoom,
 }: RoomSelectorProps) {
-  const getStatusColor = (status?: string) => {
-    switch (status?.toLowerCase()) {
-      case "available":
-        return "status-available";
-      case "occupied":
-        return "status-occupied";
-      case "dirty":
-        return "status-dirty";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -70,66 +66,94 @@ export function RoomSelector({
 
   return (
     <div className="space-y-4">
-      {/* Room Type */}
+      {/* ============================= */}
+      {/* ROOM TYPE */}
+      {/* ============================= */}
+
       <div className="erp-field">
         <Label className="erp-label erp-required">Room Type</Label>
-        <Select disabled={disabled} value={selectedRoomType} onValueChange={onRoomTypeChange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select room type" />
-          </SelectTrigger>
-          <SelectContent>
-            {roomTypes.map((type) => (
-              <SelectItem key={type} value={type}>
-                <div className="flex items-center gap-2">
-                  <DoorOpen className="h-4 w-4 text-muted-foreground" />
-                  {type}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
 
-      {/* Room Number */}
-      <div className="erp-field">
-        <Label className="erp-label erp-required">Room Number</Label>
-        <Select 
-          disabled={disabled || !selectedRoomType} 
-          value={selectedRoom} 
-          onValueChange={onRoomChange}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select room" />
-          </SelectTrigger>
-          <SelectContent>
-            {rooms.map((room) => (
-              <SelectItem key={room._id} value={room._id}>
-                <div className="flex items-center justify-between w-full gap-4">
+        {isConvertMode ? (
+          <div className="erp-input bg-muted flex items-center gap-2">
+            <DoorOpen className="h-4 w-4 text-muted-foreground" />
+            {convertRoom?.type}
+          </div>
+        ) : (
+          <Select
+            disabled={disabled}
+            value={selectedRoomType}
+            onValueChange={onRoomTypeChange}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select room type" />
+            </SelectTrigger>
+            <SelectContent>
+              {roomTypes.map((type) => (
+                <SelectItem key={type} value={type}>
                   <div className="flex items-center gap-2">
-                    <DoorOpen className="h-4 w-4" />
-                    <span className="font-medium">{room.number}</span>
+                    <DoorOpen className="h-4 w-4 text-muted-foreground" />
+                    {type}
                   </div>
-                  <span className={`status-badge ${getStatusColor(room.status)}`}>
-                    {room.status || "Available"}
-                  </span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {rooms.length === 0 && selectedRoomType && !disabled && (
-          <p className="text-xs text-muted-foreground mt-1">
-            No rooms available for selected dates and type
-          </p>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
 
-      {/* Plan Selector */}
+      {/* ============================= */}
+      {/* ROOM NUMBER */}
+      {/* ============================= */}
+
+      <div className="erp-field">
+        <Label className="erp-label erp-required">Room Number</Label>
+
+        {isConvertMode ? (
+          <div className="erp-input bg-muted flex items-center gap-2">
+            <DoorOpen className="h-4 w-4 text-muted-foreground" />
+            Room {convertRoom?.number}
+          </div>
+        ) : (
+          <>
+            <Select
+              disabled={disabled || !selectedRoomType}
+              value={selectedRoom}
+              onValueChange={onRoomChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select room" />
+              </SelectTrigger>
+              <SelectContent>
+                {rooms.map((room) => (
+                  <SelectItem key={room._id} value={room._id}>
+                    <div className="flex items-center gap-2">
+                      <DoorOpen className="h-4 w-4" />
+                      <span className="font-medium">{room.number}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {rooms.length === 0 && selectedRoomType && !disabled && (
+              <p className="text-xs text-muted-foreground mt-1">
+                No rooms available for selected dates and type
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ============================= */}
+      {/* PLAN SELECTOR */}
+      {/* ============================= */}
+
       <div className="erp-field">
         <Label className="erp-label erp-required">Rate Plan</Label>
-        <Select 
-          disabled={disabled || !selectedRoom} 
-          value={selectedPlan} 
+
+        <Select
+          disabled={disabled || !selectedRoom}
+          value={selectedPlan}
           onValueChange={onPlanChange}
         >
           <SelectTrigger>
@@ -158,12 +182,15 @@ export function RoomSelector({
         </Select>
       </div>
 
-      {/* Selected Plan Display */}
+      {/* Selected Plan Badge */}
       {selectedPlan && (
-        <div className="flex items-center gap-2 p-3 bg-accent/50 rounded-md border border-accent-foreground/20">
+        <div className="flex items-center gap-2 p-3 bg-accent/50 rounded-md border">
           <Check className="h-4 w-4 text-erp-success" />
           <span className="text-sm">
-            Plan selected: <strong>{plans.find(p => p.key === selectedPlan)?.label}</strong>
+            Plan selected:{" "}
+            <strong>
+              {plans.find((p) => p.key === selectedPlan)?.label}
+            </strong>
           </span>
         </div>
       )}

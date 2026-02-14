@@ -6,10 +6,13 @@ import {
   Receipt,
   Package,
   ChefHat,
-  Menu as MenuIcon,
   ChevronDown,
-  Table2Icon
+  Table2Icon,
+  X,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
+
 import { NavLink } from "@/components/NavLink";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,9 +35,9 @@ const navigationItems = [
       { title: "Room Bills", url: "/rooms/bills" },
     ],
   },
-    {
+  {
     title: "Table Management",
-    icon:   Table2Icon,
+    icon: Table2Icon,
     submenu: [
       { title: "Manage Tables", url: "/tables/manage" },
       { title: "Table Bookings", url: "/tables/bookings" },
@@ -44,32 +47,32 @@ const navigationItems = [
   { title: "Menu Management", url: "/menu", icon: UtensilsCrossed },
   {
     title: "Billing",
-    icon:   Receipt,
+    icon: Receipt,
     submenu: [
-      { title: "Restaurant bill", url: "/billing" },
-      { title: "Old bill", url: "/old-bills" },
+      { title: "Restaurant Bill", url: "/billing" },
+      { title: "Old Bills", url: "/old-bills" },
     ],
   },
   { title: "Kitchen Orders", url: "/kitchen", icon: ChefHat },
- // { title: "Billing", url: "/billing", icon: Receipt },
   { title: "Inventory", url: "/inventory", icon: Package },
 ];
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [collapsed, setCollapsed] = useState(false);
 
   const toggleSubmenu = (title: string) => {
     setExpandedMenus((prev) =>
-      prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]
+      prev.includes(title)
+        ? prev.filter((item) => item !== title)
+        : [...prev, title],
     );
   };
 
-  const isSubmenuActive = (submenu: { title: string; url: string }[]) => {
-    return submenu.some((item) => location.pathname.startsWith(item.url));
-  };
+  const isSubmenuActive = (submenu: any[]) =>
+    submenu.some((item) => location.pathname.startsWith(item.url));
 
-  // Auto-expand menus if current route matches submenu
   useEffect(() => {
     navigationItems.forEach((item) => {
       if (item.submenu && isSubmenuActive(item.submenu)) {
@@ -83,100 +86,150 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Mobile Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-full w-64 bg-sidebar text-sidebar-foreground transition-transform duration-300 lg:sticky lg:translate-x-0",
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          "bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out",
+          collapsed ? "w-20" : "w-64",
+          "hidden lg:flex lg:flex-col",
+          "h-full border-r",
         )}
       >
-        {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
-          <div className="flex items-center gap-2">
-            <Hotel className="h-6 w-6 text-sidebar-primary" />
-            <span className="text-lg font-bold whitespace-nowrap">Hotel PMS</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent"
-            onClick={onClose}
-          >
-            <MenuIcon className="h-5 w-5" />
-          </Button>
+        {/* Desktop Sidebar */}
+        <SidebarContent
+          collapsed={collapsed}
+          expandedMenus={expandedMenus}
+          toggleSubmenu={toggleSubmenu}
+          setCollapsed={setCollapsed}
+        />
+      </aside>
+
+      {/* Mobile Sidebar */}
+      <aside
+        className={cn(
+          "fixed top-0 left-0 z-50 h-full w-64 bg-sidebar text-sidebar-foreground transition-transform duration-300 lg:hidden",
+          isOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <SidebarContent
+          collapsed={false}
+          expandedMenus={expandedMenus}
+          toggleSubmenu={toggleSubmenu}
+          onClose={onClose}
+        />
+      </aside>
+    </>
+  );
+}
+
+function SidebarContent({
+  collapsed,
+  expandedMenus,
+  toggleSubmenu,
+  setCollapsed,
+  onClose,
+}: any) {
+  return (
+    <>
+      <div className="flex h-16 items-center justify-between px-4 border-b">
+        {/* Logo Section */}
+        <div className="flex items-center gap-3 overflow-hidden">
+          {/* Show full logo only when expanded */}
+          {!collapsed && (
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-sidebar-accent">
+                <Hotel className="h-5 w-5 text-sidebar-primary" />
+              </div>
+
+              <div className="flex flex-col leading-tight">
+                <span className="text-base font-semibold tracking-tight">
+                  Hotel PMS
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Show only icon when collapsed */}
+          {collapsed && (
+            <div className="p-2 rounded-lg bg-sidebar-accent">
+              <Hotel className="h-5 w-5 text-sidebar-primary" />
+            </div>
+          )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex flex-col gap-1 p-4">
-          {navigationItems.map((item) => (
-            <div key={item.title}>
-              {item.submenu ? (
-                <>
-                  {/* Parent Menu Button */}
-                  <button
-                    onClick={() => toggleSubmenu(item.title)}
-                    className={cn(
-                      "w-full flex items-center justify-between gap-3 whitespace-nowrap rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
-                      isSubmenuActive(item.submenu) && "bg-sidebar-accent font-medium"
-                    )}
-                  >
-                    <div className="flex items-center gap-3 whitespace-nowrap">
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.title}</span>
-                    </div>
-                    <ChevronDown
-                      className={cn(
-                        "h-4 w-4 transition-transform",
-                        expandedMenus.includes(item.title) && "rotate-180"
-                      )}
-                    />
-                  </button>
-
-                  {/* Submenu */}
-                  {expandedMenus.includes(item.title) && (
-                    <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-border pl-4">
-                      {item.submenu.map((subItem) => (
-                        <NavLink
-                          key={subItem.url}
-                          to={subItem.url}
-                          className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
-                          activeClassName="bg-sidebar-accent font-medium"
-                          onClick={() => {
-                            if (window.innerWidth < 1024) {
-                              onClose();
-                            }
-                          }}
-                        >
-                          <span>{subItem.title}</span>
-                        </NavLink>
-                      ))}
-                    </div>
-                  )}
-                </>
+        {/* Right Side Buttons */}
+        <div className="flex items-center gap-2">
+          {setCollapsed && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setCollapsed((prev: boolean) => !prev)}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
               ) : (
-                <NavLink
-                  to={item.url!}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent whitespace-nowrap"
-                  activeClassName="bg-sidebar-accent font-medium"
-                  onClick={() => {
-                    if (window.innerWidth < 1024) {
-                      onClose();
-                    }
-                  }}
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+
+          {onClose && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="lg:hidden"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {navigationItems.map((item) => (
+          <div key={item.title}>
+            {item.submenu ? (
+              <>
+                <button
+                  onClick={() => toggleSubmenu(item.title)}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent"
                 >
                   <item.icon className="h-5 w-5" />
-                  <span>{item.title}</span>
-                </NavLink>
-              )}
-            </div>
-          ))}
-        </nav>
-      </aside>
+                  {!collapsed && <span>{item.title}</span>}
+                  {!collapsed && <ChevronDown className="ml-auto h-4 w-4" />}
+                </button>
+
+                {!collapsed && expandedMenus.includes(item.title) && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {item.submenu.map((subItem: any) => (
+                      <NavLink
+                        key={subItem.url}
+                        to={subItem.url}
+                        className="block px-3 py-2 rounded-lg hover:bg-sidebar-accent text-sm"
+                      >
+                        {subItem.title}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <NavLink
+                to={item.url}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent"
+              >
+                <item.icon className="h-5 w-5" />
+                {!collapsed && <span>{item.title}</span>}
+              </NavLink>
+            )}
+          </div>
+        ))}
+      </nav>
     </>
   );
 }

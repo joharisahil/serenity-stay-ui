@@ -31,14 +31,15 @@ import {
 } from "../BookingDetails.types";
 
 interface ActionButtonsProps {
-  booking: Booking;
-  hotel: Hotel | null;
-  billingData: BillingData | null;
-  roomOrders: RoomOrder[];
+  booking: any;
+  billingData: any;
+  hotel: any;
+  roomOrders: any[];
   availableRooms: any[];
   finalPaymentReceived: boolean;
   finalPaymentMode: string;
-  onLoadAvailableRooms: () => void;
+  onLoadAvailableRooms?: () => Promise<void>;
+
 }
 
 const openPrintWindow = (html: string) => {
@@ -151,8 +152,10 @@ export function ActionButtons({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => {
-              onLoadAvailableRooms();
+            onClick={async () => {
+              if (onLoadAvailableRooms) {
+                await onLoadAvailableRooms();
+              }
               setShowChangeRoom(true);
             }}
           >

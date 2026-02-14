@@ -1,0 +1,26 @@
+.calendar-wrapper {
+  display: flex;
+  width: 100%;
+
+}
+
+.rooms-column {
+  width: 180px;
+  min-width: 180px;
+  flex-shrink: 0;
+  border-right: 1px solid hsl(var(--border));
+}
+
+.calendar-scroll {
+  flex: 1;
+  overflow-x: auto;   
+  overflow-y: visible;
+}
+
+
+.calendar-body-scroll {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  height: 100%;
+}

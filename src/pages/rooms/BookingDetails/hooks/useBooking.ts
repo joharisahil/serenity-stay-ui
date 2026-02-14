@@ -1,138 +1,72 @@
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
-import {
-  getBookingApi,
-  getTodayBookingByRoomApi,
-  getRoomServiceBillForBookingApi,
-} from "@/api/bookingApi";
+import { useEffect, useState, useCallback } from "react";
+import { resolveBookingApi } from "@/api/bookingApi";
 import { getHotelApi } from "@/api/hotelApi";
-import { getAvailableRoomsApi } from "@/api/bookingApi";
-import { getAvailableRoomsByDateApi } from "@/api/roomApi";
-import { Booking, Hotel, RoomOrder, RoomOrderSummary } from "../BookingDetails.types";
+import { getRoomServiceBillForBookingApi , getAvailableRoomsApi} from "@/api/bookingApi";
 
-interface UseBookingParams {
-  roomId: string | undefined;
-  passedBookingId: string | null;
-  selectedCheckIn: string | null;
-  selectedCheckOut: string | null;
-}
-
-export function useBooking({
-  roomId,
-  passedBookingId,
-  selectedCheckIn,
-  selectedCheckOut,
-}: UseBookingParams) {
-  const [booking, setBooking] = useState<Booking | null>(null);
-  const [roomOrders, setRoomOrders] = useState<RoomOrder[]>([]);
-  const [roomOrderSummary, setRoomOrderSummary] = useState<RoomOrderSummary | null>(null);
-  const [hotel, setHotel] = useState<Hotel | null>(null);
+export function useBooking({ bookingId }: { bookingId: string }) {
+  const [booking, setBooking] = useState<any>(null);
+  const [roomOrders, setRoomOrders] = useState<any[]>([]);
+  const [roomOrderSummary, setRoomOrderSummary] = useState<any>(null);
+  const [hotel, setHotel] = useState<any>(null);
   const [availableRooms, setAvailableRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadBookingData = async () => {
-    if (!roomId) return;
+
+  const loadAvailableRooms = useCallback(async () => {
+  if (!booking?.room_id?.type) return;
+
+  try {
+    const rooms = await getAvailableRoomsApi(booking.room_id.type);
+
+    setAvailableRooms(
+      rooms.filter((r: any) => r._id !== booking.room_id._id)
+    );
+  } catch (err) {
+    console.error("Failed to load available rooms", err);
+    setAvailableRooms([]);
+  }
+}, [booking]);
+
+  const loadBooking = useCallback(async () => {
+    if (!bookingId) return;
 
     setLoading(true);
-
     try {
-      let bookingData;
+      // 🔥 ONLY bookingId resolver
+      const bookingData = await resolveBookingApi({ bookingId });
 
-      if (passedBookingId) {
-        bookingData = await getBookingApi(passedBookingId);
-      } else {
-        const res = await getTodayBookingByRoomApi(roomId);
-        bookingData = res.booking || null;
+      if (!bookingData) {
+        setBooking(null);
+        return;
       }
 
       setBooking(bookingData);
 
-      if (bookingData?.hotel_id) {
-        try {
-          const hotelRes = await getHotelApi(bookingData.hotel_id);
-          if (hotelRes?.success) setHotel(hotelRes.hotel);
-          else setHotel(null);
-        } catch (e) {
-          setHotel(null);
-        }
-      } else {
-        setHotel(null);
+      if (bookingData.hotel_id) {
+        const h = await getHotelApi(bookingData.hotel_id);
+        setHotel(h?.hotel ?? null);
       }
 
-      try {
-        const foodRes = await getRoomServiceBillForBookingApi(bookingData._id);
-        if (foodRes.success) {
-          setRoomOrders(foodRes.orders || []);
-          setRoomOrderSummary(foodRes.summary || null);
-        } else {
-          setRoomOrders([]);
-          setRoomOrderSummary(null);
-        }
-      } catch (e) {
-        setRoomOrders([]);
-        setRoomOrderSummary(null);
-      }
-
-      if (bookingData?.room_id?.type) {
-        try {
-          const type = bookingData.room_id.type;
-          let availableSameType = [];
-
-          if (passedBookingId && selectedCheckIn && selectedCheckOut) {
-            availableSameType = await getAvailableRoomsByDateApi(
-              selectedCheckIn,
-              selectedCheckOut,
-              type
-            );
-          } else {
-            const simple = await getAvailableRoomsApi(type);
-            availableSameType = simple || [];
-          }
-
-          setAvailableRooms(availableSameType);
-        } catch (e) {
-          setAvailableRooms([]);
-        }
-      }
-    } catch (e) {
-      toast.error("Failed to load booking details");
+      const food = await getRoomServiceBillForBookingApi(bookingData._id);
+      setRoomOrders(food.orders || []);
+      setRoomOrderSummary(food.summary || null);
     } finally {
       setLoading(false);
     }
-  };
-
- const refreshBooking = async (bookingId?: string) => {
-  const id = bookingId ?? booking?._id;
-  if (!id) return;
-
-  try {
-    const updated = await getBookingApi(id);
-    setBooking(updated);
-
-    const foodRes = await getRoomServiceBillForBookingApi(id);
-    setRoomOrders(foodRes.orders || []);
-    setRoomOrderSummary(foodRes.summary || null);
-  } catch (e) {
-    console.error(e);
-  }
-};
-
+  }, [bookingId]);
 
   useEffect(() => {
-    loadBookingData();
-  }, [roomId, passedBookingId, selectedCheckIn, selectedCheckOut]);
+    loadBooking();
+  }, [loadBooking]);
 
   return {
     booking,
-    setBooking,
     roomOrders,
-    setRoomOrders,
     roomOrderSummary,
-    setRoomOrderSummary,
     hotel,
     availableRooms,
-    setAvailableRooms,
     loading,
-    refreshBooking,
+    refreshBooking: loadBooking,
+    loadAvailableRooms,
   };
 }

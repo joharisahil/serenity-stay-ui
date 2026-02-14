@@ -22,7 +22,17 @@ import {
   getAvailableRoomsByDateTimeApi,
   createBookingApi,
 } from "@/api/bookingApi";
+import { useLocation } from "react-router-dom";
+import { convertBlockToBookingApi } from "@/api/bookingApi";
+
 import { getRoomPlansApi } from "@/api/roomApi";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function CreateBooking() {
   const navigate = useNavigate();
@@ -34,7 +44,7 @@ export default function CreateBooking() {
     roomType: "",
     roomNumber: "",
     planCode: "",
-
+    source: "WALK_IN",
     finalRoomPrice: "",
     guestName: "",
     guestPhone: "",
@@ -102,6 +112,12 @@ export default function CreateBooking() {
     const local = new Date(y, m - 1, d, hh, mm);
     return local.toISOString();
   };
+
+  //for unblocking
+  const location = useLocation();
+  const convertData = location.state as any;
+
+  const isConvertMode = convertData?.mode === "CONVERT";
 
   // Load room types on mount
   useEffect(() => {
@@ -228,13 +244,14 @@ export default function CreateBooking() {
     }
 
     let gstTotal = 0;
-    if (formData.gstEnabled === "true") {
-      gstTotal += isSpecialPricing
-        ? roomGSTFromRoom
-        : +(discountedRoomBase * 0.05).toFixed(2);
 
-      gstTotal += +(discountedExtrasGST * 0.05).toFixed(2);
-    }
+if (formData.gstEnabled === "true") {
+  // 🔥 ALWAYS calculate GST on discounted base
+  gstTotal += +(discountedRoomBase * 0.05).toFixed(2);
+
+  gstTotal += +(discountedExtrasGST * 0.05).toFixed(2);
+}
+
 
     const cgst = +(gstTotal / 2).toFixed(2);
     const sgst = +(gstTotal / 2).toFixed(2);
@@ -268,6 +285,37 @@ export default function CreateBooking() {
     });
   }, [staySelected, formData, extras, plans]);
 
+  useEffect(() => {
+    if (!isConvertMode || !convertData?.room) return;
+
+    const room = convertData.room;
+
+    // 1️⃣ Inject blocked room into dropdown list
+    setRooms((prev) => {
+      const exists = prev.find((r) => r._id === room._id);
+      if (exists) return prev;
+
+      return [
+        ...prev,
+        {
+          _id: room._id,
+          number: room.number,
+          type: room.type,
+        },
+      ];
+    });
+
+    // 2️⃣ Set all form values
+    setFormData((prev) => ({
+      ...prev,
+      checkIn: new Date(convertData.checkIn).toISOString().slice(0, 16),
+      checkOut: new Date(convertData.checkOut).toISOString().slice(0, 16),
+      roomType: room.type,
+      roomNumber: room._id,
+      source: convertData.source || "WALK_IN",
+    }));
+  }, [isConvertMode]);
+
   const updateFormData = (updates: Partial<typeof formData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
   };
@@ -276,14 +324,18 @@ export default function CreateBooking() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (Number(formData.advanceAmount || 0) > summary.grandTotal) {
       toast.error("Advance amount cannot exceed total bill");
       return;
     }
+
     setLoading(true);
 
     try {
-      // Normalize discount to percentage
+      /* ===============================
+       Normalize discount to percentage
+    =============================== */
       let finalDiscountPercent = Number(formData.discount || 0);
 
       if (
@@ -291,6 +343,7 @@ export default function CreateBooking() {
         Number(formData.discountAmountInput || 0) > 0
       ) {
         const grossBase = summary.taxable + summary.discountAmount;
+
         if (grossBase > 0) {
           finalDiscountPercent = +(
             (Number(formData.discountAmountInput) / grossBase) *
@@ -299,10 +352,14 @@ export default function CreateBooking() {
         }
       }
 
-      await createBookingApi({
+      /* ===============================
+       Common Payload
+    =============================== */
+      const payload = {
         room_id: formData.roomNumber,
         checkIn: toUTCISOString(formData.checkIn),
         checkOut: toUTCISOString(formData.checkOut),
+        source: formData.source,
 
         guestName: formData.guestName,
         guestPhone: formData.guestPhone,
@@ -320,9 +377,11 @@ export default function CreateBooking() {
         planCode: formData.planCode,
         pricingMode: isSpecialPricing ? "SPECIAL" : "PLAN",
         pricingType: isSpecialPricing ? "FINAL_INCLUSIVE" : "BASE_EXCLUSIVE",
+
         finalRoomPrice: isSpecialPricing
           ? Number(formData.finalRoomPrice)
           : undefined,
+
         gstEnabled: formData.gstEnabled === "true",
         roundOffEnabled: formData.roundOffEnabled === "true",
         roundOffAmount: summary.roundOffAmount,
@@ -333,6 +392,7 @@ export default function CreateBooking() {
         advancePaymentMode: formData.advancePaymentMode,
 
         guestIds,
+
         addedServices: extras.map((e) => ({
           name: e.name,
           price: Number(e.price),
@@ -341,12 +401,27 @@ export default function CreateBooking() {
         })),
 
         notes: formData.notes,
-      });
+      };
 
-      toast.success("Booking created successfully");
-      navigate("/");
+      /* ===============================
+       API Call (Create OR Convert)
+    =============================== */
+      if (isConvertMode) {
+        await convertBlockToBookingApi(convertData.bookingId, payload);
+
+        toast.success("Room converted to booking successfully");
+      } else {
+        await createBookingApi(payload);
+
+        toast.success("Booking created successfully");
+      }
+
+      navigate("/rooms/bookings");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Booking failed");
+      toast.error(
+        err?.response?.data?.message ||
+          (isConvertMode ? "Failed to convert room" : "Booking failed"),
+      );
     } finally {
       setLoading(false);
     }
@@ -375,13 +450,16 @@ export default function CreateBooking() {
           type="submit"
           form="booking-form"
           disabled={loading || advanceExceedsTotal}
+          className={
+            isConvertMode ? "bg-slate-700 hover:bg-slate-800 text-white" : ""
+          }
         >
           {loading ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
             <Save className="h-4 w-4 mr-2" />
           )}
-          Create Booking
+          {isConvertMode ? "Convert to Booking" : "Create Booking"}
         </Button>
       </div>
 
@@ -421,6 +499,28 @@ export default function CreateBooking() {
                     />
                   </div>
                 </div>
+                {/* Booking Source */}
+                <div className="erp-field max-w-xs">
+                  <Label className="erp-label erp-required">
+                    Booking Source
+                  </Label>
+
+                  <Select
+                    value={formData.source}
+                    onValueChange={(value) => updateFormData({ source: value })}
+                  >
+                    <SelectTrigger className="erp-input">
+                      <SelectValue placeholder="Select booking source" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="WALK_IN">Walk-in</SelectItem>
+                      <SelectItem value="OTA">OTA</SelectItem>
+                      <SelectItem value="CORPORATE">Corporate</SelectItem>
+                      <SelectItem value="BANQUET">Banquet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {/* Stay Duration Bar */}
                 {staySelected && (
@@ -451,6 +551,12 @@ export default function CreateBooking() {
                     updateFormData({ roomNumber: v, planCode: "" })
                   }
                   onPlanChange={(v) => updateFormData({ planCode: v })}
+                  // ✅ ADD THESE
+                  isConvertMode={isConvertMode}
+                  convertRoom={{
+                    number: convertData?.room?.number,
+                    type: convertData?.room?.type,
+                  }}
                 />
               </div>
             </SectionCard>

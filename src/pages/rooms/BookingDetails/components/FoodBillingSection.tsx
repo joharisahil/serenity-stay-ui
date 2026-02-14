@@ -4,41 +4,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
-import {
-  updateFoodBillingApi,
-  getRoomServiceBillForBookingApi,
-} from "@/api/bookingApi";
+import { updateFoodBillingApi } from "@/api/bookingApi";
 
-import {
-  Booking,
-  RoomOrder,
-} from "../BookingDetails.types";
-
+import { Booking, RoomOrder } from "../BookingDetails.types";
 import { fmt, formatLocal } from "../utils/formatters";
 
 interface FoodBillingSectionProps {
   booking: Booking;
   roomOrders: RoomOrder[];
-  setRoomOrders: (orders: RoomOrder[]) => void;
   roomOrderSummary: any;
-  setRoomOrderSummary: (summary: any) => void;
-  onRefresh: () => void;
+  onRefresh: () => Promise<void> | void;
 }
 
 export function FoodBillingSection({
   booking,
   roomOrders,
-  setRoomOrders,
   roomOrderSummary,
-  setRoomOrderSummary,
   onRefresh,
 }: FoodBillingSectionProps) {
   const [foodDiscountInput, setFoodDiscountInput] = useState(
-    String(booking.foodDiscount ?? "")
+    String(booking.foodDiscount ?? ""),
   );
-console.log("GST from backend:", roomOrderSummary?.gst);
-console.log("CGST calc:", (roomOrderSummary?.gst || 0) / 2);
-
 
   return (
     <details className="border rounded-md p-4 bg-secondary/20">
@@ -66,10 +52,7 @@ console.log("CGST calc:", (roomOrderSummary?.gst || 0) / 2);
 
                 <div className="ml-2 space-y-1">
                   {order.items.map((it, idx) => (
-                    <div
-                      key={idx}
-                      className="text-sm flex justify-between"
-                    >
+                    <div key={idx} className="text-sm flex justify-between">
                       <span>
                         {it.name} × {it.qty}
                       </span>
@@ -91,26 +74,18 @@ console.log("CGST calc:", (roomOrderSummary?.gst || 0) / 2);
         </div>
 
         <div className="flex justify-between">
-          <span>
-            Food Discount ({roomOrderSummary?.discountPercent || 0}%)
-          </span>
-          <span>
-            - ₹{fmt(roomOrderSummary?.discountAmount || 0)}
-          </span>
+          <span>Food Discount ({roomOrderSummary?.discountPercent || 0}%)</span>
+          <span>- ₹{fmt(roomOrderSummary?.discountAmount || 0)}</span>
         </div>
 
         <div className="flex justify-between">
           <span>CGST (2.5%)</span>
-          <span>
-            ₹{fmt((roomOrderSummary?.gst || 0) / 2)}
-          </span>
+          <span>₹{fmt((roomOrderSummary?.gst || 0) / 2)}</span>
         </div>
 
         <div className="flex justify-between">
           <span>SGST (2.5%)</span>
-          <span>
-            ₹{fmt((roomOrderSummary?.gst || 0) / 2)}
-          </span>
+          <span>₹{fmt((roomOrderSummary?.gst || 0) / 2)}</span>
         </div>
 
         <div className="flex justify-between font-bold text-lg border-t pt-2">
@@ -132,16 +107,8 @@ console.log("CGST calc:", (roomOrderSummary?.gst || 0) / 2);
                     foodGSTEnabled: e.target.checked,
                   });
 
-                  const foodRes =
-                    await getRoomServiceBillForBookingApi(
-                      booking._id
-                    );
-
-                  setRoomOrders(foodRes.orders || []);
-                  setRoomOrderSummary(foodRes.summary || null);
-
                   toast.success("Food GST updated");
-                  onRefresh();
+                  await onRefresh();
                 } catch {
                   toast.error("Failed to update food GST");
                 }
@@ -159,9 +126,7 @@ console.log("CGST calc:", (roomOrderSummary?.gst || 0) / 2);
                 type="number"
                 placeholder="Enter food discount %"
                 value={foodDiscountInput}
-                onChange={(e) =>
-                  setFoodDiscountInput(e.target.value)
-                }
+                onChange={(e) => setFoodDiscountInput(e.target.value)}
               />
 
               <Button
@@ -173,16 +138,8 @@ console.log("CGST calc:", (roomOrderSummary?.gst || 0) / 2);
                       foodGSTEnabled: booking.foodGSTEnabled,
                     });
 
-                    const foodRes =
-                      await getRoomServiceBillForBookingApi(
-                        booking._id
-                      );
-
-                    setRoomOrders(foodRes.orders || []);
-                    setRoomOrderSummary(foodRes.summary || null);
-
                     toast.success("Food discount applied");
-                    onRefresh();
+                    await onRefresh();
                   } catch {
                     toast.error("Failed to apply food discount");
                   }

@@ -179,30 +179,44 @@ export function GuestInfoSection({
       </Card>
 
       {/* ===================== GUEST IDS ===================== */}
-      {booking.guestIds?.length > 0 && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Guest ID Proofs</CardTitle>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Guest ID Proofs</CardTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const existingIds = booking.guestIds || [];
+
+              if (existingIds.length > 0) {
                 setGuestIdsForm(
-                  (booking.guestIds || []).map((id) => ({
+                  existingIds.map((id) => ({
                     ...id,
                     type: ID_TYPE_API_TO_UI[id.type] ?? "",
                   })),
                 );
+              } else {
+                // 🔥 Add one empty row if none exist
+                setGuestIdsForm([
+                  {
+                    type: "",
+                    idNumber: "",
+                    nameOnId: "",
+                  },
+                ]);
+              }
 
-                setEditGuestIdsOpen(true);
-              }}
-            >
-              Edit
-            </Button>
-          </CardHeader>
+              setEditGuestIdsOpen(true);
+            }}
+          >
+            Edit
+          </Button>
+        </CardHeader>
 
-          <CardContent className="space-y-4">
-            {booking.guestIds.map((id, idx) => (
+        <CardContent className="space-y-4">
+          {booking.guestIds?.length > 0 ? (
+            booking.guestIds.map((id, idx) => (
               <div key={idx} className="border p-3 rounded-md bg-secondary/30">
                 <p>
                   <strong>ID Type:</strong> {id.type}
@@ -214,45 +228,55 @@ export function GuestInfoSection({
                   <strong>Name on ID:</strong> {id.nameOnId}
                 </p>
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+            ))
+          ) : (
+            <p className="text-muted-foreground text-sm">No ID proofs added.</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ===================== COMPANY DETAILS ===================== */}
-      {(booking.companyName || booking.companyGSTIN) && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Company / GST Details</CardTitle>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setCompanyForm({
-                  companyName: booking.companyName,
-                  companyGSTIN: booking.companyGSTIN,
-                  companyAddress: booking.companyAddress,
-                });
-                setEditCompanyOpen(true);
-              }}
-            >
-              Edit
-            </Button>
-          </CardHeader>
 
-          <CardContent className="space-y-2">
-            <p>
-              <strong>Company Name:</strong> {booking.companyName || "—"}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Company Details</CardTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setCompanyForm({
+                companyName: booking.companyName,
+                companyGSTIN: booking.companyGSTIN,
+                companyAddress: booking.companyAddress,
+              });
+              setEditCompanyOpen(true);
+            }}
+          >
+            Edit
+          </Button>
+        </CardHeader>
+
+        <CardContent className="space-y-2">
+          {booking.companyName || booking.companyGSTIN ? (
+            <>
+              <p>
+                <strong>Company Name:</strong> {booking.companyName || "—"}
+              </p>
+              <p>
+                <strong>GSTIN:</strong> {booking.companyGSTIN || "—"}
+              </p>
+              <p>
+                <strong>Company Address:</strong>{" "}
+                {booking.companyAddress || "—"}
+              </p>
+            </>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              No company details added.
             </p>
-            <p>
-              <strong>GSTIN:</strong> {booking.companyGSTIN || "—"}
-            </p>
-            <p>
-              <strong>Company Address:</strong> {booking.companyAddress || "—"}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* ===================== EDIT GUEST DIALOG ===================== */}
       <Dialog
@@ -501,6 +525,18 @@ export function GuestInfoSection({
 
           <DialogFooter>
             <Button
+              variant="outline"
+              onClick={() =>
+                setGuestIdsForm([
+                  ...guestIdsForm,
+                  { type: "", idNumber: "", nameOnId: "" },
+                ])
+              }
+            >
+              Add Another ID
+            </Button>
+
+            <Button
               onClick={async () => {
                 try {
                   await updateGuestIdsApi(
@@ -614,8 +650,11 @@ export function GuestInfoSection({
 
             <Button
               onClick={async () => {
-                if (gstStatus !== "valid") {
-                  toast.error("Please enter valid GSTIN");
+                const gstValue = companyForm.companyGSTIN?.trim();
+
+                // GST optional
+                if (gstValue && !validateGSTIN(gstValue)) {
+                  toast.error("Invalid GSTIN format");
                   return;
                 }
 
