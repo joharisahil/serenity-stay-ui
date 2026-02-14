@@ -38,7 +38,8 @@ interface ActionButtonsProps {
   availableRooms: any[];
   finalPaymentReceived: boolean;
   finalPaymentMode: string;
-  onLoadAvailableRooms?: () => Promise<any[]>; // ✅ OPTIONAL
+  onLoadAvailableRooms?: () => Promise<void>;
+
 }
 
 const openPrintWindow = (html: string) => {

@@ -8,6 +8,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import {
   addAdvancePaymentApi,
   deleteAdvancePaymentApi,
+  getAvailableRoomsApi ,
 } from "@/api/bookingApi";
 
 import { GuestInfoSection } from "./components/GuestInfoSection";
@@ -53,9 +54,13 @@ export default function BookingDetails() {
     availableRooms,
     loading,
     refreshBooking,
+    loadAvailableRooms,
   } = useBooking({
     bookingId: passedBookingId, // 🔥 ONLY THIS
   });
+
+
+
 
   /* ================= ADVANCE PAYMENTS ================= */
 
@@ -235,6 +240,7 @@ export default function BookingDetails() {
             availableRooms={availableRooms}
             finalPaymentReceived={finalPaymentReceived}
             finalPaymentMode={finalPaymentMode}
+            onLoadAvailableRooms={loadAvailableRooms}
           />
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { resolveBookingApi } from "@/api/bookingApi";
 import { getHotelApi } from "@/api/hotelApi";
-import { getRoomServiceBillForBookingApi } from "@/api/bookingApi";
+import { getRoomServiceBillForBookingApi , getAvailableRoomsApi} from "@/api/bookingApi";
 
 export function useBooking({ bookingId }: { bookingId: string }) {
   const [booking, setBooking] = useState<any>(null);
@@ -10,6 +10,22 @@ export function useBooking({ bookingId }: { bookingId: string }) {
   const [hotel, setHotel] = useState<any>(null);
   const [availableRooms, setAvailableRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+
+  const loadAvailableRooms = useCallback(async () => {
+  if (!booking?.room_id?.type) return;
+
+  try {
+    const rooms = await getAvailableRoomsApi(booking.room_id.type);
+
+    setAvailableRooms(
+      rooms.filter((r: any) => r._id !== booking.room_id._id)
+    );
+  } catch (err) {
+    console.error("Failed to load available rooms", err);
+    setAvailableRooms([]);
+  }
+}, [booking]);
 
   const loadBooking = useCallback(async () => {
     if (!bookingId) return;
@@ -51,5 +67,6 @@ export function useBooking({ bookingId }: { bookingId: string }) {
     availableRooms,
     loading,
     refreshBooking: loadBooking,
+    loadAvailableRooms,
   };
 }
