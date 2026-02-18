@@ -13,8 +13,6 @@ import RoomList from "./pages/rooms/RoomList";
 
 import ManageRooms from "./pages/rooms/ManageRooms";
 
-
-
 //import CreateBooking from "./pages/rooms/CreateBooking";
 
 import CreateBooking from "./pages/rooms/CreateBooking/CreateBooking";
@@ -31,9 +29,9 @@ import CustomerMenu from "./pages/menu/CustomerMenu";
 import KitchenOrders from "./pages/kitchen/KitchenOrders";
 import GenerateBill from "./pages/billing/GenerateBill";
 import BillingList from "./pages/billing/BillingList";
-import InventoryDashboard from "./pages/inventory/InventoryDashboard";
-import AddInventory from "./pages/inventory/AddInventory";
-import InventoryList from "./pages/inventory/InventoryList";
+//import InventoryDashboard from "./pages/inventory/InventoryDashboard";
+//import AddInventory from "./pages/inventory/AddInventory";
+//import InventoryList from "./pages/inventory/InventoryList";
 import NotFound from "./pages/NotFound";
 import ViewRoomDetails from "./pages/rooms/ViewRoomDetails";
 import EditRoomPage from "./pages/rooms/EditRoomPage";
@@ -50,6 +48,15 @@ import Plans from "./pages/banquet/Plans";
 import ProformaInvoice from "./pages/banquet/ProformaInvoice";
 import FinalInvoice from "./pages/banquet/FinalInvoice";
 
+import StockTransactions from "./pages/inventory/StockTransactions";
+import StockAdjustments from "./pages/inventory/StockAdjustments";
+import ExpiryMonitoring from "./pages/inventory/ExpiryMonitoring";
+import PurchaseInvoices from "./pages/inventory/PurchaseInvoices";
+import Vendors from "./pages/inventory/Vendors";
+import Ledger from "./pages/inventory/GeneralLedger";
+import AuditTrail from "./pages/inventory/AuditTrail";
+import InventoryItems from "./pages/inventory/InventoryItems";
+import InventoryDashboard from "./pages/inventory/InventoryDashboard";
 
 const queryClient = new QueryClient();
 
@@ -61,7 +68,6 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-
             {/* Public Route */}
             {/* <Route path="/" element={<Login />} /> */}
             {/* Redirect root to login */}
@@ -71,12 +77,23 @@ const App = () => (
             <Route path="/login" element={<Login />} />
 
             {/* Protected Routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute><Dashboard /></ProtectedRoute>
-            } />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
             {/* Room Routes */}
-            <Route path="/rooms/manage" element={
-              <ProtectedRoute><ManageRooms /></ProtectedRoute>} />
+            <Route
+              path="/rooms/manage"
+              element={
+                <ProtectedRoute>
+                  <ManageRooms />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/rooms/view/:id"
               element={
@@ -94,14 +111,49 @@ const App = () => (
               }
             />
 
-            <Route path="/rooms/bookings" element={<ProtectedRoute><RoomCalendar /></ProtectedRoute>} />
-            <Route path="/rooms/bookings/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
+            <Route
+              path="/rooms/bookings"
+              element={
+                <ProtectedRoute>
+                  <RoomCalendar />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rooms/bookings/create"
+              element={
+                <ProtectedRoute>
+                  <CreateBooking />
+                </ProtectedRoute>
+              }
+            />
             {/* <Route path="/rooms/bookings/:roomNumber" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} /> */}
             {/* Legacy redirects */}
-            <Route path="/rooms" element={<ProtectedRoute><RoomCalendar /></ProtectedRoute>} />
+            <Route
+              path="/rooms"
+              element={
+                <ProtectedRoute>
+                  <RoomCalendar />
+                </ProtectedRoute>
+              }
+            />
             {/* <Route path="/rooms//bookings/create" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} /> */}
-            <Route path="/rooms/bookings/:bookingId" element={<ProtectedRoute><BookingDetails /></ProtectedRoute>} />
-            <Route path="/rooms/bills" element={<ProtectedRoute><RoomBillingList /></ProtectedRoute>} />
+            <Route
+              path="/rooms/bookings/:bookingId"
+              element={
+                <ProtectedRoute>
+                  <BookingDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rooms/bills"
+              element={
+                <ProtectedRoute>
+                  <RoomBillingList />
+                </ProtectedRoute>
+              }
+            />
             {/* Room Routes
             <Route path="/rooms" element={
               <ProtectedRoute><RoomList /></ProtectedRoute>
@@ -116,8 +168,14 @@ const App = () => (
             } /> */}
 
             {/* Table Routes */}
-            <Route path="/tables/manage" element={
-              <ProtectedRoute><ManageTables /></ProtectedRoute>} />
+            <Route
+              path="/tables/manage"
+              element={
+                <ProtectedRoute>
+                  <ManageTables />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/tables/view/:id"
               element={
@@ -143,89 +201,247 @@ const App = () => (
               }
             />
 
-
             {/* Banquet Routes */}
-            <Route path="/banquet" element={
-              <ProtectedRoute><BanquetCalendar /></ProtectedRoute>
-            } />
+            <Route
+              path="/banquet"
+              element={
+                <ProtectedRoute>
+                  <BanquetCalendar />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/banquet/create" element={
-              <ProtectedRoute><CreateBanquet /></ProtectedRoute>
-            } />
+            <Route
+              path="/banquet/create"
+              element={
+                <ProtectedRoute>
+                  <CreateBanquet />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/banquet/:bookingId" element={
-              <ProtectedRoute><BanquetDetails /></ProtectedRoute>
-            } />
+            <Route
+              path="/banquet/:bookingId"
+              element={
+                <ProtectedRoute>
+                  <BanquetDetails />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/banquet/halls" element={
-             <ProtectedRoute><Halls /></ProtectedRoute>
-            } />
+            <Route
+              path="/banquet/halls"
+              element={
+                <ProtectedRoute>
+                  <Halls />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/banquet/plans" element={
-             <ProtectedRoute><Plans /></ProtectedRoute> 
-            } />
+            <Route
+              path="/banquet/plans"
+              element={
+                <ProtectedRoute>
+                  <Plans />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/banquet/:bookingId/proforma" element={
-              <ProtectedRoute><ProformaInvoice /></ProtectedRoute>
-            } />
-            <Route path="/banquet/:id/invoice" element={ 
-              <ProtectedRoute><FinalInvoice /></ProtectedRoute>
-            } />
+            <Route
+              path="/banquet/:bookingId/proforma"
+              element={
+                <ProtectedRoute>
+                  <ProformaInvoice />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/banquet/:id/invoice"
+              element={
+                <ProtectedRoute>
+                  <FinalInvoice />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Menu Routes */}
-            <Route path="/menu" element={
-              <ProtectedRoute><MenuList /></ProtectedRoute>
-            } />
+            <Route
+              path="/menu"
+              element={
+                <ProtectedRoute>
+                  <MenuList />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/menu/add" element={
-              <ProtectedRoute><AddMenuItem /></ProtectedRoute>
-            } />
+            <Route
+              path="/menu/add"
+              element={
+                <ProtectedRoute>
+                  <AddMenuItem />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/menu/qr" element={
-              <ProtectedRoute><QRMenuGenerator /></ProtectedRoute>
-            } />
+            <Route
+              path="/menu/qr"
+              element={
+                <ProtectedRoute>
+                  <QRMenuGenerator />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/menu/qr/:source/:id/:hotelId" element={
-              <CustomerMenu />
-            } />
+            <Route
+              path="/menu/qr/:source/:id/:hotelId"
+              element={<CustomerMenu />}
+            />
 
             {/* Kitchen Routes */}
-            <Route path="/kitchen" element={
-              <ProtectedRoute><KitchenOrders /></ProtectedRoute>
-            } />
+            <Route
+              path="/kitchen"
+              element={
+                <ProtectedRoute>
+                  <KitchenOrders />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Billing Routes */}
-            <Route path="/billing" element={
-              <ProtectedRoute><BillingList /></ProtectedRoute>
-            } />
-            <Route path="/billing/restaurant/create" element={
-              <ProtectedRoute><CreateRestaurantBill /></ProtectedRoute>
-            } />
-            <Route path="/billing/restaurant/:tableId" element={
-              <ProtectedRoute><GenerateBill /></ProtectedRoute>
-            } />
-            <Route path="/old-bills" element={ 
-              <ProtectedRoute><OldBillsList /></ProtectedRoute>
-            } />
-            <Route path="/view/:type/:billId" element={
-              <ProtectedRoute><ViewBillPage /></ProtectedRoute>
-            } />
+            <Route
+              path="/billing"
+              element={
+                <ProtectedRoute>
+                  <BillingList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/billing/restaurant/create"
+              element={
+                <ProtectedRoute>
+                  <CreateRestaurantBill />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/billing/restaurant/:tableId"
+              element={
+                <ProtectedRoute>
+                  <GenerateBill />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/old-bills"
+              element={
+                <ProtectedRoute>
+                  <OldBillsList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/view/:type/:billId"
+              element={
+                <ProtectedRoute>
+                  <ViewBillPage />
+                </ProtectedRoute>
+              }
+            />
 
-            {/* Inventory Routes */}
-            <Route path="/inventory" element={
-              <ProtectedRoute><InventoryDashboard /></ProtectedRoute>
-            } />
+            {/* ================= INVENTORY ROUTES ================= */}
 
-            <Route path="/inventory/add" element={
-              <ProtectedRoute><AddInventory /></ProtectedRoute>
-            } />
+            {/* Inventory Dashboard (Overview) */}
+            <Route
+              path="/inventory"
+              element={
+                <ProtectedRoute>
+                  <InventoryDashboard />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/inventory/list" element={
-              <ProtectedRoute><InventoryList /></ProtectedRoute>
-            } />
+            {/* Inventory Items */}
+            <Route
+              path="/inventory/list"
+              element={
+                <ProtectedRoute>
+                  <InventoryItems />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Stock Transactions */}
+            <Route
+              path="/transactions"
+              element={
+                <ProtectedRoute>
+                  <StockTransactions />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Stock Adjustments */}
+            <Route
+              path="/adjustments"
+              element={
+                <ProtectedRoute>
+                  <StockAdjustments />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Expiry Monitoring */}
+            <Route
+              path="/expiry"
+              element={
+                <ProtectedRoute>
+                  <ExpiryMonitoring />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Purchase Invoices */}
+            <Route
+              path="/invoices"
+              element={
+                <ProtectedRoute>
+                  <PurchaseInvoices />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Vendors */}
+            <Route
+              path="/vendors"
+              element={
+                <ProtectedRoute>
+                  <Vendors />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Ledger */}
+            <Route
+              path="/ledger"
+              element={
+                <ProtectedRoute>
+                  <Ledger />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Audit Trail */}
+            <Route
+              path="/audit"
+              element={
+                <ProtectedRoute>
+                  <AuditTrail />
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="*" element={<NotFound />} />
-
           </Routes>
         </AuthProvider>
       </BrowserRouter>

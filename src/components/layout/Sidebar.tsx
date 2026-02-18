@@ -11,6 +11,13 @@ import {
   X,
   PanelLeftClose,
   PanelLeftOpen,
+  BookOpen,
+  Shield,
+  SlidersHorizontal,
+  ArrowLeftRight,
+  CalendarX2,
+  Users,
+  LayoutDashboard
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
@@ -18,14 +25,18 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import Dashboard from "@/pages/Dashboard";
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+/* ================= ENTERPRISE NAV STRUCTURE ================= */
+
 const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
+
   {
     title: "Room Management",
     icon: Hotel,
@@ -35,6 +46,7 @@ const navigationItems = [
       { title: "Room Bills", url: "/rooms/bills" },
     ],
   },
+
   {
     title: "Table Management",
     icon: Table2Icon,
@@ -43,8 +55,10 @@ const navigationItems = [
       { title: "Table Bookings", url: "/tables/bookings" },
     ],
   },
+
   { title: "Banquet Booking", url: "/banquet", icon: Calendar },
   { title: "Menu Management", url: "/menu", icon: UtensilsCrossed },
+
   {
     title: "Billing",
     icon: Receipt,
@@ -53,8 +67,45 @@ const navigationItems = [
       { title: "Old Bills", url: "/old-bills" },
     ],
   },
+
   { title: "Kitchen Orders", url: "/kitchen", icon: ChefHat },
-  { title: "Inventory", url: "/inventory", icon: Package },
+
+  /* ================= INVENTORY ================= */
+
+{
+  title: "Inventory",
+  icon: Package,
+  submenu: [
+    { title: "Dashboard", url: "/inventory", icon: LayoutDashboard },
+    { title: "Inventory Items", url: "/inventory/list", icon: Package },
+    { title: "Stock Transactions", url: "/transactions", icon: ArrowLeftRight },
+    { title: "Stock Adjustments", url: "/adjustments", icon: SlidersHorizontal },
+    { title: "Expiry Monitoring", url: "/expiry", icon: CalendarX2 },
+  ],
+},
+
+
+  /* ================= PROCUREMENT ================= */
+
+  {
+    title: "Procurement",
+    icon: Users,
+    submenu: [
+      { title: "Purchase Invoices", url: "/invoices", icon: Receipt },
+      { title: "Vendors", url: "/vendors", icon: Users },
+    ],
+  },
+
+  /* ================= FINANCE ================= */
+
+  {
+    title: "Finance",
+    icon: BookOpen,
+    submenu: [
+      { title: "General Ledger", url: "/ledger", icon: BookOpen },
+      { title: "Audit Trail", url: "/audit", icon: Shield },
+    ],
+  },
 ];
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -91,6 +142,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         />
       )}
 
+      {/* Desktop Sidebar */}
       <aside
         className={cn(
           "bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out",
@@ -99,7 +151,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           "h-full border-r",
         )}
       >
-        {/* Desktop Sidebar */}
         <SidebarContent
           collapsed={collapsed}
           expandedMenus={expandedMenus}
@@ -135,25 +186,20 @@ function SidebarContent({
 }: any) {
   return (
     <>
+      {/* Header */}
       <div className="flex h-16 items-center justify-between px-4 border-b">
-        {/* Logo Section */}
         <div className="flex items-center gap-3 overflow-hidden">
-          {/* Show full logo only when expanded */}
           {!collapsed && (
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-sidebar-accent">
                 <Hotel className="h-5 w-5 text-sidebar-primary" />
               </div>
-
-              <div className="flex flex-col leading-tight">
-                <span className="text-base font-semibold tracking-tight">
-                  Hotel PMS
-                </span>
-              </div>
+              <span className="text-base font-semibold tracking-tight">
+                Hotel PMS
+              </span>
             </div>
           )}
 
-          {/* Show only icon when collapsed */}
           {collapsed && (
             <div className="p-2 rounded-lg bg-sidebar-accent">
               <Hotel className="h-5 w-5 text-sidebar-primary" />
@@ -161,7 +207,6 @@ function SidebarContent({
           )}
         </div>
 
-        {/* Right Side Buttons */}
         <div className="flex items-center gap-2">
           {setCollapsed && (
             <Button
@@ -190,6 +235,7 @@ function SidebarContent({
         </div>
       </div>
 
+      {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navigationItems.map((item) => (
           <div key={item.title}>
@@ -197,11 +243,18 @@ function SidebarContent({
               <>
                 <button
                   onClick={() => toggleSubmenu(item.title)}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent transition-colors"
                 >
                   <item.icon className="h-5 w-5" />
                   {!collapsed && <span>{item.title}</span>}
-                  {!collapsed && <ChevronDown className="ml-auto h-4 w-4" />}
+                  {!collapsed && (
+                    <ChevronDown
+                      className={cn(
+                        "ml-auto h-4 w-4 transition-transform",
+                        expandedMenus.includes(item.title) && "rotate-180"
+                      )}
+                    />
+                  )}
                 </button>
 
                 {!collapsed && expandedMenus.includes(item.title) && (
@@ -210,8 +263,11 @@ function SidebarContent({
                       <NavLink
                         key={subItem.url}
                         to={subItem.url}
-                        className="block px-3 py-2 rounded-lg hover:bg-sidebar-accent text-sm"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-sidebar-accent text-sm transition-colors"
                       >
+                        {subItem.icon && (
+                          <subItem.icon className="h-4 w-4" />
+                        )}
                         {subItem.title}
                       </NavLink>
                     ))}
@@ -221,7 +277,7 @@ function SidebarContent({
             ) : (
               <NavLink
                 to={item.url}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-sidebar-accent transition-colors"
               >
                 <item.icon className="h-5 w-5" />
                 {!collapsed && <span>{item.title}</span>}
