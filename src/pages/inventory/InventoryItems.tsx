@@ -8,8 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Search, Plus, Filter, Edit2, Power, Leaf, Package } from 'lucide-react';
-import { useState } from 'react';
-import { inventoryItems as initialItems, categories } from './mockData';
+import { useState, useEffect } from 'react';
+import {
+  getItemsApi,
+  createItemApi,
+  updateItemApi,
+  toggleItemApi,
+  getCategoriesApi,
+} from '@/api/inventoryApi';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +24,9 @@ import type { InventoryItem } from './types/inventory';
 const statusFilter = ['all', 'active', 'inactive', 'low_stock', 'perishable'] as const;
 
 const InventoryItems = () => {
-  const [items, setItems] = useState<InventoryItem[]>(initialItems);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+const [categories, setCategories] = useState<any[]>([]);
+const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [status, setStatus] = useState<typeof statusFilter[number]>('all');
@@ -29,7 +37,26 @@ const InventoryItems = () => {
 
   const emptyForm = { name: '', sku: '', categoryId: '', unit: '', costPrice: '', sellingPrice: '', minimumStock: '', isPerishable: false, shelfLifeDays: '' };
   const [form, setForm] = useState(emptyForm);
+  useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [itemsData, categoriesData] = await Promise.all([
+        getItemsApi(),
+        getCategoriesApi(),
+      ]);
 
+      setItems(itemsData);
+      setCategories(categoriesData);
+    } catch (err) {
+      console.error("Failed to fetch inventory data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, []);
   const openAdd = () => { setEditItem(null); setForm(emptyForm); setOpen(true); };
   const openEdit = (item: InventoryItem) => {
     setEditItem(item);
@@ -44,41 +71,60 @@ const InventoryItems = () => {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const handleSubmit = () => {
-    if (!form.name || !form.sku || !form.categoryId || !form.unit || !form.costPrice) {
-      toast({ title: 'Validation Error', description: 'Please fill all required fields.', variant: 'destructive' });
-      return;
-    }
-    const cat = categories.find(c => c.id === form.categoryId);
+  const handleSubmit = async () => {
+  if (!form.name || !form.sku || !form.categoryId || !form.unit || !form.costPrice) {
+    toast({ title: 'Validation Error', description: 'Please fill all required fields.', variant: 'destructive' });
+    return;
+  }
+
+  try {
+    const payload = {
+      name: form.name,
+      sku: form.sku,
+      category_id: form.categoryId,
+      unit: form.unit,
+      costPrice: parseFloat(form.costPrice),
+      sellingPrice: form.sellingPrice ? parseFloat(form.sellingPrice) : undefined,
+      minimumStock: parseInt(form.minimumStock) || 10,
+      isPerishable: form.isPerishable,
+      shelfLifeDays: form.isPerishable && form.shelfLifeDays ? parseInt(form.shelfLifeDays) : undefined,
+    };
+
     if (editItem) {
-      setItems(prev => prev.map(i => i.id === editItem.id ? {
-        ...i, name: form.name, sku: form.sku, categoryId: form.categoryId, categoryName: cat?.name || '', unit: form.unit,
-        costPrice: parseFloat(form.costPrice), sellingPrice: form.sellingPrice ? parseFloat(form.sellingPrice) : undefined,
-        minimumStock: parseInt(form.minimumStock) || 10, isPerishable: form.isPerishable, shelfLifeDays: form.isPerishable && form.shelfLifeDays ? parseInt(form.shelfLifeDays) : undefined,
-        updatedAt: new Date().toISOString().split('T')[0],
-      } : i));
-      toast({ title: 'Item Updated', description: `${form.name} has been updated.` });
+      const updated = await updateItemApi(editItem.id, payload);
+      setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+      toast({ title: 'Item Updated', description: `${updated.name} has been updated.` });
     } else {
-      const newItem: InventoryItem = {
-        id: `item-${Date.now()}`, name: form.name, sku: form.sku, categoryId: form.categoryId, categoryName: cat?.name || '',
-        unit: form.unit, costPrice: parseFloat(form.costPrice), sellingPrice: form.sellingPrice ? parseFloat(form.sellingPrice) : undefined,
-        currentStock: 0, minimumStock: parseInt(form.minimumStock) || 10, isActive: true, isPerishable: form.isPerishable,
-        shelfLifeDays: form.isPerishable && form.shelfLifeDays ? parseInt(form.shelfLifeDays) : undefined,
-        createdBy: 'Admin', createdAt: new Date().toISOString().split('T')[0], updatedAt: new Date().toISOString().split('T')[0],
-      };
-      setItems(prev => [newItem, ...prev]);
-      toast({ title: 'Item Added', description: `${newItem.name} has been added to inventory.` });
+      const created = await createItemApi(payload);
+      setItems(prev => [created, ...prev]);
+      toast({ title: 'Item Added', description: `${created.name} has been added.` });
     }
+
     setForm(emptyForm);
     setOpen(false);
-  };
 
-  const handleToggle = () => {
-    if (!toggleItem) return;
-    setItems(prev => prev.map(i => i.id === toggleItem.id ? { ...i, isActive: !i.isActive, updatedAt: new Date().toISOString().split('T')[0] } : i));
-    toast({ title: `Item ${toggleItem.isActive ? 'Deactivated' : 'Activated'}`, description: `${toggleItem.name} is now ${toggleItem.isActive ? 'inactive' : 'active'}.` });
+  } catch (err) {
+    toast({ title: 'Error', description: 'Failed to save item.', variant: 'destructive' });
+  }
+};
+
+  const handleToggle = async () => {
+  if (!toggleItem) return;
+
+  try {
+    const updated = await toggleItemApi(toggleItem.id);
+    setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+
+    toast({
+      title: `Item ${updated.isActive ? 'Activated' : 'Deactivated'}`,
+      description: `${updated.name} is now ${updated.isActive ? 'active' : 'inactive'}.`,
+    });
+
     setToggleItem(null);
-  };
+  } catch (err) {
+    toast({ title: 'Error', description: 'Failed to update status.', variant: 'destructive' });
+  }
+};
 
   return (
     <AppLayout>
@@ -142,6 +188,13 @@ const InventoryItems = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
+                  {loading && (
+  <tr>
+    <td colSpan={10} className="px-5 py-10 text-center text-muted-foreground">
+      Loading items...
+    </td>
+  </tr>
+)}
                   {filtered.map(item => {
                     const isLow = item.currentStock <= item.minimumStock;
                     return (

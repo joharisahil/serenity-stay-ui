@@ -81,6 +81,7 @@ const navigationItems = [
     { title: "Stock Transactions", url: "/transactions", icon: ArrowLeftRight },
     { title: "Stock Adjustments", url: "/adjustments", icon: SlidersHorizontal },
     { title: "Expiry Monitoring", url: "/expiry", icon: CalendarX2 },
+    { title: "Create Category", url: "/categories/create", icon: CalendarX2 },
   ],
 },
 

@@ -9,7 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 // Pages
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import RoomList from "./pages/rooms/RoomList";
+//import RoomList from "./pages/rooms/RoomList";
 
 import ManageRooms from "./pages/rooms/ManageRooms";
 
@@ -56,8 +56,9 @@ import Vendors from "./pages/inventory/Vendors";
 import Ledger from "./pages/inventory/GeneralLedger";
 import AuditTrail from "./pages/inventory/AuditTrail";
 import InventoryItems from "./pages/inventory/InventoryItems";
-import InventoryDashboard from "./pages/inventory/InventoryDashboard";
+import CreateCategory from "./pages/inventory/CreateCategory";
 
+import InventoryDashboard from "./pages/inventory/InventoryDashboard";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -420,6 +421,10 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+  path="/categories/create"
+  element={<CreateCategory />}
+/>
 
             {/* Ledger */}
             <Route

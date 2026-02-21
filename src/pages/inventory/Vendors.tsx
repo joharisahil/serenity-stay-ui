@@ -10,8 +10,15 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Edit2, Power, Building2, CreditCard as CardIcon, BookOpen, Phone, Mail, MapPin } from 'lucide-react';
-import { useState } from 'react';
-import { vendors as initialVendors, purchaseInvoices } from './mockData';
+import { useState,useEffect } from 'react';
+import {
+  getVendorsApi,
+  createVendorApi,
+  updateVendorApi,
+  toggleVendorApi,
+  getVendorLedgerApi,
+} from '@/api/inventoryApi';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -27,87 +34,226 @@ const emptyForm = {
   openingBalance: '', bankName: '', accountNumber: '', ifscCode: '', accountHolder: '',
 };
 
-const VendorLedgerView = ({ vendor, onClose }: { vendor: Vendor; onClose: () => void }) => {
-  const vendorInvoices = purchaseInvoices.filter(inv => inv.vendorId === vendor.id);
-  const totalOutstanding = vendorInvoices.filter(i => i.invoiceState === 'POSTED').reduce((s, i) => s + i.outstandingAmount, 0);
+const VendorLedgerView = ({
+  vendor,
+  onClose,
+}: {
+  vendor: Vendor;
+  onClose: () => void;
+}) => {
+  const [ledgerData, setLedgerData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLedger = async () => {
+      try {
+        setLoading(true);
+        const data = await getVendorLedgerApi(vendor.id);
+        setLedgerData(data);
+      } catch (err) {
+        console.error("Failed to fetch vendor ledger", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLedger();
+  }, [vendor.id]);
+
+  const invoices = ledgerData?.invoices || [];
+  const totalOutstanding = ledgerData?.totalOutstanding || 0;
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-primary" /> Vendor Ledger – {vendor.name}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" />
+            Vendor Ledger – {vendor.name}
+          </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Total Purchases', value: `₹${vendor.totalPurchases.toLocaleString('en-IN')}`, cls: '' },
-              { label: 'Outstanding', value: `₹${totalOutstanding.toLocaleString('en-IN')}`, cls: 'text-destructive' },
-              { label: 'Credit Days', value: `${vendor.creditDays} days`, cls: '' },
-            ].map(s => (
-              <div key={s.label} className="rounded-lg border p-3 bg-muted/20 text-center">
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-                <p className={`text-lg font-bold mt-0.5 ${s.cls}`}>{s.value}</p>
-              </div>
-            ))}
+
+        {loading ? (
+          <div className="py-10 text-center text-muted-foreground text-sm">
+            Loading ledger...
           </div>
-          <div>
-            <p className="text-sm font-semibold mb-2">Invoice History</p>
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/30 border-b">
-                    <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Invoice #</th>
-                    <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">Date</th>
-                    <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Total</th>
-                    <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Paid</th>
-                    <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">Outstanding</th>
-                    <th className="text-center px-4 py-2 text-xs font-medium text-muted-foreground">State</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {vendorInvoices.map(inv => (
-                    <tr key={inv.id} className="hover:bg-muted/20">
-                      <td className="px-4 py-2 font-mono text-xs">{inv.invoiceNumber}</td>
-                      <td className="px-4 py-2 text-muted-foreground">{new Date(inv.createdAt).toLocaleDateString('en-IN')}</td>
-                      <td className="px-4 py-2 text-right font-medium">₹{inv.grandTotal.toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-2 text-right text-success">₹{inv.paidAmount.toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-2 text-right text-destructive font-medium">{inv.outstandingAmount > 0 ? `₹${inv.outstandingAmount.toLocaleString('en-IN')}` : '—'}</td>
-                      <td className="px-4 py-2 text-center">
-                        <Badge variant="outline" className="text-[10px]">{inv.invoiceState}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                  {vendorInvoices.length === 0 && (
-                    <tr><td colSpan={6} className="px-4 py-6 text-center text-muted-foreground text-xs">No invoices found for this vendor.</td></tr>
-                  )}
-                </tbody>
-              </table>
+        ) : (
+          <div className="space-y-4">
+            {/* Summary */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                {
+                  label: "Total Purchases",
+                  value: `₹${vendor.totalPurchases.toLocaleString("en-IN")}`,
+                  cls: "",
+                },
+                {
+                  label: "Outstanding",
+                  value: `₹${totalOutstanding.toLocaleString("en-IN")}`,
+                  cls: "text-destructive",
+                },
+                {
+                  label: "Credit Days",
+                  value: `${vendor.creditDays} days`,
+                  cls: "",
+                },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  className="rounded-lg border p-3 bg-muted/20 text-center"
+                >
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                  <p className={`text-lg font-bold mt-0.5 ${s.cls}`}>
+                    {s.value}
+                  </p>
+                </div>
+              ))}
             </div>
-          </div>
-          {vendor.bankDetails && (
+
+            {/* Invoice Table */}
             <div>
-              <p className="text-sm font-semibold mb-2">Bank Details</p>
-              <div className="rounded-lg border p-3 bg-muted/10 grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-muted-foreground">Bank</span><p className="font-medium">{vendor.bankDetails.bankName}</p></div>
-                <div><span className="text-muted-foreground">Account No.</span><p className="font-mono font-medium">{vendor.bankDetails.accountNumber}</p></div>
-                <div><span className="text-muted-foreground">IFSC</span><p className="font-mono font-medium">{vendor.bankDetails.ifscCode}</p></div>
-                <div><span className="text-muted-foreground">A/c Holder</span><p className="font-medium">{vendor.bankDetails.accountHolder}</p></div>
+              <p className="text-sm font-semibold mb-2">Invoice History</p>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/30 border-b">
+                      <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">
+                        Invoice #
+                      </th>
+                      <th className="text-left px-4 py-2 text-xs font-medium text-muted-foreground">
+                        Date
+                      </th>
+                      <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">
+                        Total
+                      </th>
+                      <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">
+                        Paid
+                      </th>
+                      <th className="text-right px-4 py-2 text-xs font-medium text-muted-foreground">
+                        Outstanding
+                      </th>
+                      <th className="text-center px-4 py-2 text-xs font-medium text-muted-foreground">
+                        State
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {invoices.map((inv: any) => (
+                      <tr key={inv.id} className="hover:bg-muted/20">
+                        <td className="px-4 py-2 font-mono text-xs">
+                          {inv.invoiceNumber}
+                        </td>
+                        <td className="px-4 py-2 text-muted-foreground">
+                          {new Date(inv.createdAt).toLocaleDateString("en-IN")}
+                        </td>
+                        <td className="px-4 py-2 text-right font-medium">
+                          ₹{inv.grandTotal.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-4 py-2 text-right text-success">
+                          ₹{inv.paidAmount.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-4 py-2 text-right text-destructive font-medium">
+                          {inv.outstandingAmount > 0
+                            ? `₹${inv.outstandingAmount.toLocaleString(
+                                "en-IN"
+                              )}`
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px]"
+                          >
+                            {inv.invoiceState}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {invoices.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="px-4 py-6 text-center text-muted-foreground text-xs"
+                        >
+                          No invoices found for this vendor.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Bank Details */}
+            {vendor.bankDetails && (
+              <div>
+                <p className="text-sm font-semibold mb-2">
+                  Bank Details
+                </p>
+                <div className="rounded-lg border p-3 bg-muted/10 grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Bank</span>
+                    <p className="font-medium">
+                      {vendor.bankDetails.bankName}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">
+                      Account No.
+                    </span>
+                    <p className="font-mono font-medium">
+                      {vendor.bankDetails.accountNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">IFSC</span>
+                    <p className="font-mono font-medium">
+                      {vendor.bankDetails.ifscCode}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">
+                      A/c Holder
+                    </span>
+                    <p className="font-medium">
+                      {vendor.bankDetails.accountHolder}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
 };
 
 const Vendors = () => {
-  const [vendorList, setVendorList] = useState<Vendor[]>(initialVendors);
+  const [vendorList, setVendorList] = useState<Vendor[]>([]);
+const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editVendor, setEditVendor] = useState<Vendor | null>(null);
   const [ledgerVendor, setLedgerVendor] = useState<Vendor | null>(null);
   const [toggleVendor, setToggleVendor] = useState<Vendor | null>(null);
   const [form, setForm] = useState(emptyForm);
   const { toast } = useToast();
+  useEffect(() => {
+  const fetchVendors = async () => {
+    try {
+      setLoading(true);
+      const data = await getVendorsApi();
+      setVendorList(data);
+    } catch (err) {
+      console.error("Failed to fetch vendors", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchVendors();
+}, []);
 
   const openAdd = () => { setEditVendor(null); setForm(emptyForm); setOpen(true); };
   const openEdit = (v: Vendor) => {
@@ -122,38 +268,71 @@ const Vendors = () => {
     setOpen(true);
   };
 
-  const handleSubmit = () => {
-    if (!form.name || !form.contactPerson || !form.email) {
-      toast({ title: 'Validation Error', description: 'Name, contact person and email are required.', variant: 'destructive' });
-      return;
-    }
-    const bankDetails = form.bankName ? { bankName: form.bankName, accountNumber: form.accountNumber, ifscCode: form.ifscCode, accountHolder: form.accountHolder } : undefined;
-    if (editVendor) {
-      setVendorList(prev => prev.map(v => v.id === editVendor.id ? {
-        ...v, name: form.name, contactPerson: form.contactPerson, email: form.email, phone: form.phone, address: form.address,
-        gstin: form.gstin, panNumber: form.panNumber, gstRegistered: form.gstRegistered, creditDays: parseInt(form.creditDays) || 0,
-        paymentTerms: form.paymentTerms, openingBalance: parseFloat(form.openingBalance) || 0, bankDetails,
-      } : v));
-      toast({ title: 'Vendor Updated', description: `${form.name} has been updated.` });
-    } else {
-      const newVendor: Vendor = {
-        id: `ven-${Date.now()}`, name: form.name, contactPerson: form.contactPerson, email: form.email, phone: form.phone, address: form.address,
-        gstin: form.gstin, panNumber: form.panNumber, gstRegistered: form.gstRegistered, isActive: true, totalPurchases: 0,
-        creditDays: parseInt(form.creditDays) || 0, paymentTerms: form.paymentTerms, openingBalance: parseFloat(form.openingBalance) || 0,
-        bankDetails, createdAt: new Date().toISOString().split('T')[0],
-      };
-      setVendorList(prev => [newVendor, ...prev]);
-      toast({ title: 'Vendor Added', description: `${form.name} has been added.` });
-    }
-    setOpen(false);
-  };
+  const handleSubmit = async () => {
+  if (!form.name || !form.contactPerson || !form.email) {
+    toast({
+      title: 'Validation Error',
+      description: 'Name, contact person and email are required.',
+      variant: 'destructive'
+    });
+    return;
+  }
 
-  const handleToggle = () => {
-    if (!toggleVendor) return;
-    setVendorList(prev => prev.map(v => v.id === toggleVendor.id ? { ...v, isActive: !v.isActive } : v));
-    toast({ title: `Vendor ${toggleVendor.isActive ? 'Deactivated' : 'Activated'}`, description: `${toggleVendor.name} status updated.` });
+  try {
+    const payload = {
+      name: form.name,
+      contactPerson: form.contactPerson,
+      email: form.email,
+      phone: form.phone,
+      address: form.address,
+      gstin: form.gstin,
+      panNumber: form.panNumber,
+      gstRegistered: form.gstRegistered,
+      creditDays: parseInt(form.creditDays) || 0,
+      paymentTerms: form.paymentTerms,
+      openingBalance: parseFloat(form.openingBalance) || 0,
+      bankDetails: form.bankName ? {
+        bankName: form.bankName,
+        accountNumber: form.accountNumber,
+        ifscCode: form.ifscCode,
+        accountHolder: form.accountHolder,
+      } : undefined,
+    };
+
+    if (editVendor) {
+      const updated = await updateVendorApi(editVendor.id, payload);
+      setVendorList(prev => prev.map(v => v.id === updated.id ? updated : v));
+      toast({ title: 'Vendor Updated', description: `${updated.name} has been updated.` });
+    } else {
+      const created = await createVendorApi(payload);
+      setVendorList(prev => [created, ...prev]);
+      toast({ title: 'Vendor Added', description: `${created.name} has been added.` });
+    }
+
+    setOpen(false);
+
+  } catch (err) {
+    toast({ title: 'Error', description: 'Failed to save vendor.', variant: 'destructive' });
+  }
+};
+  const handleToggle = async () => {
+  if (!toggleVendor) return;
+
+  try {
+    const updated = await toggleVendorApi(toggleVendor.id);
+    setVendorList(prev => prev.map(v => v.id === updated.id ? updated : v));
+
+    toast({
+      title: `Vendor ${updated.isActive ? 'Activated' : 'Deactivated'}`,
+      description: `${updated.name} status updated.`,
+    });
+
     setToggleVendor(null);
-  };
+
+  } catch (err) {
+    toast({ title: 'Error', description: 'Failed to update vendor status.', variant: 'destructive' });
+  }
+};
 
   return (
     <AppLayout>

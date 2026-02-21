@@ -8,14 +8,47 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertTriangle, CalendarDays, Clock, Package2, Leaf } from 'lucide-react';
-import { useState } from 'react';
-import { inventoryItems, inventoryBatches, getExpiringBatches, getExpiredBatches } from './mockData';
+import { useState ,useEffect} from 'react';
+
+import {
+  getExpiryDashboardApi
+} from '@/api/inventoryApi';
 import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 
 const ExpiryMonitoring = () => {
+  const { toast } = useToast();
   const [daysFilter, setDaysFilter] = useState(30);
-  const expiring = getExpiringBatches(daysFilter);
-  const expired = getExpiredBatches();
+const [expired, setExpired] = useState<any[]>([]);
+const [expiring, setExpiring] = useState<any[]>([]);
+const [allBatches, setAllBatches] = useState<any[]>([]);
+const [perishableCount, setPerishableCount] = useState(0);
+const [loading, setLoading] = useState(true);
+useEffect(() => {
+  const fetchExpiry = async () => {
+    try {
+      setLoading(true);
+
+      const data = await getExpiryDashboardApi();
+
+      setExpired(data.expired || []);
+      setExpiring(data.expiring || []);
+      setAllBatches(data.allBatches || []);
+      setPerishableCount(data.summary?.perishableItems || 0);
+
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to load expiry monitoring.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchExpiry();
+}, [daysFilter]);
 
   const getDaysToExpiry = (expiryDate: string) => {
     const diff = new Date(expiryDate).getTime() - new Date().getTime();
@@ -31,7 +64,12 @@ const ExpiryMonitoring = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+  {loading ? (
+    <div className="p-12 text-center text-muted-foreground">
+      Loading expiry monitoring...
+    </div>
+  ) : (
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Expiry Monitoring</h1>
@@ -76,7 +114,7 @@ const ExpiryMonitoring = () => {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0"><Leaf className="h-5 w-5" /></div>
               <div>
                 <p className="text-sm text-muted-foreground">Perishable Items</p>
-                <p className="text-2xl font-bold">{inventoryItems.filter(i => i.isPerishable).length}</p>
+                <p className="text-2xl font-bold">{perishableCount}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Items with FIFO tracking</p>
               </div>
             </CardContent>
@@ -86,14 +124,20 @@ const ExpiryMonitoring = () => {
         {/* Expired Batches */}
         {expired.length > 0 && (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-4 w-4" />Expired Stock (Action Required)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+  <CardHeader className="pb-3">
+    <CardTitle className="text-base flex items-center gap-2 text-destructive">
+      <AlertTriangle className="h-4 w-4" />
+      Expired Stock (Action Required)
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="p-0">
+    {expired.length === 0 ? (
+      <div className="py-10 text-center text-muted-foreground text-sm">
+        No expired batches 🎉
+      </div>
+    ) : (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-destructive/5">
                       <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground uppercase">Item</th>
@@ -118,6 +162,7 @@ const ExpiryMonitoring = () => {
                   </tbody>
                 </table>
               </div>
+    )}
             </CardContent>
           </Card>
         )}
@@ -190,7 +235,7 @@ const ExpiryMonitoring = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {inventoryBatches.map(batch => {
+                  {allBatches.map(batch => {
                     const days = getDaysToExpiry(batch.expiryDate);
                     return (
                       <tr key={batch.id} className="hover:bg-muted/30 transition-colors">
@@ -203,12 +248,20 @@ const ExpiryMonitoring = () => {
                       </tr>
                     );
                   })}
+                  {allBatches.length === 0 && (
+  <tr>
+    <td colSpan={6} className="px-5 py-8 text-center text-muted-foreground">
+      No perishable batches available.
+    </td>
+  </tr>
+)}
                 </tbody>
               </table>
             </div>
           </CardContent>
         </Card>
       </div>
+  )}
     </AppLayout>
   );
 };

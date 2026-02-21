@@ -9,8 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ArrowDownCircle, ArrowUpCircle, Plus, ClipboardList } from 'lucide-react';
-import { useState } from 'react';
-import { inventoryItems, stockAdjustments as initialAdjustments } from './mockData';
+import { useState ,useEffect } from 'react';
+import {
+  getItemsApi,
+  getStockAdjustmentsApi,
+  createStockAdjustmentApi,
+} from '@/api/inventoryApi';
 import { useToast } from '@/hooks/use-toast';
 import type { StockAdjustment } from './types/inventory';
 
@@ -20,15 +24,40 @@ const reasonLabels: Record<StockAdjustment['reason'], string> = {
 };
 
 const StockAdjustments = () => {
-  const [adjustments, setAdjustments] = useState<StockAdjustment[]>(initialAdjustments);
-  const [items, setItems] = useState(inventoryItems);
+  const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
+const [items, setItems] = useState<any[]>([]);
+const [loading, setLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const { toast } = useToast();
 
   const [form, setForm] = useState({
     itemId: '', type: 'OUT' as 'IN' | 'OUT', quantity: '', reason: 'CORRECTION' as StockAdjustment['reason'], notes: '',
   });
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
 
+      const [itemsData, adjustmentData] = await Promise.all([
+        getItemsApi(),
+        getStockAdjustmentsApi(),
+      ]);
+
+      setItems(itemsData);
+      setAdjustments(adjustmentData);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load stock data.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, []);
   const selectedItem = items.find(i => i.id === form.itemId);
 
   const handleSubmit = () => {
@@ -49,23 +78,49 @@ const StockAdjustments = () => {
     setConfirmOpen(true);
   };
 
-  const handleConfirm = () => {
-    const item = items.find(i => i.id === form.itemId)!;
-    const qty = parseInt(form.quantity);
-    const balanceBefore = item.currentStock;
-    const balanceAfter = form.type === 'IN' ? balanceBefore + qty : balanceBefore - qty;
-
-    const newAdj: StockAdjustment = {
-      id: `adj-${Date.now()}`, itemId: item.id, itemName: item.name, itemSku: item.sku,
-      type: form.type, quantity: qty, reason: form.reason, notes: form.notes,
-      balanceBefore, balanceAfter, adjustedBy: 'Admin', adjustedAt: new Date().toISOString(),
+  const handleConfirm = async () => {
+  try {
+    const payload = {
+      itemId: form.itemId,
+      type: form.type,
+      quantity: Number(form.quantity),
+      reason: form.reason,
+      notes: form.notes,
     };
-    setAdjustments(prev => [newAdj, ...prev]);
-    setItems(prev => prev.map(i => i.id === item.id ? { ...i, currentStock: balanceAfter, updatedAt: new Date().toISOString().split('T')[0] } : i));
-    setForm({ itemId: '', type: 'OUT', quantity: '', reason: 'CORRECTION', notes: '' });
+
+    const created = await createStockAdjustmentApi(payload);
+
+    // refresh items + adjustments after creation
+    const [itemsData, adjustmentData] = await Promise.all([
+      getItemsApi(),
+      getStockAdjustmentsApi(),
+    ]);
+
+    setItems(itemsData);
+    setAdjustments(adjustmentData);
+
+    setForm({
+      itemId: '',
+      type: 'OUT',
+      quantity: '',
+      reason: 'CORRECTION',
+      notes: '',
+    });
+
     setConfirmOpen(false);
-    toast({ title: 'Adjustment Recorded', description: `Stock ${form.type === 'IN' ? 'added' : 'deducted'}: ${qty}x ${item.name}. New balance: ${balanceAfter}.` });
-  };
+
+    toast({
+      title: 'Adjustment Recorded',
+      description: 'Stock adjustment successfully recorded.',
+    });
+  } catch (err) {
+    toast({
+      title: 'Error',
+      description: 'Failed to record stock adjustment.',
+      variant: 'destructive',
+    });
+  }
+};
 
   return (
     <AppLayout>
@@ -143,7 +198,11 @@ const StockAdjustments = () => {
               </div>
             )}
             <div className="flex justify-end">
-              <Button onClick={handleSubmit} className="gold-gradient text-accent-foreground">
+             <Button
+  onClick={handleSubmit}
+  disabled={loading}
+  className="gold-gradient text-accent-foreground"
+>
                 {form.type === 'IN' ? <ArrowUpCircle className="h-4 w-4 mr-2" /> : <ArrowDownCircle className="h-4 w-4 mr-2" />}
                 Record Adjustment
               </Button>
@@ -157,7 +216,13 @@ const StockAdjustments = () => {
             <CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-4 w-4 text-muted-foreground" />Adjustment History</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+          {loading ? (
+  <div className="p-6 text-sm text-muted-foreground">
+    Loading stock adjustments...
+  </div>
+) : (
+  <div className="overflow-x-auto">
+              
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
@@ -201,6 +266,7 @@ const StockAdjustments = () => {
                 </tbody>
               </table>
             </div>
+)}
           </CardContent>
         </Card>
       </div>
