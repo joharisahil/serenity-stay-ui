@@ -195,14 +195,21 @@ export default function GenerateBill() {
     }
   };
 
-  /* ---------------- PRINT ---------------- */
-
   /* ---------------- PRINT (THERMAL) ---------------- */
 
-  const printInvoice = (bill: any, hotel: any) => {
-    const tableName = orders[0]?.table_id?.name || "N/A";
+const printInvoice = (bill: any, hotel: any) => {
+  const tableName = orders[0]?.table_id?.name || "N/A";
 
-    const buildHtml = (copyType: "CAPTAIN COPY" | "CUSTOMER COPY") => `
+  // Format date as DD-MM-YYYY
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const buildHtml = (copyType: "CAPTAIN COPY" | "CUSTOMER COPY") => `
 <!doctype html>
 <html>
 <body style="font-family:monospace;font-size:12px;padding:6px;width:58mm">
@@ -224,7 +231,7 @@ ${hotel?.gstNumber ? `<div style="text-align:center">GSTIN: ${hotel.gstNumber}</
 <hr/>
 
 <div><b>Bill No:</b> ${bill.billNumber}</div>
-<div><b>Date:</b> ${new Date(bill.createdAt).toLocaleString()}</div>
+<div><b>Date:</b> ${formatDate(bill.createdAt)}</div>
 <div><b>Guest:</b> ${bill.customerName || "N/A"}</div>
 <div><b>Phone:</b> ${bill.customerPhone || "N/A"}</div>
 ${bill.customerCompanyName
@@ -293,10 +300,10 @@ ${bill.orders
 </html>
 `;
 
-    const w = window.open("", "_blank", "width=300,height=800");
-    if (!w) return;
+  const w = window.open("", "_blank", "width=300,height=800");
+  if (!w) return;
 
-    w.document.write(`
+  w.document.write(`
 ${buildHtml("CAPTAIN COPY")}
 
 <script>
@@ -308,7 +315,7 @@ ${buildHtml("CAPTAIN COPY")}
   }, 300);
 </script>
 `);
-  };
+};
 
   /* ---------------- CHECKOUT ---------------- */
 
