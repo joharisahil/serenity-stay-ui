@@ -21,8 +21,13 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogTitle } from "@radix-ui/react-dialog";
-import { DialogHeader } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { EditItemForm } from "./EditItemForm";
 
 export default function MenuList() {
   const navigate = useNavigate();
@@ -273,24 +278,31 @@ export default function MenuList() {
 
       {/* EDIT ITEM DIALOG */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit Menu Item</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
 
-          {/* {editItem && (
-      <EditItemForm
-        item={editItem}
-        categories={categoriesData}
-        onUpdated={() => {
-          loadMenuItems(selectedCategory);
-          setEditOpen(false);
-        }}
-      />
-    )} */}
+          {/* Header */}
+          <div className="px-6 py-4 border-b">
+            <DialogTitle className="text-lg font-semibold">
+              Edit Menu Item
+            </DialogTitle>
+          </div>
+
+          {/* Body */}
+          <div className="px-6 py-5">
+            {editItem && (
+              <EditItemForm
+                item={editItem}
+                categories={categoriesData}
+                onUpdated={() => {
+                  loadMenuItems(selectedCategory);
+                  setEditOpen(false);
+                }}
+              />
+            )}
+          </div>
+
         </DialogContent>
       </Dialog>
-
     </Layout>
   );
 }
