@@ -105,6 +105,10 @@ export function buildRoomInvoice(
     <p style="font-size:18px;font-weight:bold;">ROOM TAX INVOICE</p>
   </div>
 
+  <div style="text-align:right;margin-top:8px;font-size:15px;font-weight:bold;">
+  Bill No: ${billingData.billNumber}
+  </div>
+
   ${buildGuestAndCompanySection(booking)}
 
   <!-- ================= BILLING DETAILS ================= -->
@@ -581,6 +585,9 @@ export function buildCombinedInvoice(
     <p style="font-size:18px;font-weight:bold;">TAX INVOICE</p>
   </div>
 
+  <div style="text-align:right;margin-top:8px;font-size:15px;font-weight:bold;">
+  Bill No: ${billingData.billNumber}
+  </div>
   ${buildGuestAndCompanySection(booking)}
 
   <!-- ROOM + EXTRAS -->
