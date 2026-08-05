@@ -47,7 +47,6 @@ export default function Login() {
   };
   useEffect(() => {
     const token = localStorage.getItem("token");
-    console.log("Stored token:", token);
   }, []);
 
 
