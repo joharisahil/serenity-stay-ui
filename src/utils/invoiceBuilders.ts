@@ -108,10 +108,6 @@ export function buildRoomInvoice(
   <div style="text-align:right;margin-top:8px;font-size:15px;font-weight:bold;">
   Bill No: ${booking.billNumber}
   </div>
-  console.log("booking.billNumber", booking.billNumber);
-console.log("booking.invoiceNumber", booking.invoiceNumber);
-console.log("billingData", billingData);
-console.log("billingData.billNumber", billingData?.billNumber);
 
   ${buildGuestAndCompanySection(booking)}
 
@@ -588,10 +584,6 @@ export function buildCombinedInvoice(
     <p><strong>GSTIN:</strong> ${hotel.gstNumber}</p>
     <p style="font-size:18px;font-weight:bold;">TAX INVOICE</p>
   </div>
-  console.log("booking.billNumber", booking.billNumber);
-console.log("booking.invoiceNumber", booking.invoiceNumber);
-console.log("billingData", billingData);
-console.log("billingData.billNumber", billingData?.billNumber);
 
   <div style="text-align:right;margin-top:8px;font-size:15px;font-weight:bold;">
   Bill No: ${booking.billNumber}
@@ -938,7 +930,10 @@ export function buildCombinedInvoice_old(invoice: any) {
     <p><strong>GSTIN:</strong> ${invoice.hotel.gstNumber}</p>
     <p class="title">ROOM TAX INVOICE</p>
   </div>
-  
+    console.log("booking.billNumber", booking.billNumber);
+console.log("booking.invoiceNumber", booking.invoiceNumber);
+console.log("billingData", billingData);
+console.log("billingData.billNumber", billingData?.billNumber);
 
   ${guestAndCompanySection}
 
