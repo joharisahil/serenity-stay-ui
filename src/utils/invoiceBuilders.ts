@@ -1210,6 +1210,10 @@ export function buildRoomInvoice_old(invoice: any) {
     <p class="title">ROOM TAX INVOICE</p>
   </div>
 
+  <div style="text-align:right;margin-top:8px;font-size:15px;font-weight:bold;">
+  Bill No: ${invoice.billNumber}
+  </div>
+
   ${guestAndCompanySection}
 
   <!-- ================= BILLING DETAILS ================= -->
