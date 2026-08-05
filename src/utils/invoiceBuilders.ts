@@ -106,7 +106,7 @@ export function buildRoomInvoice(
   </div>
 
   <div style="text-align:right;margin-top:8px;font-size:15px;font-weight:bold;">
-  Bill No: ${billingData.billNumber}
+  Bill No: ${booking.billNumber}
   </div>
 
   ${buildGuestAndCompanySection(booking)}
@@ -586,7 +586,7 @@ export function buildCombinedInvoice(
   </div>
 
   <div style="text-align:right;margin-top:8px;font-size:15px;font-weight:bold;">
-  Bill No: ${billingData.billNumber}
+  Bill No: ${booking.billNumber}
   </div>
   ${buildGuestAndCompanySection(booking)}
 
