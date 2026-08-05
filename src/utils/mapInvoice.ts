@@ -82,6 +82,7 @@ const taxable =
   ========================= */
   return {
     /* ---------- META ---------- */
+    billNumber: bill.billNumber || inv.invoiceNumber,
     invoiceNumber: inv.invoiceNumber,
     createdAt: inv.createdAt,
 
